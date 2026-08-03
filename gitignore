@@ -1,0 +1,36 @@
+# ===== Java / Spring Boot (backend/) =====
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+*.class
+*.jar
+*.war
+HELP.md
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# ===== Node / React (frontend/) =====
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ===== Variáveis de ambiente e segredos =====
+.env
+*.env
+application-local.properties
+application-local.yml
+
+# ===== Sistema operacional / editores =====
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
