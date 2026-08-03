@@ -16,13 +16,17 @@ rosie-store/
 
 - **Back-end:** Java + Spring Boot
 - **Front-end:** React
-- **Banco de dados:** (definir — Postgres ou MySQL)
-- **Hospedagem:** (definir)
+- **Banco de dados:** MySQL
+- **Painel admin:** CRUD custom (Spring Boot + React, sem CMS externo)
+- **Hospedagem:** (definir — back-end e front-end)
+- **Prototipagem:** Figma, antes de iniciar o desenvolvimento
 
 ## Equipe
 
-- Breno — [Feature: Catálogo]
-- Matheus — [Feature: Painel Admin]
+- **Breno** — Feature: Catálogo (Home, Página de Produto)
+- **Matheus** — Feature: Painel Admin (CRUD de produtos, autenticação)
+
+Divisão por feature: cada pessoa desenvolve back-end e front-end da própria funcionalidade, ponta a ponta.
 
 ## Como rodar o projeto
 
@@ -41,13 +45,18 @@ npm run dev
 
 ## Fluxo de trabalho
 
-Cada funcionalidade é desenvolvida em uma branch própria a partir da `main`:
+- **Board de tarefas:** Notion
+- **Branches:** cada funcionalidade é desenvolvida em uma branch própria a partir da `main`
 
 ```bash
 git checkout -b feature/nome-da-funcionalidade
 ```
 
 Ao finalizar, abrir um Pull Request para revisão antes de mesclar na `main`.
+
+## Cronograma
+
+Prazo estimado: **8 semanas**, da descoberta ao lançamento. Ver `docs/cronograma-rosie.html` para o detalhamento por fase.
 
 ## Documentação do projeto
 
