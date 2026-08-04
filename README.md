@@ -64,7 +64,7 @@ npm run dev
 
 ## Fluxo de trabalho
 
-- **Board de tarefas:** [Kanban — Notion](#) <!-- https://app.notion.com/p/65daf739da254a479b5facc5604010fd?v=3f27cec9256646e18d46729e89261b8e&source=copy_link  -->
+- **Board de tarefas:** [Kanban — Notion](https://app.notion.com/p/65daf739da254a479b5facc5604010fd?v=3f27cec9256646e18d46729e89261b8e)
 - **Branches:** cada funcionalidade é desenvolvida em uma branch própria a partir da `main`
 
 ```bash
