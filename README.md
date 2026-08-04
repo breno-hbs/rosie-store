@@ -20,7 +20,8 @@ rosie-store/
 - **Front-end:** React
 - **Banco de dados:** MySQL
 - **Painel admin:** CRUD custom (Spring Boot + React, sem CMS externo)
-- **Hospedagem:** (definir — back-end e front-end)
+- **Hospedagem:** Railway (back-end + MySQL) · Netlify ou Cloudflare Pages (front-end)
+- **Domínio:** Registro.br
 - **Prototipagem:** Figma, antes de iniciar o desenvolvimento
 
 ## Equipe
