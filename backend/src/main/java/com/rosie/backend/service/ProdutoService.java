@@ -1,6 +1,9 @@
 package com.rosie.backend.service;
 
+import com.rosie.backend.dto.ProdutoDetalheDTO;
 import com.rosie.backend.dto.ProdutoListaResponseDTO;
+import com.rosie.backend.exception.RecursoNaoEncontradoException;
+import com.rosie.backend.model.Produto;
 import com.rosie.backend.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -21,5 +24,13 @@ public class ProdutoService {
                 : produtoRepository.findByAtivoTrue(pageable);
 
         return ProdutoListaResponseDTO.from(page);
+    }
+
+    public ProdutoDetalheDTO buscarPorId(Long id) {
+        Produto produto = produtoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Produto com id " + id + " não encontrado"));
+
+        return ProdutoDetalheDTO.from(produto);
     }
 }
