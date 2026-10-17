@@ -1,0 +1,78 @@
+name: Back-end
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # O workflow roda em todo PR (para o check sempre aparecer e poder ser exigido
+  # na proteção da main), mas os testes só rodam se backend/ ou este arquivo mudou.
+  # Job pulado por `if` conta como aprovado no check exigido.
+  mudancas:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filtro.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filtro
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/backend.yml'
+
+  testes-backend:
+    name: testes-backend
+    needs: mudancas
+    if: needs.mudancas.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+
+    # Banco descartável só para os testes: as credenciais ficam aqui de propósito.
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: rosie_ci
+          MYSQL_DATABASE: rosie_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -prosie_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/rosie_db?useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: rosie_ci
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Rodar testes
+        run: |
+          chmod +x mvnw
+          ./mvnw -B test
