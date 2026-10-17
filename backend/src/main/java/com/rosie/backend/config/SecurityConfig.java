@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
                         // Sem isso, exceções não tratadas viram 401 ao encaminhar para /error
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
