@@ -20,7 +20,7 @@ public class ProdutoService {
         Pageable pageable = PageRequest.of(pagina, tamanho);
 
         var page = (categoriaId != null)
-                ? produtoRepository.findByCategoriaId(categoriaId, pageable)
+                ? produtoRepository.findByCategoriaIdAndAtivoTrue(categoriaId, pageable)
                 : produtoRepository.findByAtivoTrue(pageable);
 
         return ProdutoListaResponseDTO.from(page);
