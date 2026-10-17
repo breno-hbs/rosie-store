@@ -1,35 +1,8 @@
-# Kanban — Tarefas do Projeto
+# Kanban — Histórico
 
-Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verdade das tarefas.
+> **As tarefas agora vivem nas [Issues do GitHub](https://github.com/breno-hbs/rosie-store/issues)**, organizadas no Project "Rosie" e nos milestones v0.1 a v1.0. Este arquivo não é mais atualizado: fica só como registro do que foi feito até 17/10/2026.
 
-## Como usar
-
-- Cada card é uma linha de tabela na seção do seu status: **A fazer**, **Em andamento** ou **Feito**.
-- Para mudar o status, mova a linha para a seção correspondente no mesmo PR da mudança.
-- Colunas: **Card**, **Feature** (Catálogo, Painel Admin, Geral, Planejamento), **Fase** (1. Descoberta, 2. Planejamento Técnico, 3. Design, 4. Desenvolvimento, 5. Testes & Ajustes, 6. Lançamento), **Prioridade** (Alta, Média, Baixa), **Responsável**.
-
-## Em andamento
-
-| Card | Feature | Fase | Prioridade | Responsável |
-|---|---|---|---|---|
-
-## A fazer
-
-| Card | Feature | Fase | Prioridade | Responsável |
-|---|---|---|---|---|
-| Configurar Railway (back-end + MySQL) e Netlify/Cloudflare (front-end) | Planejamento | 2. Planejamento Técnico | Média | — |
-| Definir origem dos destaques da Home (hero e Best Sellers): hoje vêm de GET /produtos, sem endpoint próprio | Catálogo | 4. Desenvolvimento | Média | Breno |
-| Implementar responsividade mobile do catálogo | Catálogo | 4. Desenvolvimento | Média | Breno |
-| Construir tela Minha Conta (pedidos, dados pessoais, endereços) + endpoint GET /pedidos | Catálogo | 4. Desenvolvimento | Média | — |
-| Implementar fluxo de troca/devolução (motivo: defeito vs não serviu) com regra de frete | Catálogo | 4. Desenvolvimento | Média | Breno |
-| Integrar cálculo de frete via API Melhor Envio (não Correios direto) | Catálogo | 4. Desenvolvimento | Média | Breno |
-| Rodar seed de categorias em produção (Hibernate ddl-auto não popula dados iniciais) | Catálogo | 4. Desenvolvimento | Baixa | — |
-| Criar autenticação/login do painel admin | Painel Admin | 4. Desenvolvimento | Média | Matheus |
-| Criar CRUD de produtos (criar, editar, remover) | Painel Admin | 4. Desenvolvimento | Média | Matheus |
-| Implementar upload de imagem no painel admin | Painel Admin | 4. Desenvolvimento | Média | Matheus |
-| Considerar corte automático de imagem para 4:5 no upload (melhoria futura) | Painel Admin | 4. Desenvolvimento | Baixa | — |
-
-## Feito
+## Feito antes da migração para Issues
 
 | Card | Feature | Fase | Prioridade | Responsável |
 |---|---|---|---|---|

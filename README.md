@@ -67,15 +67,18 @@ npm run dev
 
 ## Fluxo de trabalho
 
-- **Board de tarefas:** [`docs/kanban.md`](docs/kanban.md)
+- **Tarefas:** [Issues](https://github.com/breno-hbs/rosie-store/issues) no Project "Rosie", agrupadas nos milestones **v0.1 — Vitrine**, **v0.2 — Painel Admin**, **v0.3 — Compra** e **v1.0 — Lançamento**. O histórico anterior está em [`docs/kanban.md`](docs/kanban.md).
 - **Requisitos e Contrato da API:** [`docs/requisitos.md`](docs/requisitos.md) e [`docs/contrato-api.md`](docs/contrato-api.md)
-- **Branches:** cada funcionalidade é desenvolvida em uma branch própria a partir da `main`
 
-```bash
-git checkout -b feature/nome-da-funcionalidade
-```
+1. Escolha uma issue do milestone atual (ou crie uma pelo template) e atribua a você.
+2. Crie a branch a partir da `main` com o tipo e o número da issue:
 
-Ao finalizar, abrir um Pull Request para revisão antes de mesclar na `main`.
+   ```bash
+   git checkout -b feature/15-carrinho
+   ```
+
+   Tipos: `feature`, `fix`, `chore`, `docs`, os mesmos dos commits (conventional commits, em português).
+3. Abra o Pull Request pelo template, com `Closes #15` na descrição, e só mescle na `main` depois da revisão. A issue fecha sozinha no merge.
 
 ## Cronograma
 

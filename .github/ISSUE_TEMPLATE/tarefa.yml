@@ -1,0 +1,23 @@
+name: Tarefa técnica
+description: Infra, configuração, documentação ou débito técnico, sem mudança visível para o cliente
+title: "chore: "
+labels: ["tipo:chore"]
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+    validations:
+      required: true
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Pronto quando
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas

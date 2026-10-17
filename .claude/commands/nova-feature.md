@@ -1,12 +1,13 @@
 ---
-description: "Implementa um card do Kanban ponta a ponta"
-argument-hint: "<nome do card>"
+description: "Implementa uma issue do GitHub ponta a ponta"
+argument-hint: "<número da issue>"
 ---
 
-Implemente o card "$ARGUMENTS" ponta a ponta:
+Implemente a issue #$ARGUMENTS ponta a ponta:
 
-1. Procure o card em `docs/kanban.md` e os requisitos ligados a ele em `docs/requisitos.md`; se o card não estiver lá, use o texto do argumento.
-2. Crie a branch `feature/<nome>`.
-3. Acione o agente `backend` e/ou `frontend`, conforme o card.
+1. Leia a issue com `gh issue view $ARGUMENTS` (contexto, requisitos, critérios de aceite, dependências). Se ela depende de outra issue ainda aberta, pare e avise.
+2. Atribua a issue a você (`gh issue edit $ARGUMENTS --add-assignee @me`) e crie a branch `<tipo>/$ARGUMENTS-<nome>` a partir da `main` atualizada (tipo pelo label: `feature`, `fix`, `chore` ou `docs`).
+3. Acione o agente `backend` e/ou `frontend`, conforme os labels `area:*`.
 4. Acione o agente `revisor` e corrija os pontos críticos.
-5. Mova o card para "Em andamento" em `docs/kanban.md`, faça commit, push e abra o PR.
+5. Confira cada critério de aceite da issue; o que não couber vira comentário na issue ou uma issue nova.
+6. Faça commit, push e abra o PR pelo template (`.github/pull_request_template.md`) com `Closes #$ARGUMENTS`.

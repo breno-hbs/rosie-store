@@ -1,0 +1,37 @@
+name: Funcionalidade
+description: Uma tela, endpoint ou fluxo novo (ou uma melhoria em um existente)
+title: "feat: "
+labels: ["tipo:feature"]
+body:
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto
+      description: O que a Roseane ou o cliente final precisam e por quê.
+    validations:
+      required: true
+  - type: input
+    id: requisitos
+    attributes:
+      label: Requisitos
+      description: Códigos de docs/requisitos.md que esta issue atende (ex.: RF03, RNF09).
+      placeholder: RF03
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de aceite
+      description: Lista verificável. A issue só fecha quando todos estiverem marcados.
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: tecnico
+    attributes:
+      label: Notas técnicas
+      description: Endpoints de docs/contrato-api.md, frame do Figma, arquivos envolvidos.
+  - type: textarea
+    id: fora
+    attributes:
+      label: Fora do escopo
+      description: O que fica para outra issue.
