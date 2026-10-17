@@ -5,11 +5,12 @@ import HeroCarousel from '../components/HeroCarousel.jsx'
 import CategoryTiles from '../components/CategoryTiles.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Footer from '../components/Footer.jsx'
+import { linkWhatsApp } from '../formato.js'
 import './Home.css'
 
 const TAMANHO_PAGINA = 12
 const QTD_DESTAQUES = 3
-const WHATSAPP_NUMERO = import.meta.env.VITE_WHATSAPP_NUMERO
+const WHATSAPP = linkWhatsApp()
 
 function categoriaDaUrl() {
   const id = Number(new URLSearchParams(window.location.search).get('categoria'))
@@ -186,8 +187,8 @@ export default function Home() {
           <h2 className="titulo-2">Rosie</h2>
           <a
             className="botao botao--primario"
-            href={WHATSAPP_NUMERO ? `https://wa.me/${WHATSAPP_NUMERO}` : undefined}
-            aria-disabled={!WHATSAPP_NUMERO}
+            href={WHATSAPP}
+            aria-disabled={!WHATSAPP}
             target="_blank"
             rel="noreferrer"
           >

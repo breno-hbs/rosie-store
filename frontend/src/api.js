@@ -47,3 +47,9 @@ export function listarCategorias(opcoes) {
 export function listarProdutos({ categoriaId, pagina = 0, tamanho = 12 } = {}, opcoes) {
   return get('/produtos', { categoriaId, pagina, tamanho }, opcoes)
 }
+
+// GET /produtos/{id} → { id, nome, descricao, preco, categoria, imagens: [...], estoque: [{ tamanho, quantidade }] }
+// Produto inexistente ou inativo: ApiError com status 404
+export function buscarProduto(id, opcoes) {
+  return get(`/produtos/${id}`, {}, opcoes)
+}

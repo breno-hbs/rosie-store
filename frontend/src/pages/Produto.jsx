@@ -1,0 +1,267 @@
+import { useEffect, useState } from 'react'
+import { buscarProduto, listarCategorias, listarProdutos } from '../api.js'
+import Nav from '../components/Nav.jsx'
+import ProductCard from '../components/ProductCard.jsx'
+import Footer from '../components/Footer.jsx'
+import { formatarPreco, linkWhatsApp } from '../formato.js'
+import './Produto.css'
+
+const QTD_RELACIONADOS = 4
+
+// RF07: a política de troca aparece em toda página de produto
+const POLITICA_TROCA =
+  'Trocas aceitas em caso de defeito ou produto que não serviu. Frete de devolução por conta da Rosie em caso de defeito; por conta do cliente nos demais casos.'
+
+export default function Produto({ id }) {
+  const [categorias, setCategorias] = useState([])
+  const [tentativa, setTentativa] = useState(0)
+  const [resultado, setResultado] = useState({ chave: null, produto: null, erro: null })
+  const [relacionados, setRelacionados] = useState([])
+
+  // Mesmo padrão da Home: enquanto o resultado não for desta chave, está carregando
+  const chave = `${id}:${tentativa}`
+  const carregando = resultado.chave !== chave
+  const produto = carregando ? null : resultado.produto
+
+  useEffect(() => {
+    const controle = new AbortController()
+    listarCategorias({ signal: controle.signal })
+      .then(setCategorias)
+      .catch(() => {}) // Sem categorias a Nav fica só com logo e ações
+    return () => controle.abort()
+  }, [])
+
+  useEffect(() => {
+    const controle = new AbortController()
+    buscarProduto(id, { signal: controle.signal })
+      .then((dados) => setResultado({ chave, produto: dados, erro: null }))
+      .catch((erro) => {
+        if (erro.name !== 'AbortError') setResultado({ chave, produto: null, erro })
+      })
+    return () => controle.abort()
+  }, [chave, id])
+
+  const categoriaId = produto?.categoria.id
+  useEffect(() => {
+    if (!categoriaId) return
+    const controle = new AbortController()
+    // Pede um a mais porque o próprio produto pode vir na lista
+    listarProdutos({ categoriaId, tamanho: QTD_RELACIONADOS + 1 }, { signal: controle.signal })
+      .then((resposta) =>
+        setRelacionados(resposta.conteudo.filter((outro) => outro.id !== id).slice(0, QTD_RELACIONADOS)),
+      )
+      .catch(() => {}) // Sem relacionados a seção não aparece
+    return () => controle.abort()
+  }, [categoriaId, id])
+
+  useEffect(() => {
+    if (produto) document.title = `${produto.nome} — Rosie`
+  }, [produto])
+
+  return (
+    <>
+      <Nav categorias={categorias} />
+
+      <main>
+        {carregando ? (
+          <EsqueletoProduto />
+        ) : resultado.erro ? (
+          <div className="produto__aviso" role="alert">
+            {resultado.erro.status === 404 ? (
+              <>
+                <p>Produto não encontrado.</p>
+                <a className="botao botao--contorno" href="/">
+                  Voltar para a loja
+                </a>
+              </>
+            ) : (
+              <>
+                <p>Não foi possível carregar o produto.</p>
+                <button type="button" className="botao botao--contorno" onClick={() => setTentativa((t) => t + 1)}>
+                  Tentar de novo
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            <nav className="produto__trilha" aria-label="Você está em">
+              <a href="/">Loja</a> / <a href={`/?categoria=${produto.categoria.id}`}>{produto.categoria.nome}</a> /{' '}
+              <span aria-current="page">{produto.nome}</span>
+            </nav>
+            <DetalheProduto produto={produto} />
+          </>
+        )}
+
+        {relacionados.length > 0 && (
+          <section className="relacionados">
+            <div className="relacionados__titulo">
+              <p className="eyebrow">Combina com</p>
+              <h2 className="titulo-2">Você também vai gostar</h2>
+            </div>
+            <div className="relacionados__grade">
+              {relacionados.map((outro) => (
+                <ProductCard key={outro.id} produto={outro} />
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
+
+      <Footer />
+    </>
+  )
+}
+
+function DetalheProduto({ produto }) {
+  const [indiceFoto, setIndiceFoto] = useState(0)
+  const [tamanho, setTamanho] = useState(null)
+  const [pedirTamanho, setPedirTamanho] = useState(false)
+
+  const fotos = produto.imagens
+  const disponiveis = produto.estoque.filter((item) => item.quantidade > 0)
+  const esgotado = disponiveis.length === 0
+
+  const mensagem = [
+    `Olá! Tenho interesse no produto ${produto.nome}`,
+    tamanho && `(tamanho ${tamanho})`,
+    `— ${window.location.origin}/produtos/${produto.id}`,
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const whatsapp = linkWhatsApp(mensagem)
+
+  function escolherTamanho(novo) {
+    setTamanho(novo)
+    setPedirTamanho(false)
+  }
+
+  function comprarPeloWhatsapp(evento) {
+    // Com estoque, o tamanho precisa ir na mensagem
+    if (!esgotado && !tamanho) {
+      evento.preventDefault()
+      setPedirTamanho(true)
+    }
+  }
+
+  return (
+    <div className="produto">
+      <div className="produto__galeria">
+        <div className="produto__foto">
+          {fotos.length > 0 && (
+            <img
+              key={fotos[indiceFoto]}
+              src={fotos[indiceFoto]}
+              alt={fotos.length > 1 ? `${produto.nome} — foto ${indiceFoto + 1} de ${fotos.length}` : produto.nome}
+            />
+          )}
+        </div>
+
+        {fotos.length > 1 && (
+          <div className="produto__miniaturas">
+            {fotos.map((url, i) => (
+              <button
+                key={url}
+                type="button"
+                className="produto__miniatura"
+                aria-label={`Ver foto ${i + 1} de ${fotos.length}`}
+                aria-current={i === indiceFoto}
+                onClick={() => setIndiceFoto(i)}
+              >
+                <img src={url} alt="" loading="lazy" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="produto__detalhe">
+        <p className="eyebrow">{produto.categoria.nome}</p>
+        <h1 className="titulo-2 produto__nome">{produto.nome}</h1>
+        <p className="produto__preco">{formatarPreco(produto.preco)}</p>
+
+        <div className="produto__tamanhos">
+          <p className="eyebrow" id="rotulo-tamanho">
+            Tamanho
+          </p>
+          {esgotado ? (
+            <p className="produto__esgotado">Esgotado no momento.</p>
+          ) : (
+            <div className="produto__opcoes" role="group" aria-labelledby="rotulo-tamanho">
+              {produto.estoque.map((item) => (
+                <button
+                  key={item.tamanho}
+                  type="button"
+                  className="produto__tamanho"
+                  aria-pressed={item.tamanho === tamanho}
+                  disabled={item.quantidade <= 0}
+                  aria-label={item.quantidade <= 0 ? `${item.tamanho} (esgotado)` : item.tamanho}
+                  onClick={() => escolherTamanho(item.tamanho)}
+                >
+                  {item.tamanho}
+                </button>
+              ))}
+            </div>
+          )}
+          {pedirTamanho && (
+            <p className="produto__alerta" role="alert">
+              Escolha um tamanho.
+            </p>
+          )}
+          {/* Ainda não há tabela de medidas; fica visível como no Figma */}
+          <p className="produto__medidas">Ver tabela de medidas</p>
+        </div>
+
+        <div className="produto__acoes">
+          {/* O carrinho ainda não existe (contrato: /carrinho requer login); por ora a compra é pelo WhatsApp */}
+          <button type="button" className="botao botao--primario" disabled>
+            Adicionar à sacola
+          </button>
+          <a
+            className="botao botao--contorno"
+            href={whatsapp}
+            aria-disabled={!whatsapp}
+            target="_blank"
+            rel="noreferrer"
+            onClick={comprarPeloWhatsapp}
+          >
+            Comprar pelo WhatsApp
+          </a>
+        </div>
+
+        <div className="produto__acordeao">
+          {produto.descricao && (
+            <details open>
+              <summary>Descrição</summary>
+              <p className="produto__texto">{produto.descricao}</p>
+            </details>
+          )}
+          <details>
+            <summary>Envio e trocas</summary>
+            <p className="produto__texto">{POLITICA_TROCA}</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EsqueletoProduto() {
+  return (
+    <>
+      <p className="produto__trilha" aria-hidden="true">
+        &nbsp;
+      </p>
+      <div className="produto" aria-busy="true" aria-label="Carregando produto">
+        <div className="produto__galeria">
+          <div className="produto__foto" />
+        </div>
+        <div className="produto__detalhe" aria-hidden="true">
+          <p className="eyebrow">&nbsp;</p>
+          <p className="titulo-2 produto__nome produto__esqueleto">&nbsp;</p>
+          <p className="produto__preco produto__esqueleto">&nbsp;</p>
+        </div>
+      </div>
+    </>
+  )
+}

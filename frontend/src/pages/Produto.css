@@ -1,0 +1,281 @@
+/* Página de Produto (Figma: frame "Página de Produto"). Mobile-first: galeria em cima, detalhe embaixo. */
+
+.produto__trilha {
+  padding: 18px var(--margem);
+  border-bottom: 1px solid var(--linha);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.produto__trilha a:hover {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.produto {
+  display: grid;
+  border-bottom: 1px solid var(--linha);
+}
+
+/* Galeria: foto principal 4:5 (RNF09) e miniaturas separadas por linhas de 1px */
+.produto__galeria {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--linha);
+}
+
+.produto__foto {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--foto-vazia);
+}
+
+.produto__foto img,
+.produto__miniatura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Linhas por borda (não por gap) para as células vazias da última fileira ficarem com fundo de papel */
+.produto__miniaturas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--papel);
+}
+
+.produto__miniatura {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-right: 1px solid var(--linha);
+  background: var(--foto-vazia);
+}
+
+.produto__miniatura:nth-child(4n) {
+  border-right: 0;
+}
+
+.produto__miniatura:nth-child(n + 5) {
+  border-top: 1px solid var(--linha);
+}
+
+.produto__miniatura[aria-current='true'] {
+  outline: 1px solid var(--tinta);
+  outline-offset: -1px;
+}
+
+.produto__miniatura:not([aria-current='true']) img {
+  opacity: 0.7;
+}
+
+.produto__miniatura:hover img {
+  opacity: 1;
+}
+
+/* Detalhe */
+.produto__detalhe {
+  display: flex;
+  flex-direction: column;
+  padding: 32px var(--margem) 40px;
+}
+
+.produto__nome {
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+
+.produto__preco {
+  margin-top: 12px;
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1.3;
+  color: var(--tinta);
+}
+
+.produto__esqueleto {
+  width: 60%;
+  background: var(--foto-vazia);
+}
+
+.produto__tamanhos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.produto__opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.produto__tamanho {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--linha);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  color: var(--acento);
+}
+
+.produto__tamanho:hover:not(:disabled) {
+  border-color: var(--tinta);
+}
+
+.produto__tamanho[aria-pressed='true'] {
+  border-color: var(--tinta);
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.produto__tamanho:disabled {
+  cursor: default;
+  color: var(--pedra);
+  text-decoration: line-through;
+}
+
+.produto__esgotado,
+.produto__alerta {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.produto__medidas {
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  color: var(--acento);
+}
+
+/* ButtonPrimary e ButtonOutline em largura total, encostados como no Figma */
+.produto__acoes {
+  display: flex;
+  flex-direction: column;
+  margin-top: 26px;
+}
+
+.produto__acoes .botao {
+  width: 100%;
+  min-height: 60px;
+}
+
+/* Acordeão: <details> nativo, "+" fechado e "—" aberto */
+.produto__acordeao {
+  margin-top: 14px;
+  border-top: 1px solid var(--linha);
+}
+
+.produto__acordeao details {
+  border-bottom: 1px solid var(--linha);
+}
+
+.produto__acordeao summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--acento);
+  list-style: none;
+  cursor: pointer;
+}
+
+.produto__acordeao summary::-webkit-details-marker {
+  display: none;
+}
+
+.produto__acordeao summary::after {
+  content: '+';
+}
+
+.produto__acordeao details[open] summary::after {
+  content: '—';
+}
+
+.produto__texto {
+  padding-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+  white-space: pre-line;
+}
+
+/* Erro e produto não encontrado */
+.produto__aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 80px var(--margem);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+  text-align: center;
+}
+
+/* Relacionados: "Você também vai gostar" */
+.relacionados {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding: 40px var(--margem) 56px;
+}
+
+.relacionados__titulo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+/* Linhas de 1px entre os cards: borda de cima/esquerda na grade, direita/baixo em cada card */
+.relacionados__grade {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border-top: 1px solid var(--linha);
+  border-left: 1px solid var(--linha);
+}
+
+.relacionados__grade > * {
+  border-right: 1px solid var(--linha);
+  border-bottom: 1px solid var(--linha);
+}
+
+@media (min-width: 768px) {
+  .relacionados {
+    padding-top: 56px;
+  }
+
+  .relacionados__grade {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Duas colunas como no Figma (680 de galeria para 500 de detalhe) */
+@media (min-width: 900px) {
+  .produto {
+    grid-template-columns: minmax(0, 68fr) minmax(0, 50fr);
+    align-items: start;
+  }
+
+  .produto__detalhe {
+    align-self: stretch;
+    padding: 40px;
+    border-left: 1px solid var(--linha);
+  }
+}

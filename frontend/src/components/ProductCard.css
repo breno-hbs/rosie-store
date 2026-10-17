@@ -5,6 +5,17 @@
   background: var(--papel);
 }
 
+.product-card__link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.product-card__link:hover .product-card__nome {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 /* Figma: thumb quadrado (280x280). As fotos seguem 4:5 (RNF09) e são cortadas ao centro. */
 .product-card__foto {
   aspect-ratio: 1;
