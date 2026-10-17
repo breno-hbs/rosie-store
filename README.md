@@ -45,6 +45,8 @@ Antes de rodar o back-end, copie o arquivo de exemplo de configuração e preenc
 ```bash
 cp backend/src/main/resources/application-example.properties backend/src/main/resources/application-local.properties
 ```
+
+Alternativa: definir as variáveis de ambiente `DB_PASSWORD` (obrigatória), `DB_USERNAME` (padrão `root`) e `DB_URL` (padrão `rosie_db` no `localhost:3306`).
  
 > Nunca commitar `application-local.properties` nem qualquer arquivo com credenciais reais — já está no `.gitignore`.
 
