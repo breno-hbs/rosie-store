@@ -1,16 +1,25 @@
-# React + Vite
+# Rosie — front-end
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite (JavaScript). Chamadas à API centralizadas em `src/api.js`.
 
-Currently, two official plugins are available:
+## Rodar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Abre em http://localhost:5173 e consome a API em http://localhost:8080 (o back já libera CORS para essa origem).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Variáveis de ambiente
 
-## Expanding the ESLint configuration
+Copie `.env.example` para `.env.local` (não versionado) para mudar os padrões:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `VITE_API_URL`: URL base da API (padrão `http://localhost:8080`)
+- `VITE_WHATSAPP_NUMERO`: número do WhatsApp do botão "Falar no WhatsApp" da Home (só dígitos, com DDI e DDD)
+
+## Estrutura
+
+- `src/pages/`: telas (hoje só a Home)
+- `src/components/`: Nav, Footer, ProductCard, HeroCarousel, CategoryTiles, LogoBadge
+- `src/index.css`: tokens do Figma (cores tinta, papel, pedra, fumaça, linha, acento), fonte Jost e botões

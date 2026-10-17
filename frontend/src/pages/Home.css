@@ -1,0 +1,82 @@
+.secao-titulo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px var(--margem) 28px;
+  text-align: center;
+}
+
+.secao-titulo__limpar {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.secao-titulo__limpar:hover {
+  color: var(--tinta);
+}
+
+/* Linhas de 1px entre os cards (Figma: gap 1px sobre --linha). A última linha
+   encosta na borda de cima do bloco de atendimento via margin-bottom: -1px. */
+.produtos__grade {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: -1px;
+}
+
+.produtos__grade > * {
+  border-right: 1px solid var(--linha);
+  border-bottom: 1px solid var(--linha);
+}
+
+.produtos__grade > :nth-child(2n) {
+  border-right: 0;
+}
+
+.produtos__aviso,
+.produtos__mais {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px var(--margem) 56px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+  text-align: center;
+}
+
+.produtos__mais {
+  border-top: 1px solid var(--linha);
+}
+
+.atendimento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 60px var(--margem);
+  border-top: 1px solid var(--linha);
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .secao-titulo {
+    padding: 56px var(--margem) 34px;
+  }
+
+  .produtos__grade {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .produtos__grade > :nth-child(2n) {
+    border-right: 1px solid var(--linha);
+  }
+
+  .produtos__grade > :nth-child(4n) {
+    border-right: 0;
+  }
+}

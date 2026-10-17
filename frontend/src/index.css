@@ -1,111 +1,133 @@
+/* Tokens do Figma (Rosie). Cores só por estas variáveis. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --tinta: #141311;
+  --papel: #faf8f4;
+  --pedra: #c7c0b4;
+  --fumaca: #8a8378;
+  --linha: #dedace;
+  --acento: #3b372e;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Fundo de foto ainda não carregada: tons de pedra sobre papel, como no Figma */
+  --foto-vazia: color-mix(in srgb, var(--pedra) 25%, var(--papel));
+  --foto-vazia-forte: color-mix(in srgb, var(--pedra) 40%, var(--papel));
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  --fonte: 'Jost', system-ui, sans-serif;
+  --margem: 16px;
+
+  font-family: var(--fonte);
+  font-weight: 300;
+  color: var(--tinta);
+  background: var(--papel);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+@media (min-width: 768px) {
+  :root {
+    --margem: 32px;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  min-width: 320px;
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
+h2,
+h3,
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+img {
+  display: block;
+  max-width: 100%;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--tinta);
+  outline-offset: 3px;
+}
+
+/* Estilos de texto do Figma */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--fumaca);
+}
+
+.titulo-2 {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--tinta);
+}
+
+.titulo-3 {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.05;
+  color: var(--tinta);
+}
+
+/* ButtonPrimary e ButtonOutline */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 43px;
+  padding: 14px 24px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid var(--tinta);
+}
+
+.botao--primario {
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.botao--contorno {
+  background: transparent;
+  color: var(--tinta);
+}
+
+.botao--contorno:hover {
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.botao:disabled,
+.botao[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.5;
 }

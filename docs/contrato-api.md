@@ -10,6 +10,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 |---|---|---|
 | `GET /produtos` | Implementado | `ProdutoListaResponseDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`) | `ProdutoDetalheDTO` |
+| `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
 | Demais endpoints | Não implementados | — |
 
 ---
@@ -85,6 +86,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 
 ### Listar categorias
 `GET /categorias`
+
+Pública (sem token). Retorna todas as categorias ordenadas por nome.
 
 ```json
 // Response 200

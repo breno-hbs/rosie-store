@@ -18,7 +18,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | Card | Feature | Fase | Prioridade | Responsável |
 |---|---|---|---|---|
 | Configurar Railway (back-end + MySQL) e Netlify/Cloudflare (front-end) | Planejamento | 2. Planejamento Técnico | Média | — |
-| Construir tela Home (listagem, categorias, destaques) | Catálogo | 4. Desenvolvimento | Média | Breno |
+| Definir origem dos destaques da Home (hero e Best Sellers): hoje vêm de GET /produtos, sem endpoint próprio | Catálogo | 4. Desenvolvimento | Média | Breno |
 | Construir Página de Produto (detalhes, tamanho, galeria) | Catálogo | 4. Desenvolvimento | Média | Breno |
 | Implementar responsividade mobile do catálogo | Catálogo | 4. Desenvolvimento | Média | Breno |
 | Construir tela Minha Conta (pedidos, dados pessoais, endereços) + endpoint GET /pedidos | Catálogo | 4. Desenvolvimento | Média | — |
@@ -61,3 +61,4 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | Criar endpoint de listagem de produtos | Catálogo | 4. Desenvolvimento | Alta | Breno |
 | Criar endpoint de detalhe do produto (GET /produtos/{id}) com tratamento de erro 404 | Catálogo | 4. Desenvolvimento | Alta | Breno |
 | Configurar Spring Security (rotas públicas vs protegidas) | Geral | 4. Desenvolvimento | Média | Breno |
+| Construir tela Home (listagem, categorias, destaques) | Catálogo | 4. Desenvolvimento | Média | Breno |

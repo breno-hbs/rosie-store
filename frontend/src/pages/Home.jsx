@@ -1,0 +1,202 @@
+import { useEffect, useRef, useState } from 'react'
+import { listarCategorias, listarProdutos } from '../api.js'
+import Nav from '../components/Nav.jsx'
+import HeroCarousel from '../components/HeroCarousel.jsx'
+import CategoryTiles from '../components/CategoryTiles.jsx'
+import ProductCard from '../components/ProductCard.jsx'
+import Footer from '../components/Footer.jsx'
+import './Home.css'
+
+const TAMANHO_PAGINA = 12
+const QTD_DESTAQUES = 3
+const WHATSAPP_NUMERO = import.meta.env.VITE_WHATSAPP_NUMERO
+
+function categoriaDaUrl() {
+  const id = Number(new URLSearchParams(window.location.search).get('categoria'))
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+export default function Home() {
+  const [categorias, setCategorias] = useState([])
+  const [destaques, setDestaques] = useState([])
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState(categoriaDaUrl)
+  const [tentativa, setTentativa] = useState(0)
+  const [lista, setLista] = useState({ chave: null, produtos: [], pagina: 0, totalPaginas: 0, erro: null })
+  const [carregandoMais, setCarregandoMais] = useState(false)
+  const [erroMais, setErroMais] = useState(null)
+  const secaoProdutos = useRef(null)
+
+  // Muda a cada filtro ou nova tentativa; enquanto a lista não for dessa chave, está carregando
+  const chave = `${categoriaSelecionada ?? 'todas'}:${tentativa}`
+  const carregando = lista.chave !== chave
+
+  useEffect(() => {
+    const controle = new AbortController()
+    listarCategorias({ signal: controle.signal })
+      .then(setCategorias)
+      .catch(() => {}) // Sem categorias a Home segue só com a listagem
+    listarProdutos({ pagina: 0, tamanho: QTD_DESTAQUES }, { signal: controle.signal })
+      .then((resposta) => setDestaques(resposta.conteudo))
+      .catch(() => {})
+    return () => controle.abort()
+  }, [])
+
+  useEffect(() => {
+    const controle = new AbortController()
+    listarProdutos(
+      { categoriaId: categoriaSelecionada, pagina: 0, tamanho: TAMANHO_PAGINA },
+      { signal: controle.signal },
+    )
+      .then((resposta) =>
+        setLista({
+          chave,
+          produtos: resposta.conteudo,
+          pagina: 0,
+          totalPaginas: resposta.totalPaginas,
+          erro: null,
+        }),
+      )
+      .catch((erro) => {
+        if (erro.name !== 'AbortError') {
+          setLista({ chave, produtos: [], pagina: 0, totalPaginas: 0, erro })
+        }
+      })
+    return () => controle.abort()
+  }, [chave, categoriaSelecionada])
+
+  function selecionarCategoria(id) {
+    const nova = id === categoriaSelecionada ? null : id
+    setCategoriaSelecionada(nova)
+    setErroMais(null)
+
+    const url = new URL(window.location.href)
+    if (nova) url.searchParams.set('categoria', nova)
+    else url.searchParams.delete('categoria')
+    window.history.replaceState(null, '', url)
+
+    secaoProdutos.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  async function carregarMais() {
+    setCarregandoMais(true)
+    setErroMais(null)
+    try {
+      const resposta = await listarProdutos({
+        categoriaId: categoriaSelecionada,
+        pagina: lista.pagina + 1,
+        tamanho: TAMANHO_PAGINA,
+      })
+      setLista((atual) =>
+        atual.chave === chave
+          ? {
+              ...atual,
+              produtos: [...atual.produtos, ...resposta.conteudo],
+              pagina: atual.pagina + 1,
+              totalPaginas: resposta.totalPaginas,
+            }
+          : atual,
+      )
+    } catch (erro) {
+      setErroMais(erro)
+    } finally {
+      setCarregandoMais(false)
+    }
+  }
+
+  const categoriaAtual = categorias.find((categoria) => categoria.id === categoriaSelecionada)
+  const temMais = !carregando && lista.pagina + 1 < lista.totalPaginas
+
+  return (
+    <>
+      <Nav
+        categorias={categorias}
+        categoriaSelecionada={categoriaSelecionada}
+        onSelecionarCategoria={selecionarCategoria}
+      />
+
+      <main>
+        <HeroCarousel produtos={destaques} />
+
+        <CategoryTiles
+          categorias={categorias}
+          categoriaSelecionada={categoriaSelecionada}
+          onSelecionarCategoria={selecionarCategoria}
+        />
+
+        <section className="produtos" ref={secaoProdutos} aria-busy={carregando}>
+          <div className="secao-titulo">
+            {categoriaSelecionada ? (
+              <>
+                <p className="eyebrow">Categoria</p>
+                <h2 className="titulo-2">{categoriaAtual?.nome ?? 'Produtos'}</h2>
+                <button type="button" className="secao-titulo__limpar" onClick={() => selecionarCategoria(null)}>
+                  Ver todos os produtos
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow">Selecionados pra você</p>
+                <h2 className="titulo-2">Best Sellers</h2>
+              </>
+            )}
+          </div>
+
+          {carregando ? (
+            <div className="produtos__grade">
+              {Array.from({ length: 4 }, (_, i) => (
+                <ProductCard key={i} />
+              ))}
+            </div>
+          ) : lista.erro ? (
+            <div className="produtos__aviso" role="alert">
+              <p>Não foi possível carregar os produtos.</p>
+              <button type="button" className="botao botao--contorno" onClick={() => setTentativa((t) => t + 1)}>
+                Tentar de novo
+              </button>
+            </div>
+          ) : lista.produtos.length === 0 ? (
+            <div className="produtos__aviso">
+              <p>Nenhum produto por aqui ainda.</p>
+            </div>
+          ) : (
+            <div className="produtos__grade">
+              {lista.produtos.map((produto) => (
+                <ProductCard key={produto.id} produto={produto} />
+              ))}
+            </div>
+          )}
+
+          {temMais && (
+            <div className="produtos__mais">
+              <button
+                type="button"
+                className="botao botao--contorno"
+                onClick={carregarMais}
+                disabled={carregandoMais}
+              >
+                {carregandoMais ? 'Carregando…' : 'Ver mais'}
+              </button>
+              {erroMais && <p role="alert">Não foi possível carregar mais produtos.</p>}
+            </div>
+          )}
+        </section>
+
+        <section className="atendimento">
+          <p className="eyebrow">Atendimento</p>
+          <h2 className="titulo-2">Rosie</h2>
+          <a
+            className="botao botao--primario"
+            href={WHATSAPP_NUMERO ? `https://wa.me/${WHATSAPP_NUMERO}` : undefined}
+            aria-disabled={!WHATSAPP_NUMERO}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Falar no WhatsApp
+          </a>
+        </section>
+      </main>
+
+      <Footer />
+    </>
+  )
+}
