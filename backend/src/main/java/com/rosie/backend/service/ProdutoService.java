@@ -27,7 +27,7 @@ public class ProdutoService {
     }
 
     public ProdutoDetalheDTO buscarPorId(Long id) {
-        Produto produto = produtoRepository.findById(id)
+        Produto produto = produtoRepository.findByIdAndAtivoTrue(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Produto com id " + id + " não encontrado"));
 

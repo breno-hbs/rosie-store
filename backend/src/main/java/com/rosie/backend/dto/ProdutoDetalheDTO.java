@@ -1,6 +1,7 @@
 package com.rosie.backend.dto;
 
 import com.rosie.backend.model.Produto;
+import com.rosie.backend.model.ProdutoEstoque;
 import com.rosie.backend.model.ProdutoImagem;
 
 import java.math.BigDecimal;
@@ -23,7 +24,9 @@ public record ProdutoDetalheDTO(
                 .map(ProdutoImagem::getUrl)
                 .toList();
 
+        // Na ordem do enum Tamanho (P, M, G, GG), a mesma dos botões na Página de Produto
         List<EstoqueDTO> estoque = produto.getEstoque().stream()
+                .sorted(Comparator.comparing(ProdutoEstoque::getTamanho))
                 .map(EstoqueDTO::from)
                 .toList();
 

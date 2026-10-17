@@ -9,17 +9,24 @@ export default function Nav({ categorias, categoriaSelecionada, onSelecionarCate
       </a>
 
       <nav className="nav__menu" aria-label="Categorias">
-        {categorias.map((categoria) => (
-          <button
-            key={categoria.id}
-            type="button"
-            className="nav__link"
-            aria-pressed={categoria.id === categoriaSelecionada}
-            onClick={() => onSelecionarCategoria(categoria.id)}
-          >
-            {categoria.nome}
-          </button>
-        ))}
+        {/* Na Home o clique filtra a lista; nas outras páginas leva para a Home já filtrada */}
+        {categorias.map((categoria) =>
+          onSelecionarCategoria ? (
+            <button
+              key={categoria.id}
+              type="button"
+              className="nav__link"
+              aria-pressed={categoria.id === categoriaSelecionada}
+              onClick={() => onSelecionarCategoria(categoria.id)}
+            >
+              {categoria.nome}
+            </button>
+          ) : (
+            <a key={categoria.id} className="nav__link" href={`/?categoria=${categoria.id}`}>
+              {categoria.nome}
+            </a>
+          ),
+        )}
       </nav>
 
       {/* Conta, busca e sacola ainda não têm tela; ficam visíveis como no Figma */}
