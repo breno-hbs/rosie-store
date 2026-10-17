@@ -10,14 +10,16 @@ Projeto freelance para a Roseane (@rosie.sttore). Desenvolvedor: Breno (solo).
 ## Estrutura
 - `backend/` organizado por camada: model, repository, dto, service, controller, config, exception
 - `frontend/src/` componentes + páginas, chamadas à API centralizadas em `api.js`
-- `docs/` materiais de projeto
+- `docs/` materiais de projeto e fontes de verdade (kanban, requisitos, contrato da API)
 
 ## Fontes de verdade
-- Kanban, Requisitos e Contrato da API: Notion ("Site - Rosie")
+- Kanban: `docs/kanban.md`
+- Requisitos: `docs/requisitos.md`
+- Contrato da API: `docs/contrato-api.md`
 - Design: Figma, file key HZyo0IXpIUNSmoOpCNeqgg
 
 ## Regras
-- O Contrato da API manda. Se um endpoint mudar, atualize o Notion no mesmo PR.
+- O Contrato da API manda. Se um endpoint mudar, atualize `docs/contrato-api.md` no mesmo PR.
 - Entidade JPA nunca sai na API: sempre DTO.
 - Erros no formato {"erro": "...", "codigo": "..."}.
 - Nada direto na main: branch `feature/<nome>`, PR, commits em português (conventional commits).

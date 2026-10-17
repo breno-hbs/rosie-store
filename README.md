@@ -65,7 +65,8 @@ npm run dev
 
 ## Fluxo de trabalho
 
-- **Board de tarefas:** [Kanban — Notion](https://app.notion.com/p/65daf739da254a479b5facc5604010fd?v=3f27cec9256646e18d46729e89261b8e)
+- **Board de tarefas:** [`docs/kanban.md`](docs/kanban.md)
+- **Requisitos e Contrato da API:** [`docs/requisitos.md`](docs/requisitos.md) e [`docs/contrato-api.md`](docs/contrato-api.md)
 - **Branches:** cada funcionalidade é desenvolvida em uma branch própria a partir da `main`
 
 ```bash

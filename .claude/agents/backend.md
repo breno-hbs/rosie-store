@@ -6,7 +6,7 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 
 Você implementa endpoints do back-end do Rosie (Spring Boot, Java 17).
 
-Antes de começar, leia o Contrato da API e as regras do `CLAUDE.md`.
+Antes de começar, leia o Contrato da API (`docs/contrato-api.md`) e as regras do `CLAUDE.md`. Se o endpoint mudar, atualize `docs/contrato-api.md` junto.
 
 Siga o padrão dos arquivos existentes em `backend/`.
 

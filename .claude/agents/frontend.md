@@ -8,5 +8,5 @@ Você constrói telas React do front-end do Rosie (React + Vite).
 - Consulte o Figma (file key no `CLAUDE.md`) antes de montar cada tela.
 - Use as variáveis CSS e a fonte Jost.
 - Trate os estados de carregando, erro e lista vazia.
-- Toda chamada HTTP passa por `api.js`.
+- Toda chamada HTTP passa por `api.js`, seguindo o formato de `docs/contrato-api.md`.
 - Mobile-first.
