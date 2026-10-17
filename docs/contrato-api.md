@@ -99,6 +99,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 
 Parâmetros (todos opcionais): `categoriaId`, `pagina` (padrão `0`), `tamanho` (padrão `12`).
 
+Lista só produtos ativos (`ativo = true`), com ou sem `categoriaId`. Produto inativo não aparece na listagem.
+
 ```json
 // Response 200 — ProdutoListaResponseDTO
 {
