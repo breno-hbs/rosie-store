@@ -1,0 +1,32 @@
+name: Bug
+description: Algo que deveria funcionar e não funciona
+title: "fix: "
+labels: ["tipo:bug"]
+body:
+  - type: textarea
+    id: comportamento
+    attributes:
+      label: O que acontece
+      description: Comportamento atual, com o endpoint ou a tela.
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que deveria acontecer
+      description: Comportamento esperado, citando docs/contrato-api.md ou docs/requisitos.md quando houver.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduzir
+    attributes:
+      label: Como reproduzir
+      value: |
+        1.
+    validations:
+      required: true
+  - type: textarea
+    id: causa
+    attributes:
+      label: Causa provável
+      description: Arquivo e linha, se já souber.
