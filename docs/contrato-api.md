@@ -9,7 +9,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | Endpoint | Status | DTO de resposta |
 |---|---|---|
 | `GET /produtos` | Implementado | `ProdutoListaResponseDTO` |
-| `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`) | `ProdutoDetalheDTO` |
+| `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
 | Demais endpoints | Não implementados | — |
 
@@ -124,6 +124,8 @@ Lista só produtos ativos (`ativo = true`), com ou sem `categoriaId`. Produto in
 
 ### Detalhe de um produto
 `GET /produtos/{id}`
+
+Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que não existe. `imagens` vem na ordem de exibição (a primeira é a principal) e `estoque` vem ordenado por tamanho (`P`, `M`, `G`, `GG`), só com os tamanhos cadastrados; `quantidade: 0` significa esgotado naquele tamanho.
 
 ```json
 // Response 200 — ProdutoDetalheDTO

@@ -1,8 +1,13 @@
 package com.rosie.backend.service;
 
+import com.rosie.backend.dto.EstoqueDTO;
+import com.rosie.backend.dto.ProdutoDetalheDTO;
 import com.rosie.backend.dto.ProdutoResumoDTO;
+import com.rosie.backend.exception.RecursoNaoEncontradoException;
 import com.rosie.backend.model.Categoria;
 import com.rosie.backend.model.Produto;
+import com.rosie.backend.model.ProdutoEstoque;
+import com.rosie.backend.model.Tamanho;
 import com.rosie.backend.repository.CategoriaRepository;
 import com.rosie.backend.repository.ProdutoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +20,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 // Usa o MySQL local; @Transactional desfaz os inserts ao fim de cada teste
 @SpringBootTest
@@ -69,6 +75,38 @@ class ProdutoServiceTests {
 
         assertThat(idsDe(resposta.conteudo())).containsExactly(ativo.getId());
         assertThat(resposta.totalItens()).isEqualTo(1);
+    }
+
+    @Test
+    void buscarPorIdRetornaProdutoAtivo() {
+        ProdutoDetalheDTO detalhe = produtoService.buscarPorId(ativo.getId());
+
+        assertThat(detalhe.id()).isEqualTo(ativo.getId());
+        assertThat(detalhe.nome()).isEqualTo("Produto ativo");
+    }
+
+    @Test
+    void buscarPorIdDeProdutoInativoLancaNaoEncontrado() {
+        assertThatThrownBy(() -> produtoService.buscarPorId(inativo.getId()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    @Test
+    void buscarPorIdOrdenaEstoquePorTamanho() {
+        for (Tamanho tamanho : List.of(Tamanho.GG, Tamanho.P, Tamanho.G, Tamanho.M)) {
+            ativo.getEstoque().add(ProdutoEstoque.builder()
+                    .produto(ativo)
+                    .tamanho(tamanho)
+                    .quantidade(1)
+                    .build());
+        }
+        produtoRepository.saveAndFlush(ativo);
+
+        List<String> tamanhos = produtoService.buscarPorId(ativo.getId()).estoque().stream()
+                .map(EstoqueDTO::tamanho)
+                .toList();
+
+        assertThat(tamanhos).containsExactly("P", "M", "G", "GG");
     }
 
     private List<Long> idsDe(List<ProdutoResumoDTO> conteudo) {
