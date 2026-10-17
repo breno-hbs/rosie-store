@@ -1,0 +1,56 @@
+name: Front-end
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # O workflow roda em todo PR (para o check sempre aparecer e poder ser exigido
+  # na proteção da main), mas lint e build só rodam se frontend/ ou este arquivo mudou.
+  # Job pulado por `if` conta como aprovado no check exigido.
+  mudancas:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filtro.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filtro
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/frontend.yml'
+
+  lint-build-frontend:
+    name: lint-build-frontend
+    needs: mudancas
+    if: needs.mudancas.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
