@@ -24,6 +24,7 @@ Projeto freelance para a Roseane (@rosie.sttore). Equipe: Breno (Catálogo) e Ma
 - Entidade JPA nunca sai na API: sempre DTO.
 - Erros no formato {"erro": "...", "codigo": "..."}.
 - Toda mudança parte de uma issue. Trabalho novo sem issue: crie a issue antes, com o template.
+- Uma sessão (ou subtarefa) do Claude por issue: o título da sessão é `#<número> — <título da issue>`, e a sessão termina no PR que fecha essa issue. Nada de sessão com várias issues misturadas.
 - Nada direto na main: branch `<tipo>/<número da issue>-<nome>` (tipo: `feature`, `fix`, `chore`, `docs`; ex.: `feature/15-carrinho`), commits em português (conventional commits), PR pelo template com `Closes #<número>`.
 - Labels: um `tipo:*`, as `area:*` tocadas, a `feature:*` e uma `prioridade:*`.
 - Nunca commitar credenciais (.env, application-local.properties).
