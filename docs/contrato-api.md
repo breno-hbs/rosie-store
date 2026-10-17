@@ -104,6 +104,8 @@ Parâmetros (todos opcionais): `categoriaId`, `pagina` (padrão `0`), `tamanho` 
 
 Lista só produtos ativos (`ativo = true`), com ou sem `categoriaId`. Produto inativo não aparece na listagem.
 
+`disponivel` é `true` quando algum tamanho tem `quantidade > 0` no estoque; produto sem estoque cadastrado ou com todos os tamanhos zerados vem com `false` (continua listado, como esgotado).
+
 ```json
 // Response 200 — ProdutoListaResponseDTO
 {

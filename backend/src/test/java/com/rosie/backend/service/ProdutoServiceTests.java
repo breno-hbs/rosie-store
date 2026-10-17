@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -107,6 +109,45 @@ class ProdutoServiceTests {
                 .toList();
 
         assertThat(tamanhos).containsExactly("P", "M", "G", "GG");
+    }
+
+    @Test
+    void listarMarcaDisponivelSoComEstoque() {
+        // ativo: P zerado e M com estoque; esgotado: só P zerado; semEstoque: nenhum tamanho cadastrado
+        adicionarEstoque(ativo, Tamanho.P, 0);
+        adicionarEstoque(ativo, Tamanho.M, 2);
+
+        Produto esgotado = produtoRepository.save(Produto.builder()
+                .categoria(categoria)
+                .nome("Produto esgotado")
+                .preco(new BigDecimal("100.00"))
+                .ativo(true)
+                .build());
+        adicionarEstoque(esgotado, Tamanho.P, 0);
+
+        Produto semEstoque = produtoRepository.saveAndFlush(Produto.builder()
+                .categoria(categoria)
+                .nome("Produto sem estoque")
+                .preco(new BigDecimal("100.00"))
+                .ativo(true)
+                .build());
+
+        Map<Long, Boolean> disponivelPorId = produtoService.listar(categoria.getId(), 0, 12).conteudo().stream()
+                .collect(Collectors.toMap(ProdutoResumoDTO::id, ProdutoResumoDTO::disponivel));
+
+        assertThat(disponivelPorId)
+                .containsEntry(ativo.getId(), true)
+                .containsEntry(esgotado.getId(), false)
+                .containsEntry(semEstoque.getId(), false);
+    }
+
+    private void adicionarEstoque(Produto produto, Tamanho tamanho, int quantidade) {
+        produto.getEstoque().add(ProdutoEstoque.builder()
+                .produto(produto)
+                .tamanho(tamanho)
+                .quantidade(quantidade)
+                .build());
+        produtoRepository.saveAndFlush(produto);
     }
 
     private List<Long> idsDe(List<ProdutoResumoDTO> conteudo) {

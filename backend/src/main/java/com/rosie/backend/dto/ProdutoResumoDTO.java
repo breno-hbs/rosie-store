@@ -21,13 +21,17 @@ public record ProdutoResumoDTO(
                 .map(ProdutoImagem::getUrl)
                 .orElse(null);
 
+        // Disponível = algum tamanho com estoque (RF06, RF16)
+        boolean disponivel = produto.getEstoque().stream()
+                .anyMatch(estoque -> estoque.getQuantidade() > 0);
+
         return new ProdutoResumoDTO(
                 produto.getId(),
                 produto.getNome(),
                 produto.getPreco(),
                 CategoriaResumoDTO.from(produto.getCategoria()),
                 imagemPrincipal,
-                produto.getAtivo()
+                disponivel
         );
     }
 }
