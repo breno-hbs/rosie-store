@@ -59,6 +59,8 @@ public class SecurityConfig {
                         .requestMatchers("/carrinho/**", "/pedidos/**", "/trocas/**").hasRole("CLIENTE")
                         // Frete do carrinho (#23)
                         .requestMatchers("/frete/**").hasRole("CLIENTE")
+                        // Endereços de entrega (#24)
+                        .requestMatchers("/enderecos/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
                         // Tabela de medidas da categoria, na Página de Produto (#20)
                         .requestMatchers(HttpMethod.GET, "/categorias/*/medidas").permitAll()

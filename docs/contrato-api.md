@@ -21,6 +21,10 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `PUT /carrinho/itens/{itemId}` | Implementado (exige token `CLIENTE`; 400; 404; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
 | `DELETE /carrinho/itens/{itemId}` | Implementado (exige token `CLIENTE`; 200 com o carrinho; 404) | `CarrinhoDTO` |
 | `POST /frete/calcular` | Implementado (exige token `CLIENTE`; cota o carrinho no Melhor Envio; 400 `DADOS_INVALIDOS`; 409 `CARRINHO_VAZIO`; 502 `FRETE_FALHOU`; 503 `FRETE_INDISPONIVEL`) | `FreteResponseDTO` |
+| `GET /enderecos` | Implementado (exige token `CLIENTE`; sem os arquivados) | lista de `EnderecoDTO` |
+| `POST /enderecos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`) | `EnderecoDTO` |
+| `PUT /enderecos/{id}` | Implementado (exige token `CLIENTE`; 400; 404; endereço já usado em pedido volta com id novo) | `EnderecoDTO` |
+| `DELETE /enderecos/{id}` | Implementado (exige token `CLIENTE`; 204; 404; endereço já usado em pedido só é arquivado) | — |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
@@ -89,11 +93,11 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 | Rotas | Quem acessa |
 |---|---|
 | `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias` | Público |
-| `/auth/**` (ex.: `GET /auth/me`), `/carrinho/**`, `/frete/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
+| `/auth/**` (ex.: `GET /auth/me`), `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
 | Qualquer outra | Qualquer token válido |
 
-As rotas da compra (#22, #23, #24, #27) já estão no `SecurityConfig` exigindo `CLIENTE`: os controllers novos não precisam mexer nele. Quem criar uma rota de cliente fora desses prefixos (ex.: `/enderecos`) acrescenta o prefixo lá.
+As rotas da compra (#22, #23, #24, #27) já estão no `SecurityConfig` exigindo `CLIENTE`: os controllers novos não precisam mexer nele. Quem criar uma rota de cliente fora desses prefixos acrescenta o prefixo lá (como `/frete/**` na #23 e `/enderecos/**` na #24).
 
 ### Cadastro de cliente
 `POST /auth/registrar`
@@ -410,6 +414,40 @@ Mesmo produto e tamanho **somam no item que já existe** (uma linha por produto 
 `DELETE /carrinho/itens/{itemId}` → **200** com o `CarrinhoDTO` (não 204: a resposta é o carrinho atualizado, como nas outras rotas)
 
 Nos dois, `itemId` que não existe **ou é de outra cliente** responde **404** `RECURSO_NAO_ENCONTRADO` (a mesma resposta, para não revelar itens alheios).
+
+---
+
+## Endereços de entrega (#24) — requer autenticação CLIENTE
+
+Endereços salvos da cliente do token, usados no checkout (`enderecoId` do `POST /pedidos`) e na Minha Conta (#26). Endereço de outra cliente responde **404** `RECURSO_NAO_ENCONTRADO`, como um que não existe.
+
+```json
+// GET /enderecos → 200, lista de EnderecoDTO (na ordem em que foram cadastrados)
+[
+  { "id": 5, "cep": "03925050", "logradouro": "Rua das Flores", "numero": "120", "complemento": "Apto 12",
+    "bairro": "Jardim Iva", "cidade": "São Paulo", "estado": "SP" }
+]
+// POST /enderecos — EnderecoRequestDTO → 201 com o EnderecoDTO
+{ "cep": "03925-050", "logradouro": "Rua das Flores", "numero": "120", "complemento": "Apto 12",
+  "bairro": "Jardim Iva", "cidade": "São Paulo", "estado": "SP" }
+// PUT /enderecos/{id} — mesmo corpo → 200 com o EnderecoDTO
+// DELETE /enderecos/{id} → 204
+// Response 400
+{ "erro": "UF inválida: use a sigla do estado, ex.: SP", "codigo": "DADOS_INVALIDOS" }
+```
+
+| Campo | Regra |
+|---|---|
+| `cep` | Obrigatório, 8 dígitos com ou sem hífen; guardado e devolvido só com os dígitos |
+| `logradouro` | Obrigatório (a "Rua" da tela), até 200 caracteres |
+| `numero` | Obrigatório, até 20 caracteres (texto: aceita "s/n", "120A") |
+| `complemento` | Opcional, até 100 caracteres; em branco vira `null` |
+| `bairro` / `cidade` | Obrigatórios, até 100 caracteres |
+| `estado` | Obrigatório, sigla de uma das 27 UFs; minúsculas são aceitas e guardadas em maiúsculas |
+
+Espaços nas pontas de todos os campos são removidos. A tela preenche rua, bairro, cidade e UF pelo ViaCEP a partir do CEP, mas a cliente pode corrigir e a API confere tudo.
+
+**Endereço já usado num pedido não muda:** o pedido aponta para o endereço para onde foi entregue (e a etiqueta da #25 sai dele). Então, se ele já tem pedido, o `PUT` arquiva o antigo e cria outro com os dados novos (a resposta vem com **id novo**), e o `DELETE` só arquiva. Arquivado não aparece no `GET`, responde 404 no `PUT`/`DELETE` e não pode ser usado em pedido novo. Sem pedido, `PUT` altera no lugar e `DELETE` apaga.
 
 ---
 

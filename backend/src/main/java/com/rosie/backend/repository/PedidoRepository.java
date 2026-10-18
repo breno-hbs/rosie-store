@@ -9,4 +9,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     // Histórico de pedidos do cliente
     List<Pedido> findByUsuarioId(Long usuarioId);
+
+    // Endereço usado num pedido não pode ser apagado nem alterado (EnderecoService)
+    boolean existsByEnderecoId(Long enderecoId);
 }
