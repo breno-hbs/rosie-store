@@ -399,8 +399,8 @@ Campos:
 | Campo | Regra |
 |---|---|
 | `nome` | Obrigatório, até 150 caracteres (espaços nas pontas são removidos) |
-| `descricao` | Opcional; vazio vira `null` |
-| `composicao` | Opcional, texto livre ("Composição e cuidados"; quebras de linha são mantidas); vazio vira `null`, e a Página de Produto esconde o item. No PUT, vazio limpa o campo |
+| `descricao` | Opcional; vazio vira `null`. No PUT, vazio limpa o campo e ausente (ou `null`) mantém o valor atual |
+| `composicao` | Opcional, texto livre ("Composição e cuidados"; quebras de linha são mantidas); vazio vira `null`, e a Página de Produto esconde o item. No PUT, vazio limpa o campo e ausente (ou `null`) mantém o valor atual (#50: reativar sem mandar o campo apagava a composição) |
 | `preco` | Obrigatório, maior que zero, até 2 casas decimais |
 | `categoriaId` | Obrigatório. Categoria que não existe responde **400** `DADOS_INVALIDOS` ("Categoria não encontrada"), não 404: o erro está no corpo, não no recurso da URL |
 | `destaque` | Opcional (padrão `false`). Marca o produto para o carrossel e o Best Sellers da Home (`GET /produtos/destaques`) |
@@ -426,7 +426,7 @@ Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O pre
 // Response 200 — ProdutoAdminDTO atualizado (com o estoque atual, que não muda)
 ```
 
-Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque` e `ativo` ausentes (ou `null`) mantêm o valor atual.
+Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque`, `ativo`, `descricao` e `composicao` ausentes (ou `null`) mantêm o valor atual; `descricao` e `composicao` vazias limpam o campo.
 
 **Decisão (#47): a edição não mexe no estoque, e um `estoque` no corpo é ignorado** (não dá 400). O estoque muda só por `PUT /admin/produtos/{id}/estoque` (tela "Gestão de Estoque"). Antes, o PUT substituía o estoque inteiro, e um formulário de edição aberto antes de uma mudança de estoque (pela tela de estoque ou, mais adiante, por uma venda) desfazia essa mudança ao salvar. Ignorar em vez de rejeitar é o que o back já faz com qualquer campo que o DTO não tem, e não quebra um cliente antigo que ainda mande o campo; o que importa é que ele não tem efeito.
 

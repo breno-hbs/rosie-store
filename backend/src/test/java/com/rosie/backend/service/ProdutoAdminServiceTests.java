@@ -250,6 +250,20 @@ class ProdutoAdminServiceTests {
     }
 
     @Test
+    void atualizarSemDescricaoEComposicaoMantemOsTextos() {
+        ProdutoAdminDTO criado = produtoAdminService.criar(requestComComposicao("Viscose"));
+        entityManager.flush();
+        entityManager.clear();
+
+        // o mesmo que a reativação mandava antes do #50: sem composicao
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoEdicaoDTO(
+                "Vestido Linho", null, null, new BigDecimal("189.00"), vestido.getId(), null, true));
+
+        assertThat(editado.descricao()).isEqualTo("Descrição de teste");
+        assertThat(editado.composicao()).isEqualTo("Viscose");
+    }
+
+    @Test
     void colunaComposicaoAceitaNulo() {
         // produtos cadastrados antes da coluna existir ficam com null
         Object nulavel = entityManager.createNativeQuery("""
