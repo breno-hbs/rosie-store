@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { buscarProduto, buscarTabelaMedidas, listarCategorias, listarProdutos } from '../api.js'
+import {
+  adicionarAoCarrinho,
+  buscarProduto,
+  buscarTabelaMedidas,
+  lerSessaoCliente,
+  listarCategorias,
+  listarProdutos,
+  rotaLoginCliente,
+} from '../api.js'
 import Nav from '../components/Nav.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
@@ -118,6 +126,9 @@ function DetalheProduto({ produto }) {
   const [indiceFoto, setIndiceFoto] = useState(0)
   const [tamanho, setTamanho] = useState(null)
   const [pedirTamanho, setPedirTamanho] = useState(false)
+  // "Adicionar à sacola" (#22): null, { tipo: 'ok' } ou { tipo: 'erro', mensagem }
+  const [adicionando, setAdicionando] = useState(false)
+  const [retornoSacola, setRetornoSacola] = useState(null)
   // Tabela de medidas da categoria (#20): o botão só aparece quando ela tem medidas
   const [tabelaMedidas, setTabelaMedidas] = useState(null)
   const [medidasAbertas, setMedidasAbertas] = useState(false)
@@ -154,6 +165,25 @@ function DetalheProduto({ produto }) {
   function escolherTamanho(novo) {
     setTamanho(novo)
     setPedirTamanho(false)
+    setRetornoSacola(null)
+  }
+
+  // Sem login vai para /entrar e volta para este produto; o estoque é conferido pela API
+  function adicionarNaSacola() {
+    if (!tamanho) {
+      setPedirTamanho(true)
+      return
+    }
+    if (!lerSessaoCliente()) {
+      window.location.assign(rotaLoginCliente())
+      return
+    }
+    setAdicionando(true)
+    setRetornoSacola(null)
+    adicionarAoCarrinho(produto.id, tamanho, 1)
+      .then(() => setRetornoSacola({ tipo: 'ok' }))
+      .catch((erro) => setRetornoSacola({ tipo: 'erro', mensagem: erro.message }))
+      .finally(() => setAdicionando(false))
   }
 
   function comprarPeloWhatsapp(evento) {
@@ -245,10 +275,28 @@ function DetalheProduto({ produto }) {
         </div>
 
         <div className="produto__acoes">
-          {/* O carrinho ainda não existe (contrato: /carrinho requer login); por ora a compra é pelo WhatsApp */}
-          <button type="button" className="botao botao--primario" disabled>
-            Adicionar à sacola
+          <button
+            type="button"
+            className="botao botao--primario"
+            disabled={esgotado || adicionando}
+            onClick={adicionarNaSacola}
+          >
+            {adicionando ? 'Adicionando…' : 'Adicionar à sacola'}
           </button>
+          {retornoSacola && (
+            <p
+              className="produto__retorno"
+              role={retornoSacola.tipo === 'erro' ? 'alert' : 'status'}
+            >
+              {retornoSacola.tipo === 'ok' ? (
+                <>
+                  Adicionado à sacola. <a href="/carrinho">Ver sacola</a>
+                </>
+              ) : (
+                retornoSacola.mensagem
+              )}
+            </p>
+          )}
           <a
             className="botao botao--contorno"
             href={whatsapp}

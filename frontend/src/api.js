@@ -102,7 +102,8 @@ function voltarParaLogin(area, motivo) {
 // `autenticado` diz de qual área é o token: 'admin' (rotas /admin/**) ou 'cliente' (conta,
 // carrinho, pedidos, trocas). Sem ele, a chamada vai sem Authorization: as rotas públicas do
 // catálogo não recebem token, porque um token vencido faria a API responder 401 mesmo nelas.
-async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenticado, signal } = {}) {
+// `silencioso`: no 401 só esquece a sessão, sem levar ao login (chamadas de fundo, como a da Nav).
+async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenticado, silencioso, signal } = {}) {
   const url = new URL(API_URL + caminho)
   for (const [chave, valor] of Object.entries(params)) {
     if (valor !== undefined && valor !== null && valor !== '') {
@@ -117,7 +118,7 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
   if (autenticado) {
     const sessao = lerSessao(autenticado)
     if (!sessao) {
-      voltarParaLogin(autenticado, 'expirou')
+      if (!silencioso) voltarParaLogin(autenticado, 'expirou')
       throw new ApiError('Sua sessão expirou', 'NAO_AUTENTICADO', 401)
     }
     headers.Authorization = `Bearer ${sessao.token}`
@@ -139,7 +140,10 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
   const conteudo = await resposta.json().catch(() => null)
   if (!resposta.ok) {
     // Token vencido ou inválido no meio do uso: volta para o login da área
-    if (autenticado && resposta.status === 401) voltarParaLogin(autenticado, 'expirou')
+    if (autenticado && resposta.status === 401) {
+      if (silencioso) limparSessao(autenticado)
+      else voltarParaLogin(autenticado, 'expirou')
+    }
     throw new ApiError(
       conteudo?.erro ?? `Erro ${resposta.status}`,
       conteudo?.codigo ?? 'ERRO_DESCONHECIDO',
@@ -250,6 +254,40 @@ export function putCliente(caminho, corpo, opcoes) {
 
 export function deleteCliente(caminho, opcoes) {
   return requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: 'cliente' })
+}
+
+// Carrinho (#22). Toda rota responde o carrinho atualizado:
+// { itens: [{ id, produto: { id, nome, preco, imagemPrincipal }, tamanho, quantidade, subtotal,
+//   estoqueDisponivel, disponivel, motivoIndisponivel }], quantidadeItens, subtotal, temIndisponiveis }
+// motivoIndisponivel: null, PRODUTO_INATIVO, TAMANHO_ESGOTADO ou ESTOQUE_INSUFICIENTE.
+// Cada resposta avisa a Nav (evento EVENTO_CARRINHO, com quantidadeItens) para o número da "Sacola".
+export const EVENTO_CARRINHO = 'rosie:carrinho'
+
+function avisarCarrinho(carrinho) {
+  window.dispatchEvent(new CustomEvent(EVENTO_CARRINHO, { detail: carrinho.quantidadeItens }))
+  return carrinho
+}
+
+// GET /carrinho
+export function buscarCarrinho(opcoes) {
+  return getCliente('/carrinho', opcoes).then(avisarCarrinho)
+}
+
+// POST /carrinho/itens; mesmo produto e tamanho somam no item que já existe.
+// Acima do estoque do tamanho (ou esgotado): ApiError com codigo ESTOQUE_INSUFICIENTE (409) e a
+// mensagem pronta ("Só temos 3 no tamanho P"); produto que saiu da loja: PRODUTO_INDISPONIVEL (409)
+export function adicionarAoCarrinho(produtoId, tamanho, quantidade = 1, opcoes) {
+  return postCliente('/carrinho/itens', { produtoId, tamanho, quantidade }, opcoes).then(avisarCarrinho)
+}
+
+// PUT /carrinho/itens/{itemId}; mesmos erros 409 do POST, e 404 se o item não está no carrinho
+export function alterarQuantidadeCarrinho(itemId, quantidade, opcoes) {
+  return putCliente(`/carrinho/itens/${itemId}`, { quantidade }, opcoes).then(avisarCarrinho)
+}
+
+// DELETE /carrinho/itens/{itemId}
+export function removerDoCarrinho(itemId, opcoes) {
+  return deleteCliente(`/carrinho/itens/${itemId}`, opcoes).then(avisarCarrinho)
 }
 
 // GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, estoque: [{ tamanho, quantidade }], ativo, destaque }],
