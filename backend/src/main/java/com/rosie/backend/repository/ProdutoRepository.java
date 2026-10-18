@@ -22,4 +22,7 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 
     // GET /produtos/{id} — produto inativo responde 404, assim como some da listagem (RF03)
     Optional<Produto> findByIdAndAtivoTrue(Long id);
+
+    // DELETE /admin/categorias/{id} — categoria com produto (ativo ou inativo) não pode sair (RF17)
+    long countByCategoriaId(Long categoriaId);
 }

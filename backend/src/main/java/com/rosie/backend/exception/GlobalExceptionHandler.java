@@ -24,6 +24,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erro);
     }
 
+    // Regra de negócio que impede a operação (ex.: CATEGORIA_DUPLICADA, CATEGORIA_EM_USO)
+    @ExceptionHandler(ConflitoException.class)
+    public ResponseEntity<ErroResponseDTO> handleConflito(ConflitoException ex) {
+        ErroResponseDTO erro = new ErroResponseDTO(ex.getMessage(), ex.getCodigo());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
     // Bean Validation (@Valid): devolve a mensagem do primeiro campo inválido
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErroResponseDTO> handleDadosInvalidos(MethodArgumentNotValidException ex) {
