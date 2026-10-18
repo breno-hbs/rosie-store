@@ -391,8 +391,8 @@ Campos:
 | Campo | Regra |
 |---|---|
 | `nome` | Obrigatório, até 150 caracteres (espaços nas pontas são removidos) |
-| `descricao` | Opcional; vazio vira `null` |
-| `composicao` | Opcional, texto livre ("Composição e cuidados"; quebras de linha são mantidas); vazio vira `null`, e a Página de Produto esconde o item. No PUT, vazio limpa o campo |
+| `descricao` | Opcional; vazio vira `null`. No PUT, vazio limpa o campo e ausente (ou `null`) mantém o valor atual |
+| `composicao` | Opcional, texto livre ("Composição e cuidados"; quebras de linha são mantidas); vazio vira `null`, e a Página de Produto esconde o item. No PUT, vazio limpa o campo e ausente (ou `null`) mantém o valor atual (#50: reativar sem mandar o campo apagava a composição) |
 | `preco` | Obrigatório, maior que zero, até 2 casas decimais |
 | `categoriaId` | Obrigatório. Categoria que não existe responde **400** `DADOS_INVALIDOS` ("Categoria não encontrada"), não 404: o erro está no corpo, não no recurso da URL |
 | `destaque` | Opcional (padrão `false`). Marca o produto para o carrossel e o Best Sellers da Home (`GET /produtos/destaques`) |
@@ -404,7 +404,7 @@ Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O pre
 ### Editar produto
 `PUT /admin/produtos/{id}`
 
-Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` atualizado. O `estoque` enviado **substitui** o atual: tamanho que ficar de fora deixa de ser vendido. `destaque` e `ativo` ausentes (ou `null`) mantêm o valor atual.
+Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` atualizado. O `estoque` enviado **substitui** o atual: tamanho que ficar de fora deixa de ser vendido. `destaque`, `ativo`, `descricao` e `composicao` ausentes (ou `null`) mantêm o valor atual; `descricao` e `composicao` vazias limpam o campo.
 
 **Reativar:** um produto removido volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia o body completo). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
 
