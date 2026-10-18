@@ -1,16 +1,24 @@
 package com.rosie.backend.exception;
 
 import com.rosie.backend.dto.ErroResponseDTO;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.util.unit.DataSize;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @Value("${rosie.imagens.tamanho-maximo}")
+    private DataSize tamanhoMaximoImagem;
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<ErroResponseDTO> handleNaoEncontrado(RecursoNaoEncontradoException ex) {
@@ -52,5 +60,32 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponseDTO> handleCorpoInvalido(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()
                 .body(new ErroResponseDTO("Corpo da requisição inválido", "DADOS_INVALIDOS"));
+    }
+
+    // Upload de foto: FORMATO_NAO_SUPORTADO ou ARQUIVO_MUITO_GRANDE
+    @ExceptionHandler(ArquivoInvalidoException.class)
+    public ResponseEntity<ErroResponseDTO> handleArquivoInvalido(ArquivoInvalidoException ex) {
+        return ResponseEntity.badRequest().body(new ErroResponseDTO(ex.getMessage(), ex.getCodigo()));
+    }
+
+    // Arquivo acima de spring.servlet.multipart.max-file-size: barrado antes de chegar ao controller
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErroResponseDTO> handleArquivoGrande(MaxUploadSizeExceededException ex) {
+        ArquivoInvalidoException erro = ArquivoInvalidoException.muitoGrande(tamanhoMaximoImagem);
+        return ResponseEntity.badRequest().body(new ErroResponseDTO(erro.getMessage(), erro.getCodigo()));
+    }
+
+    // Upload sem o campo "arquivo", ou requisição que não é multipart
+    @ExceptionHandler({MissingServletRequestPartException.class, MultipartException.class})
+    public ResponseEntity<ErroResponseDTO> handleSemArquivo(Exception ex) {
+        return ResponseEntity.badRequest()
+                .body(new ErroResponseDTO("Envie a foto no campo arquivo", "DADOS_INVALIDOS"));
+    }
+
+    // Sem CLOUDINARY_URL, ou o Cloudinary não respondeu
+    @ExceptionHandler(ArmazenamentoIndisponivelException.class)
+    public ResponseEntity<ErroResponseDTO> handleArmazenamentoIndisponivel(ArmazenamentoIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErroResponseDTO(ex.getMessage(), "ARMAZENAMENTO_INDISPONIVEL"));
     }
 }

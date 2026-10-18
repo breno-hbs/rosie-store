@@ -177,21 +177,6 @@
   max-width: 300px;
 }
 
-/* Placeholder até o upload de fotos (#15) */
-.produto-form__fotos-caixa {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  aspect-ratio: 1;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--fumaca);
-  text-align: center;
-  border: 1px dashed var(--linha);
-}
-
 .produto-form__dica {
   font-size: 12px;
   line-height: 1.5;

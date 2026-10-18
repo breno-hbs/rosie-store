@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiError, atualizarProduto, buscarProdutoAdmin, criarProduto, listarCategorias } from '../api.js'
+import AdminProdutoFotos from './AdminProdutoFotos.jsx'
 import './AdminProdutos.css'
 
 const TAMANHOS = ['P', 'M', 'G', 'GG']
@@ -50,9 +51,12 @@ function mensagemDeErro(erro, padrao) {
 
 // Cadastro e edição de produto (Figma: "Admin — Cadastro de Produto"). id null = produto novo.
 // Tamanho em branco não é vendido; 0 aparece na loja como esgotado.
+// As fotos só existem para produto salvo: o cadastro novo salva e abre a edição para as fotos.
 export default function AdminProdutoForm({ id }) {
   const editando = id !== null
   const [form, setForm] = useState(editando ? null : VAZIO)
+  const [imagens, setImagens] = useState([])
+  const [recemCriado] = useState(() => editando && new URLSearchParams(window.location.search).has('novo'))
   const [categorias, setCategorias] = useState([])
   const [erroCarga, setErroCarga] = useState(null)
   const [erro, setErro] = useState(null)
@@ -64,7 +68,10 @@ export default function AdminProdutoForm({ id }) {
     Promise.all([listarCategorias({ signal }), editando ? buscarProdutoAdmin(id, { signal }) : null])
       .then(([listaCategorias, produto]) => {
         setCategorias(listaCategorias)
-        if (produto) setForm(doProduto(produto))
+        if (produto) {
+          setForm(doProduto(produto))
+          setImagens(produto.imagens)
+        }
       })
       .catch((e) => {
         if (e.name === 'AbortError') return
@@ -110,9 +117,14 @@ export default function AdminProdutoForm({ id }) {
     setSalvando(true)
     setErro(null)
     try {
-      if (editando) await atualizarProduto(id, dados)
-      else await criarProduto(dados)
-      window.location.assign('/admin/produtos?salvo=1')
+      if (editando) {
+        await atualizarProduto(id, dados)
+        window.location.assign('/admin/produtos?salvo=1')
+      } else {
+        // Produto novo: abre a edição dele para liberar as fotos
+        const criado = await criarProduto(dados)
+        window.location.assign(`/admin/produtos/${criado.id}?novo=1`)
+      }
     } catch (e) {
       setErro(mensagemDeErro(e, 'Não foi possível salvar o produto.'))
       setSalvando(false)
@@ -127,6 +139,11 @@ export default function AdminProdutoForm({ id }) {
         ← Produtos
       </a>
       <h1 className="titulo-2">{titulo}</h1>
+      {recemCriado && (
+        <p className="admin-produtos__aviso" role="status">
+          Produto salvo. Agora adicione as fotos.
+        </p>
+      )}
 
       {erroCarga ? (
         <p className="admin-produtos__estado" role="alert">
@@ -136,17 +153,7 @@ export default function AdminProdutoForm({ id }) {
         <p className="admin-produtos__estado">Carregando produto…</p>
       ) : (
         <form className="produto-form" onSubmit={salvar} noValidate>
-          <div className="produto-form__fotos">
-            <p className="eyebrow">Fotos do produto</p>
-            <div className="produto-form__fotos-caixa" aria-disabled="true">
-              <span>+ Adicionar fotos</span>
-              <span className="produto-form__dica">Envio de fotos em breve</span>
-            </div>
-            <p className="produto-form__dica">
-              Recomendado: fotos na proporção 4:5 (retrato) — ex: 1000 x 1250px. Mesmo formato do Instagram em
-              retrato.
-            </p>
-          </div>
+          <AdminProdutoFotos produtoId={editando ? id : null} imagensIniciais={imagens} />
 
           <div className="produto-form__campos">
             <label className="campo">
