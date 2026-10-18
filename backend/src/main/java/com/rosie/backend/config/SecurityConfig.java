@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/admin/auth/login").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
+                        // Tabela de medidas da categoria, na Página de Produto (#20)
+                        .requestMatchers(HttpMethod.GET, "/categorias/*/medidas").permitAll()
                         // Sem isso, exceções não tratadas viram 401 ao encaminhar para /error
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
