@@ -12,6 +12,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /produtos/destaques` | Implementado (público, só ativos com `destaque = true`) | lista de `ProdutoResumoDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
+| `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
+| `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
 | Demais endpoints | Não implementados | — |
 
 ---
@@ -37,6 +39,10 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | Código | HTTP | Quando |
 |---|---|---|
 | `RECURSO_NAO_ENCONTRADO` | 404 | Recurso buscado por id não existe (ex.: `GET /produtos/{id}`) |
+| `DADOS_INVALIDOS` | 400 | Corpo ausente, JSON malformado ou campo inválido (ex.: e-mail vazio no login); `erro` traz a mensagem do primeiro campo |
+| `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada ou usuário sem permissão (mesma resposta nos três casos) |
+| `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado ou expirado |
+| `ACESSO_NEGADO` | 403 | Token válido, mas sem a role exigida (ex.: token de cliente em `/admin/**`) |
 
 ---
 
@@ -75,11 +81,45 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 ### Login admin
 `POST /admin/auth/login`
 
+Público. Só entra usuário com role `ADMIN` (RF13, RNF02). O e-mail é comparado sem diferenciar maiúsculas. E-mail inexistente, senha errada e conta de cliente respondem o mesmo 401, sem dizer qual dos dois errou.
+
+O token é um JWT HS256 com validade de **2 horas**: `sub` = id do usuário, `role`, `nome`, `iss` = `rosie`. Mande-o em `Authorization: Bearer {token}` nas rotas `/admin/**`. Sem logout no servidor: o painel só esquece o token.
+
 ```json
 // Request
 { "email": "admin@rosie.com", "senha": "senha123" }
-// Response 200 (mesmo formato do login de cliente, com role: "ADMIN")
+// Response 200 — LoginResponseDTO (mesmo formato do login de cliente, com role: "ADMIN")
+{ "token": "eyJhbGc...", "usuario": { "id": 1, "nome": "Roseane", "role": "ADMIN" } }
+// Response 401
+{ "erro": "E-mail ou senha incorretos", "codigo": "CREDENCIAIS_INVALIDAS" }
+// Response 400 (e-mail ou senha vazios, e-mail mal formado)
+{ "erro": "Informe o e-mail", "codigo": "DADOS_INVALIDOS" }
 ```
+
+### Usuário do token admin
+`GET /admin/auth/me`
+
+Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferir se a sessão ainda vale.
+
+```json
+// Response 200 — UsuarioResumoDTO
+{ "id": 1, "nome": "Roseane", "role": "ADMIN" }
+// Response 401 (sem token, token inválido ou expirado)
+{ "erro": "Autenticação necessária", "codigo": "NAO_AUTENTICADO" }
+// Response 403 (token de cliente)
+{ "erro": "Acesso negado", "codigo": "ACESSO_NEGADO" }
+```
+
+### Configuração (variáveis de ambiente do back-end)
+
+| Variável | Obrigatória | Uso |
+|---|---|---|
+| `JWT_SECRET` | Sim | Segredo HS256 dos tokens, pelo menos 32 caracteres. Sem ele a API não sobe. Trocar o segredo invalida todos os tokens |
+| `ROSIE_ADMIN_EMAIL` | Na primeira subida | E-mail do admin inicial |
+| `ROSIE_ADMIN_SENHA` | Na primeira subida | Senha do admin inicial (mínimo 8 caracteres), guardada só como hash BCrypt |
+| `ROSIE_ADMIN_NOME` | Não (padrão `Roseane`) | Nome do admin inicial |
+
+O admin inicial é criado na subida da API só enquanto não existir nenhum usuário `ADMIN`; depois as três variáveis `ROSIE_ADMIN_*` são ignoradas.
 
 ---
 
@@ -321,6 +361,8 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
 - Combinação JWT + Spring Security é extremamente comum e bem documentada.
 
 **Trade-off aceito:** JWT não tem "logout forte" fácil (sem lista negra de tokens). Solução simples adotada: token com validade curta (2 horas), sem controle de logout forçado por enquanto — suficiente pro escopo atual.
+
+**Implementação (#13):** suporte nativo do Spring Security (`spring-boot-starter-security-oauth2-resource-server`, `NimbusJwtEncoder`/`NimbusJwtDecoder`), sem biblioteca extra. A claim `role` vira a authority `ROLE_ADMIN`/`ROLE_CLIENTE`. No front, o token fica no `sessionStorage` e o `api.js` só o envia nas chamadas do painel: as rotas públicas do catálogo não recebem `Authorization`, porque um token vencido faria a API responder 401 mesmo nelas.
 
 ---
 
