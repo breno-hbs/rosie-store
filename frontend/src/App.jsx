@@ -16,6 +16,8 @@ function rotaAtual() {
     const produtoId = produtoAdmin[1] === 'novo' ? 'novo' : Number(produtoAdmin[1])
     return { pagina: 'admin', secao: 'produtos', produtoId }
   }
+  const medidasAdmin = caminho.match(/^\/admin\/categorias\/(\d+)\/medidas\/?$/)
+  if (medidasAdmin) return { pagina: 'admin', secao: 'categorias', categoriaId: Number(medidasAdmin[1]) }
   const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias))?\/?$/)
   if (admin) return { pagina: 'admin', secao: admin[1] ?? 'produtos' }
   return { pagina: 'home' }
@@ -39,6 +41,8 @@ export default function App() {
 
   if (rota.pagina === 'produto') return <Produto id={rota.id} />
   if (rota.pagina === 'admin-login') return <AdminLogin />
-  if (rota.pagina === 'admin') return <Admin secao={rota.secao} produtoId={rota.produtoId} />
+  if (rota.pagina === 'admin') {
+    return <Admin secao={rota.secao} produtoId={rota.produtoId} categoriaId={rota.categoriaId} />
+  }
   return <Home />
 }

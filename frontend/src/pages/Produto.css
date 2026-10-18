@@ -158,13 +158,24 @@
   color: var(--tinta);
 }
 
+/* Link do Figma, como botão que abre a tabela (#20). O padding dá 36px de toque sem mexer no texto. */
 .produto__medidas {
-  margin-top: 16px;
+  align-self: flex-start;
+  margin: 4px -8px -12px;
+  padding: 12px 8px;
   font-size: 12px;
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.1em;
   color: var(--acento);
+  text-decoration: underline;
+  text-decoration-color: var(--linha);
+  text-underline-offset: 4px;
+}
+
+.produto__medidas:hover {
+  color: var(--tinta);
+  text-decoration-color: currentColor;
 }
 
 /* ButtonPrimary e ButtonOutline em largura total, encostados como no Figma */

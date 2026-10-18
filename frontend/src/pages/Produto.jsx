@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import { buscarProduto, listarCategorias, listarProdutos } from '../api.js'
+import { useEffect, useRef, useState } from 'react'
+import { buscarProduto, buscarTabelaMedidas, listarCategorias, listarProdutos } from '../api.js'
 import Nav from '../components/Nav.jsx'
 import ProductCard from '../components/ProductCard.jsx'
+import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
 import Footer from '../components/Footer.jsx'
 import { formatarPreco, linkWhatsApp } from '../formato.js'
 import './Produto.css'
@@ -117,6 +118,25 @@ function DetalheProduto({ produto }) {
   const [indiceFoto, setIndiceFoto] = useState(0)
   const [tamanho, setTamanho] = useState(null)
   const [pedirTamanho, setPedirTamanho] = useState(false)
+  // Tabela de medidas da categoria (#20): o botão só aparece quando ela tem medidas
+  const [tabelaMedidas, setTabelaMedidas] = useState(null)
+  const [medidasAbertas, setMedidasAbertas] = useState(false)
+  const botaoMedidas = useRef(null)
+
+  const categoriaId = produto.categoria.id
+  useEffect(() => {
+    const controle = new AbortController()
+    buscarTabelaMedidas(categoriaId, { signal: controle.signal })
+      .then(setTabelaMedidas)
+      .catch(() => {}) // Sem a tabela (ou com erro) o link não aparece
+    return () => controle.abort()
+  }, [categoriaId])
+  const temMedidas = tabelaMedidas?.categoriaId === categoriaId && tabelaMedidas.medidas.length > 0
+
+  function fecharMedidas() {
+    setMedidasAbertas(false)
+    botaoMedidas.current?.focus()
+  }
 
   const fotos = produto.imagens
   const disponiveis = produto.estoque.filter((item) => item.quantidade > 0)
@@ -208,8 +228,20 @@ function DetalheProduto({ produto }) {
               Escolha um tamanho.
             </p>
           )}
-          {/* Ainda não há tabela de medidas; fica visível como no Figma */}
-          <p className="produto__medidas">Ver tabela de medidas</p>
+          {temMedidas && (
+            <>
+              <button
+                ref={botaoMedidas}
+                type="button"
+                className="produto__medidas"
+                aria-haspopup="dialog"
+                onClick={() => setMedidasAbertas(true)}
+              >
+                Ver tabela de medidas
+              </button>
+              <TabelaMedidasModal tabela={tabelaMedidas} aberto={medidasAbertas} onFechar={fecharMedidas} />
+            </>
+          )}
         </div>
 
         <div className="produto__acoes">

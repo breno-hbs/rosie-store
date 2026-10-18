@@ -154,14 +154,23 @@ export default function AdminCategorias() {
                     </button>
                   </span>
                 ) : (
-                  <button
-                    type="button"
-                    className="admin-categorias__acao"
-                    onClick={() => pedirConfirmacao(categoria.id)}
-                    aria-label={`Remover ${categoria.nome}`}
-                  >
-                    Remover
-                  </button>
+                  <span className="admin-categorias__acoes">
+                    <a
+                      className="admin-categorias__acao"
+                      href={`/admin/categorias/${categoria.id}/medidas`}
+                      aria-label={`Tabela de medidas de ${categoria.nome}`}
+                    >
+                      Medidas
+                    </a>
+                    <button
+                      type="button"
+                      className="admin-categorias__acao"
+                      onClick={() => pedirConfirmacao(categoria.id)}
+                      aria-label={`Remover ${categoria.nome}`}
+                    >
+                      Remover
+                    </button>
+                  </span>
                 )}
               </div>
 

@@ -12,6 +12,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /produtos/destaques` | Implementado (público, só ativos com `destaque = true`) | lista de `ProdutoResumoDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
+| `GET /categorias/{id}/medidas` | Implementado (público; `medidas` vazia se a categoria não tem tabela; 404) | `TabelaMedidasDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
@@ -26,7 +27,10 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /admin/categorias` | Implementado (exige token `ADMIN`) | lista de `CategoriaAdminDTO` |
 | `POST /admin/categorias` | Implementado (exige token `ADMIN`; 201; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
 | `PUT /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 404; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
-| `DELETE /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 204; 404; 409 com `CATEGORIA_EM_USO`) | — |
+| `DELETE /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 204; 404; 409 com `CATEGORIA_EM_USO`; a tabela de medidas sai junto) | — |
+| `GET /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; 404) | `TabelaMedidasDTO` |
+| `PUT /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; troca a tabela inteira; 400 com `DADOS_INVALIDOS`; 404) | `TabelaMedidasDTO` |
+| `DELETE /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; 204; 404) | — |
 | Demais endpoints | Não implementados | — |
 
 ---
@@ -155,6 +159,28 @@ Pública (sem token). Retorna todas as categorias ordenadas por nome.
   { "id": 1, "nome": "Vestido" },
   { "id": 2, "nome": "Calça" }
 ]
+```
+
+### Tabela de medidas da categoria
+`GET /categorias/{id}/medidas`
+
+Pública (sem token). Usada pela Página de Produto, com o `categoria.id` do produto: se `medidas` vier vazia, o link "Ver tabela de medidas" não aparece. As linhas vêm na ordem que a Roseane montou no painel; `valores` sempre traz `P`, `M`, `G` e `GG`, nessa ordem, com `""` para tamanho sem medida. Os valores são texto (aceitam faixas como `84–88`) na unidade de `unidade`, por enquanto sempre `cm`.
+
+```json
+// Response 200 — TabelaMedidasDTO
+{
+  "categoriaId": 1,
+  "categoria": "Vestido",
+  "unidade": "cm",
+  "medidas": [
+    { "nome": "Busto", "valores": { "P": "84–88", "M": "89–93", "G": "94–98", "GG": "99–104" } },
+    { "nome": "Comprimento", "valores": { "P": "", "M": "92", "G": "", "GG": "" } }
+  ]
+}
+// Response 200 — categoria sem tabela
+{ "categoriaId": 2, "categoria": "Calça", "unidade": "cm", "medidas": [] }
+// Response 404
+{ "erro": "Categoria não encontrada", "codigo": "RECURSO_NAO_ENCONTRADO" }
 ```
 
 ### Listar produtos (com filtro opcional por categoria)
@@ -578,7 +604,7 @@ Todas as categorias, ordenadas por nome, com a quantidade de produtos ligados a 
 ### Remover categoria
 `DELETE /admin/categorias/{id}`
 
-Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porque continua ligado à categoria (o `DELETE /admin/produtos/{id}` só desativa): para liberar a categoria, mude os produtos de categoria.
+Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porque continua ligado à categoria (o `DELETE /admin/produtos/{id}` só desativa): para liberar a categoria, mude os produtos de categoria. A tabela de medidas não bloqueia: se a categoria vazia tiver uma, ela é apagada junto.
 
 ```json
 // Response 204 — sem corpo
@@ -586,6 +612,44 @@ Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porqu
 { "erro": "Categoria não encontrada", "codigo": "RECURSO_NAO_ENCONTRADO" }
 // Response 409
 { "erro": "Não dá para remover \"Vestido\": a categoria tem 4 produtos. Mova os produtos para outra categoria antes.", "codigo": "CATEGORIA_EM_USO" }
+```
+
+### Tabela de medidas (#20)
+
+Uma tabela por categoria, que a Roseane preenche no painel (`/admin/categorias/{id}/medidas`). Cada linha é uma medida (ex.: Busto, Cintura, Quadril, Comprimento) com um valor para cada tamanho, em cm. Medidas por produto ficam fora do escopo.
+
+`GET /admin/categorias/{id}/medidas` — mesma resposta do `GET /categorias/{id}/medidas` público (`TabelaMedidasDTO`).
+
+`PUT /admin/categorias/{id}/medidas` — troca a tabela inteira pela lista enviada, na ordem da lista (é assim que se cria, edita, reordena e remove linhas). Lista vazia deixa a categoria sem tabela.
+
+- `nome`: obrigatório, até 40 caracteres, salvo sem os espaços das pontas; dois nomes iguais sem diferenciar maiúsculas na mesma tabela são recusados
+- `valores`: opcional, com as chaves `P`, `M`, `G` e `GG` (outra chave é recusada); cada valor tem até 20 caracteres, salvo sem os espaços das pontas. Tamanho ausente, `null` ou só com espaços fica vazio (`""` na resposta)
+- No máximo 20 linhas por tabela
+
+```json
+// Request — TabelaMedidasRequestDTO
+{
+  "medidas": [
+    { "nome": "Busto", "valores": { "P": "84–88", "M": "89–93", "G": "94–98", "GG": "99–104" } },
+    { "nome": "Comprimento", "valores": { "M": "92" } }
+  ]
+}
+// Response 200 — TabelaMedidasDTO (como no GET)
+// Response 400 — DADOS_INVALIDOS, com a mensagem do primeiro problema:
+{ "erro": "Informe o nome da medida", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "A medida \"Busto\" aparece mais de uma vez", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "Cada valor da tabela pode ter no máximo 20 caracteres", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "Tamanho inválido: use P, M, G ou GG", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "A tabela pode ter no máximo 20 medidas", "codigo": "DADOS_INVALIDOS" }
+// Response 404
+{ "erro": "Categoria não encontrada", "codigo": "RECURSO_NAO_ENCONTRADO" }
+```
+
+`DELETE /admin/categorias/{id}/medidas` — apaga a tabela inteira (a categoria continua existindo).
+
+```json
+// Response 204 — sem corpo
+// Response 404 — RECURSO_NAO_ENCONTRADO
 ```
 
 ---
