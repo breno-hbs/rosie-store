@@ -19,6 +19,10 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /admin/produtos` | Implementado (exige token `ADMIN`; 201) | `ProdutoAdminDTO` |
 | `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa) | `ProdutoAdminDTO` |
 | `DELETE /admin/produtos/{id}` | Implementado (exige token `ADMIN`; 204, só desativa) | — |
+| `GET /admin/categorias` | Implementado (exige token `ADMIN`) | lista de `CategoriaAdminDTO` |
+| `POST /admin/categorias` | Implementado (exige token `ADMIN`; 201; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
+| `PUT /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 404; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
+| `DELETE /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 204; 404; 409 com `CATEGORIA_EM_USO`) | — |
 | Demais endpoints | Não implementados | — |
 
 ---
@@ -48,6 +52,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada ou usuário sem permissão (mesma resposta nos três casos) |
 | `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado ou expirado |
 | `ACESSO_NEGADO` | 403 | Token válido, mas sem a role exigida (ex.: token de cliente em `/admin/**`) |
+| `CATEGORIA_DUPLICADA` | 409 | Criar ou renomear categoria com um nome que já existe (sem diferenciar maiúsculas) |
+| `CATEGORIA_EM_USO` | 409 | Remover categoria que ainda tem produtos (ativos ou inativos); `erro` diz quantos |
 
 ---
 
@@ -416,11 +422,58 @@ Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` a
 
 ---
 
-## Painel admin — Categorias (RF17)
+## Painel admin — Categorias (RF17) — requer autenticação ADMIN
 
-- `GET /admin/categorias` — lista todas
-- `POST /admin/categorias` — body: `{ "nome": "Acessórios" }`
-- `DELETE /admin/categorias/{id}`
+O nome é obrigatório, tem até 80 caracteres e é salvo sem os espaços das pontas. Dois nomes iguais sem diferenciar maiúsculas (`Bolsas` e `BOLSAS`) contam como duplicados. O `GET /categorias` público continua igual (só `id` e `nome`).
+
+### Listar categorias
+`GET /admin/categorias`
+
+Todas as categorias, ordenadas por nome, com a quantidade de produtos ligados a cada uma (ativos e inativos).
+
+```json
+// Response 200 — lista de CategoriaAdminDTO
+[
+  { "id": 2, "nome": "Calça", "quantidadeProdutos": 0 },
+  { "id": 1, "nome": "Vestido", "quantidadeProdutos": 4 }
+]
+```
+
+### Criar categoria
+`POST /admin/categorias`
+
+```json
+// Request — CategoriaRequestDTO
+{ "nome": "Acessórios" }
+// Response 201 — CategoriaAdminDTO
+{ "id": 5, "nome": "Acessórios", "quantidadeProdutos": 0 }
+// Response 400 — nome vazio ou com mais de 80 caracteres
+{ "erro": "Informe o nome da categoria", "codigo": "DADOS_INVALIDOS" }
+// Response 409 — já existe categoria com esse nome
+{ "erro": "Já existe uma categoria com esse nome", "codigo": "CATEGORIA_DUPLICADA" }
+```
+
+### Renomear categoria
+`PUT /admin/categorias/{id}` — mesmo body e mesmas validações do POST. Mudar só maiúsculas/minúsculas do próprio nome é permitido.
+
+```json
+// Response 200 — CategoriaAdminDTO
+{ "id": 5, "nome": "Bijuterias", "quantidadeProdutos": 0 }
+// Response 404 — RECURSO_NAO_ENCONTRADO; 409 — CATEGORIA_DUPLICADA
+```
+
+### Remover categoria
+`DELETE /admin/categorias/{id}`
+
+Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porque continua ligado à categoria (o `DELETE /admin/produtos/{id}` só desativa): para liberar a categoria, mude os produtos de categoria.
+
+```json
+// Response 204 — sem corpo
+// Response 404
+{ "erro": "Categoria não encontrada", "codigo": "RECURSO_NAO_ENCONTRADO" }
+// Response 409
+{ "erro": "Não dá para remover \"Vestido\": a categoria tem 4 produtos. Mova os produtos para outra categoria antes.", "codigo": "CATEGORIA_EM_USO" }
+```
 
 ---
 

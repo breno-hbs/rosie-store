@@ -27,4 +27,7 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
     // GET /admin/produtos — todos, inclusive os inativos, mais recentes primeiro (RF14)
     @EntityGraph(attributePaths = "categoria")
     List<Produto> findAllByOrderByIdDesc();
+
+    // DELETE /admin/categorias/{id} — categoria com produto (ativo ou inativo) não pode sair (RF17)
+    long countByCategoriaId(Long categoriaId);
 }

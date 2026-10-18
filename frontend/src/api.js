@@ -187,3 +187,25 @@ export function atualizarProduto(id, dados, opcoes) {
 export function desativarProduto(id, opcoes) {
   return deleteAdmin(`/admin/produtos/${id}`, opcoes)
 }
+
+// GET /admin/categorias → [{ id, nome, quantidadeProdutos }], ordenado por nome
+export function listarCategoriasAdmin(opcoes) {
+  return getAdmin('/admin/categorias', opcoes)
+}
+
+// POST /admin/categorias → { id, nome, quantidadeProdutos }
+// Nome repetido (sem diferenciar maiúsculas): ApiError com codigo CATEGORIA_DUPLICADA (409)
+export function criarCategoria(nome, opcoes) {
+  return postAdmin('/admin/categorias', { nome }, opcoes)
+}
+
+// PUT /admin/categorias/{id} → { id, nome, quantidadeProdutos }
+export function renomearCategoria(id, nome, opcoes) {
+  return putAdmin(`/admin/categorias/${id}`, { nome }, opcoes)
+}
+
+// DELETE /admin/categorias/{id} → null
+// Categoria com produtos (ativos ou não): ApiError com codigo CATEGORIA_EM_USO (409)
+export function removerCategoria(id, opcoes) {
+  return deleteAdmin(`/admin/categorias/${id}`, opcoes)
+}

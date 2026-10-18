@@ -1,0 +1,114 @@
+/* Gestão de categorias (Figma: "Admin — Gestão de Categorias"). Campo + botão, depois a lista. */
+
+.admin-categorias {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.admin-categorias__form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.admin-categorias__campo {
+  flex: 1;
+  min-width: 0;
+  max-width: 400px;
+}
+
+.admin-categorias__adicionar {
+  min-height: 48px;
+  padding: 14px 22px;
+}
+
+/* Erro do formulário ou da linha: mesmo tom do aviso do login */
+.admin-categorias__aviso {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+.admin-categorias__form + .admin-categorias__aviso {
+  margin-top: -12px;
+}
+
+.admin-categorias__estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+}
+
+.admin-categorias__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.admin-categorias__item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.admin-categorias__item .admin-categorias__aviso {
+  margin-top: 8px;
+}
+
+.admin-categorias__linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-categorias__nome {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: var(--tinta);
+}
+
+.admin-categorias__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 16px;
+}
+
+.admin-categorias__pergunta,
+.admin-categorias__acao {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--fumaca);
+}
+
+.admin-categorias__pergunta {
+  color: var(--acento);
+}
+
+.admin-categorias__acao:hover {
+  color: var(--tinta);
+}
+
+.admin-categorias__acao--forte {
+  font-weight: 400;
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-categorias__acao:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
