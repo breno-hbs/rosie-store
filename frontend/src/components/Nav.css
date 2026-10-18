@@ -5,7 +5,8 @@
     'logo acoes'
     'menu menu';
   align-items: center;
-  row-gap: 16px;
+  /* 16px até o texto dos links: os outros 13px ficam dentro da área de toque deles */
+  row-gap: 3px;
   padding: 16px var(--margem) 0;
   border-bottom: 1px solid var(--linha);
   font-size: 12px;
@@ -23,13 +24,20 @@
   display: flex;
   gap: 28px;
   margin: 0 calc(-1 * var(--margem));
-  padding: 0 var(--margem) 16px;
+  padding: 0 var(--margem) 3px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
+/* Área de toque de 38px de altura; o padding lateral (desfeito pela margem) cobre "Calça" */
 .nav__link {
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
+  min-height: 38px;
+  margin: 0 -7px;
+  padding: 0 7px;
   color: var(--acento);
   letter-spacing: inherit;
   line-height: inherit;

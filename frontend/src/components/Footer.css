@@ -43,6 +43,11 @@
   color: var(--acento);
 }
 
+/* Padding em elemento inline: área de toque de 38px sem mexer na lista */
+.footer__coluna a {
+  padding: 9px 0;
+}
+
 .footer__coluna a:hover {
   color: var(--tinta);
   text-decoration: underline;
