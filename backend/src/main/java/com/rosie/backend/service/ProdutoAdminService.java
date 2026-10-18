@@ -91,8 +91,9 @@ public class ProdutoAdminService {
                 .orElseThrow(() -> new DadosInvalidosException("Categoria não encontrada"));
 
         produto.setNome(dados.nome().trim());
-        produto.setDescricao(textoOpcional(dados.descricao()));
-        produto.setComposicao(textoOpcional(dados.composicao()));
+        // Ausente (null) mantém o texto atual, como destaque e ativo; vazio limpa (#50)
+        if (dados.descricao() != null) produto.setDescricao(textoOpcional(dados.descricao()));
+        if (dados.composicao() != null) produto.setComposicao(textoOpcional(dados.composicao()));
         produto.setPreco(dados.preco());
         produto.setCategoria(categoria);
         substituirEstoque(produto, quantidadesPorTamanho(dados.estoque()));

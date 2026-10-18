@@ -75,6 +75,7 @@ export default function AdminProdutos() {
       await atualizarProduto(produto.id, {
         nome: atual.nome,
         descricao: atual.descricao,
+        composicao: atual.composicao,
         preco: atual.preco,
         categoriaId: atual.categoria.id,
         destaque: atual.destaque,
