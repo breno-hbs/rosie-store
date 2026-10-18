@@ -162,7 +162,8 @@ export function deleteAdmin(caminho, opcoes) {
   return requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: true })
 }
 
-// GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, ativo, destaque }], inclusive inativos
+// GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, estoque: [{ tamanho, quantidade }], ativo, destaque }],
+// inclusive inativos
 export function listarProdutosAdmin(opcoes) {
   return getAdmin('/admin/produtos', opcoes)
 }
@@ -186,6 +187,12 @@ export function atualizarProduto(id, dados, opcoes) {
 // DELETE /admin/produtos/{id}: desativa (some da loja), não apaga
 export function desativarProduto(id, opcoes) {
   return deleteAdmin(`/admin/produtos/${id}`, opcoes)
+}
+
+// PUT /admin/produtos/{id}/estoque → { produtoId, estoque: [{ tamanho, quantidade }] } (completo, em P, M, G, GG)
+// Só mexe nos tamanhos enviados. Quantidade negativa: ApiError com codigo DADOS_INVALIDOS (400)
+export function atualizarEstoque(id, estoque, opcoes) {
+  return putAdmin(`/admin/produtos/${id}/estoque`, { estoque }, opcoes)
 }
 
 // GET /admin/categorias → [{ id, nome, quantidadeProdutos }], ordenado por nome

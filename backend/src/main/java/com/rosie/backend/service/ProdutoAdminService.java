@@ -1,6 +1,7 @@
 package com.rosie.backend.service;
 
 import com.rosie.backend.dto.EstoqueDTO;
+import com.rosie.backend.dto.EstoqueProdutoDTO;
 import com.rosie.backend.dto.ProdutoAdminDTO;
 import com.rosie.backend.dto.ProdutoAdminResumoDTO;
 import com.rosie.backend.dto.ProdutoRequestDTO;
@@ -20,7 +21,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-// CRUD de produtos do painel admin (RF14). Diferente do catálogo, enxerga os produtos inativos.
+// CRUD de produtos (RF14) e estoque por tamanho (RF16) do painel admin. Diferente do catálogo,
+// enxerga os produtos inativos.
 @Service
 @RequiredArgsConstructor
 public class ProdutoAdminService {
@@ -69,6 +71,15 @@ public class ProdutoAdminService {
         produto.setAtivo(false);
     }
 
+    // Diferente do PUT do produto, só mexe nos tamanhos enviados: os outros continuam como estão
+    @Transactional
+    public EstoqueProdutoDTO atualizarEstoque(Long id, List<EstoqueDTO> estoque) {
+        Produto produto = buscar(id);
+        aplicarQuantidades(produto, quantidadesPorTamanho(estoque));
+
+        return EstoqueProdutoDTO.from(produtoRepository.saveAndFlush(produto));
+    }
+
     private Produto buscar(Long id) {
         return produtoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
@@ -110,7 +121,11 @@ public class ProdutoAdminService {
     // antes dos DELETEs, o que bateria na unique (produto_id, tamanho)
     private void substituirEstoque(Produto produto, Map<Tamanho, Integer> quantidades) {
         produto.getEstoque().removeIf(linha -> !quantidades.containsKey(linha.getTamanho()));
+        aplicarQuantidades(produto, quantidades);
+    }
 
+    // Atualiza a quantidade dos tamanhos que o produto já tem e cria os que faltam
+    private void aplicarQuantidades(Produto produto, Map<Tamanho, Integer> quantidades) {
         quantidades.forEach((tamanho, quantidade) -> produto.getEstoque().stream()
                 .filter(linha -> linha.getTamanho() == tamanho)
                 .findFirst()

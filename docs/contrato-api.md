@@ -324,7 +324,11 @@ Todas as rotas exigem `Authorization: Bearer {token}` de `ADMIN` (401 `NAO_AUTEN
 ### Listar produtos do painel
 `GET /admin/produtos`
 
-Todos os produtos, ativos e inativos, do mais recente para o mais antigo. Sem paginação (o catálogo é pequeno). `estoqueTotal` é a soma das quantidades de todos os tamanhos.
+Todos os produtos, ativos e inativos, do mais recente para o mais antigo. Sem paginação (o catálogo é pequeno). `estoqueTotal` é a soma das quantidades de todos os tamanhos; `estoque` traz cada tamanho cadastrado, na ordem P, M, G, GG (tamanho que o produto não tem não aparece).
+
+Serve às duas telas do painel: "Lista de Produtos" usa `estoqueTotal` e "Gestão de Estoque" usa `estoque`.
+
+**Decisão (#16): sem `GET /admin/estoque` próprio.** A tela de estoque precisa dos mesmos produtos (inclusive os inativos) e da mesma ordem da lista; o `estoque` por tamanho já é carregado para calcular `estoqueTotal`, então acrescentar o campo aqui não custa consulta a mais e evita um segundo endpoint com o mesmo recorte.
 
 ```json
 // Response 200 — lista de ProdutoAdminResumoDTO
@@ -335,6 +339,7 @@ Todos os produtos, ativos e inativos, do mais recente para o mais antigo. Sem pa
     "preco": 189.00,
     "categoria": { "id": 1, "nome": "Vestido" },
     "estoqueTotal": 12,
+    "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 }, { "tamanho": "G", "quantidade": 4 } ],
     "ativo": true,
     "destaque": false
   }
@@ -422,7 +427,28 @@ Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` a
 ```json
 // Request
 { "estoque": [ { "tamanho": "P", "quantidade": 10 }, { "tamanho": "M", "quantidade": 0 } ] }
+// Response 200 — EstoqueProdutoDTO: o estoque completo do produto, na ordem P, M, G, GG
+{
+  "produtoId": 10,
+  "estoque": [
+    { "tamanho": "P", "quantidade": 10 },
+    { "tamanho": "M", "quantidade": 0 },
+    { "tamanho": "G", "quantidade": 4 }
+  ]
+}
+// Response 400
+{ "erro": "A quantidade não pode ser negativa", "codigo": "DADOS_INVALIDOS" }
 ```
+
+**Regra (#16): atualiza só os tamanhos enviados.** Tamanho que o produto já tem recebe a nova quantidade; tamanho que ele ainda não tem é cadastrado; tamanho que ficou de fora do body **continua como está** (diferente do `PUT /admin/produtos/{id}`, que substitui o estoque inteiro). Para esgotar um tamanho, envie `quantidade: 0`; não há como descadastrar um tamanho por aqui (use a edição do produto). Também funciona para produto inativo.
+
+| Campo | Regra |
+|---|---|
+| `estoque` | Obrigatório, com ao menos um item. Cada `tamanho` é `P`, `M`, `G` ou `GG`, sem repetir, e `quantidade` é inteiro `>= 0` (`0` = esgotado) |
+
+Mensagens de 400 (`DADOS_INVALIDOS`): "Informe ao menos um tamanho", "Tamanho inválido: use P, M, G ou GG", "Tamanho P repetido no estoque", "A quantidade não pode ser negativa", "Informe a quantidade do tamanho". Produto inexistente: 404 `RECURSO_NAO_ENCONTRADO`.
+
+Com todos os tamanhos zerados, o produto continua na vitrine, mas com `disponivel: false` em `GET /produtos` e todos os tamanhos desabilitados na Página de Produto.
 
 ---
 
