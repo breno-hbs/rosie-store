@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Etiqueta simulada · Rosie</title>
+    <style>
+      :root {
+        --tinta: #141311;
+        --papel: #faf8f4;
+      }
+      body {
+        margin: 0;
+        padding: 32px 16px;
+        font-family: 'Jost', system-ui, sans-serif;
+        color: var(--tinta);
+        background: var(--papel);
+      }
+      main {
+        max-width: 420px;
+        margin: 0 auto;
+        padding: 24px;
+        border: 1px dashed var(--tinta);
+      }
+      p {
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      code {
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Só no desenvolvimento (FRETE_SIMULADO=true, #25): o link de impressão da etiqueta de mentira
+         aponta para cá no lugar da etiqueta do Melhor Envio -->
+    <main>
+      <h1>Etiqueta simulada</h1>
+      <p>Esta etiqueta é de mentira: a API está com FRETE_SIMULADO ligado e não chamou o Melhor Envio.</p>
+      <p>Envio: <code id="envio"></code></p>
+    </main>
+    <script>
+      document.getElementById('envio').textContent = new URLSearchParams(location.search).get('envio') || '—'
+    </script>
+  </body>
+</html>
