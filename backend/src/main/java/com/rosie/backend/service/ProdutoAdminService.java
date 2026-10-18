@@ -80,10 +80,16 @@ public class ProdutoAdminService {
                 .orElseThrow(() -> new DadosInvalidosException("Categoria não encontrada"));
 
         produto.setNome(dados.nome().trim());
-        produto.setDescricao(dados.descricao() == null || dados.descricao().isBlank() ? null : dados.descricao().trim());
+        produto.setDescricao(textoOpcional(dados.descricao()));
+        produto.setComposicao(textoOpcional(dados.composicao()));
         produto.setPreco(dados.preco());
         produto.setCategoria(categoria);
         substituirEstoque(produto, quantidadesPorTamanho(dados.estoque()));
+    }
+
+    // Texto vazio ou só com espaços vira null, e a Página de Produto esconde o item
+    private String textoOpcional(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.trim();
     }
 
     // O formato de cada item já foi validado no DTO; aqui só falta barrar tamanho repetido

@@ -107,7 +107,7 @@ class ProdutoAdminServiceTests {
         entityManager.clear();
 
         ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoRequestDTO(
-                "Editado", "  ", new BigDecimal("150.50"), calca.getId(), null, null,
+                "Editado", "  ", null, new BigDecimal("150.50"), calca.getId(), null, null,
                 List.of(new EstoqueDTO("M", 0), new EstoqueDTO("GG", 7))));
 
         assertThat(editado.nome()).isEqualTo("Editado");
@@ -193,8 +193,59 @@ class ProdutoAdminServiceTests {
         assertThat(lista.indexOf(linhaInativo)).isLessThan(lista.indexOf(linhaAtivo));
     }
 
+    @Test
+    void composicaoESalvaELidaNoPainelENaVitrine() {
+        String composicao = "100% linho\nLavar à mão em água fria\nNão usar secadora";
+
+        ProdutoAdminDTO criado = produtoAdminService.criar(requestComComposicao("  " + composicao + "  "));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(criado.composicao()).isEqualTo(composicao);
+        assertThat(produtoAdminService.buscarPorId(criado.id()).composicao()).isEqualTo(composicao);
+        // as quebras de linha chegam na Página de Produto
+        assertThat(produtoService.buscarPorId(criado.id()).composicao()).isEqualTo(composicao);
+    }
+
+    @Test
+    void composicaoEOpcional() {
+        ProdutoAdminDTO semCampo = produtoAdminService.criar(request("Sem composição", vestido, false, null, null));
+        ProdutoAdminDTO emBranco = produtoAdminService.criar(requestComComposicao("   "));
+
+        assertThat(semCampo.composicao()).isNull();
+        assertThat(emBranco.composicao()).isNull();
+        assertThat(produtoService.buscarPorId(semCampo.id()).composicao()).isNull();
+    }
+
+    @Test
+    void atualizarComComposicaoVaziaLimpaOCampo() {
+        ProdutoAdminDTO criado = produtoAdminService.criar(requestComComposicao("Viscose"));
+        entityManager.flush();
+        entityManager.clear();
+
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), requestComComposicao(""));
+
+        assertThat(editado.composicao()).isNull();
+    }
+
+    @Test
+    void colunaComposicaoAceitaNulo() {
+        // produtos cadastrados antes da coluna existir ficam com null
+        Object nulavel = entityManager.createNativeQuery("""
+                SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'produto' AND COLUMN_NAME = 'composicao'
+                """).getSingleResult();
+
+        assertThat(nulavel).isEqualTo("YES");
+    }
+
     private ProdutoRequestDTO request(String nome, Categoria categoria, Boolean destaque, Boolean ativo, List<EstoqueDTO> estoque) {
-        return new ProdutoRequestDTO(nome, "Descrição de teste", new BigDecimal("189.00"), categoria.getId(),
+        return new ProdutoRequestDTO(nome, "Descrição de teste", null, new BigDecimal("189.00"), categoria.getId(),
                 destaque, ativo, estoque);
+    }
+
+    private ProdutoRequestDTO requestComComposicao(String composicao) {
+        return new ProdutoRequestDTO("Vestido Linho", "Descrição de teste", composicao, new BigDecimal("189.00"),
+                vestido.getId(), null, null, null);
     }
 }

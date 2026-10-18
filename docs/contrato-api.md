@@ -204,7 +204,7 @@ Cada item tem o mesmo formato de um item de `conteudo` em `GET /produtos` (`Prod
 ### Detalhe de um produto
 `GET /produtos/{id}`
 
-Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que não existe. `imagens` vem na ordem de exibição (a primeira é a principal) e `estoque` vem ordenado por tamanho (`P`, `M`, `G`, `GG`), só com os tamanhos cadastrados; `quantidade: 0` significa esgotado naquele tamanho.
+Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que não existe. `imagens` vem na ordem de exibição (a primeira é a principal), `composicao` ("Composição e cuidados", com quebras de linha `\n`) vem `null` quando não foi preenchida e `estoque` vem ordenado por tamanho (`P`, `M`, `G`, `GG`), só com os tamanhos cadastrados; `quantidade: 0` significa esgotado naquele tamanho.
 
 ```json
 // Response 200 — ProdutoDetalheDTO
@@ -212,6 +212,7 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
   "id": 10,
   "nome": "Conjunto Serpente",
   "descricao": "Tecido leve... Trocas aceitas em caso de defeito ou produto que não serviu.",
+  "composicao": "100% linho\nLavar à mão em água fria\nNão usar secadora",
   "preco": 189.00,
   "categoria": { "id": 1, "nome": "Vestido" },
   "imagens": ["https://.../1.jpg", "https://.../2.jpg"],
@@ -351,6 +352,7 @@ Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também respon
   "id": 10,
   "nome": "Conjunto Serpente",
   "descricao": "...",
+  "composicao": "...",
   "preco": 189.00,
   "categoria": { "id": 1, "nome": "Vestido" },
   "imagens": ["https://.../1.jpg"],
@@ -368,6 +370,7 @@ Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também respon
 {
   "nome": "Conjunto Serpente",
   "descricao": "...",
+  "composicao": "100% linho\nLavar à mão em água fria",
   "preco": 189.00,
   "categoriaId": 1,
   "destaque": false,
@@ -384,6 +387,7 @@ Campos:
 |---|---|
 | `nome` | Obrigatório, até 150 caracteres (espaços nas pontas são removidos) |
 | `descricao` | Opcional; vazio vira `null` |
+| `composicao` | Opcional, texto livre ("Composição e cuidados"; quebras de linha são mantidas); vazio vira `null`, e a Página de Produto esconde o item. No PUT, vazio limpa o campo |
 | `preco` | Obrigatório, maior que zero, até 2 casas decimais |
 | `categoriaId` | Obrigatório. Categoria que não existe responde **400** `DADOS_INVALIDOS` ("Categoria não encontrada"), não 404: o erro está no corpo, não no recurso da URL |
 | `destaque` | Opcional (padrão `false`). Marca o produto para o carrossel e o Best Sellers da Home (`GET /produtos/destaques`) |

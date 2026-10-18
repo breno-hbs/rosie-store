@@ -9,6 +9,7 @@ const VAZIO = {
   categoriaId: '',
   preco: '',
   descricao: '',
+  composicao: '',
   destaque: false,
   ativo: true,
   estoque: { P: '', M: '', G: '', GG: '' },
@@ -33,6 +34,7 @@ function doProduto(produto) {
     categoriaId: String(produto.categoria.id),
     preco: mostrarPreco(produto.preco),
     descricao: produto.descricao ?? '',
+    composicao: produto.composicao ?? '',
     destaque: produto.destaque,
     ativo: produto.ativo,
     estoque,
@@ -94,6 +96,7 @@ export default function AdminProdutoForm({ id }) {
     const dados = {
       nome: form.nome,
       descricao: form.descricao,
+      composicao: form.composicao,
       preco,
       categoriaId: form.categoriaId === '' ? null : Number(form.categoriaId),
       destaque: form.destaque,
@@ -206,6 +209,19 @@ export default function AdminProdutoForm({ id }) {
                 rows={3}
                 value={form.descricao}
                 onChange={(e) => alterar('descricao', e.target.value)}
+                disabled={salvando}
+              />
+            </label>
+
+            <label className="campo">
+              <span className="eyebrow">Composição e cuidados</span>
+              <textarea
+                className="campo__caixa produto-form__descricao"
+                name="composicao"
+                placeholder={'Ex: 100% linho\nLavar à mão em água fria'}
+                rows={3}
+                value={form.composicao}
+                onChange={(e) => alterar('composicao', e.target.value)}
                 disabled={salvando}
               />
             </label>

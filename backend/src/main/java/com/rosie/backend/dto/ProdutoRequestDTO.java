@@ -19,6 +19,8 @@ public record ProdutoRequestDTO(
 
         String descricao,
 
+        String composicao,
+
         @NotNull(message = "Informe o preço")
         @DecimalMin(value = "0", inclusive = false, message = "O preço deve ser maior que zero")
         @Digits(integer = 8, fraction = 2, message = "Preço inválido: use até 2 casas decimais")
