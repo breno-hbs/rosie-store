@@ -1,0 +1,160 @@
+/* Páginas de volta do Mercado Pago e pagamento simulado (#24). Sem tela no Figma: mesmos tokens,
+   títulos e resumo do Checkout. Mobile-first: status em cima, resumo embaixo; lado a lado no desktop. */
+
+.retorno {
+  display: flex;
+  flex-direction: column;
+  padding: 40px var(--margem) 60px;
+}
+
+.retorno--simulado {
+  min-height: 100vh;
+}
+
+.retorno__aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.retorno__conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.retorno__status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.retorno__texto {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.retorno__nota {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.retorno__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.retorno__resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid var(--linha);
+  background: var(--papel);
+}
+
+.retorno__itens {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.retorno__item {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+/* Foto 4:5 como no resto da loja */
+.retorno__foto {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--foto-vazia);
+}
+
+.retorno__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.retorno__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.retorno__item-nome,
+.retorno__item-preco {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.retorno__valores {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+}
+
+.retorno__linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.retorno__linha dt {
+  color: var(--fumaca);
+}
+
+.retorno__linha dd {
+  margin: 0;
+  text-align: right;
+  color: var(--acento);
+}
+
+.retorno__linha--total {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.retorno__linha--total dt,
+.retorno__linha--total dd {
+  color: var(--tinta);
+}
+
+.retorno__entrega {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--linha);
+}
+
+@media (min-width: 1024px) {
+  .retorno__conteudo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+    gap: 50px;
+  }
+}

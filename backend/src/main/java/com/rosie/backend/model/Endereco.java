@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "endereco")
@@ -42,6 +43,14 @@ public class Endereco {
     @Column(nullable = false, length = 100)
     private String cidade;
 
+    // Sigla da UF (SP, RJ...)
     @Column(nullable = false, length = 2)
     private String estado;
+
+    // Endereço já usado num pedido não é apagado nem alterado (o pedido guarda para onde foi): ao remover
+    // ou editar, ele só sai da lista da cliente (#24). Ver EnderecoService.
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    @Builder.Default
+    private Boolean arquivado = false;
 }
