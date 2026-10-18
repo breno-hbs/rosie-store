@@ -26,10 +26,9 @@ rosie-store/
 
 ## Equipe
 
-- **Breno** — Feature: Catálogo (Home, Página de Produto)
-- **Matheus** — Feature: Painel Admin (CRUD de produtos, autenticação)
+- **Breno** — desenvolvimento completo: Catálogo, Painel Admin e Compra, back-end e front-end.
 
-Divisão por feature: cada pessoa desenvolve back-end e front-end da própria funcionalidade, ponta a ponta.
+O Matheus participou da descoberta e do planejamento até outubro de 2026.
 
 ## Pré-requisitos
 

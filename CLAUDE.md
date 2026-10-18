@@ -1,6 +1,6 @@
 # Rosie — e-commerce
 
-Projeto freelance para a Roseane (@rosie.sttore). Equipe: Breno (Catálogo) e Matheus (Painel Admin), cada um ponta a ponta na sua feature.
+Projeto freelance para a Roseane (@rosie.sttore). Desenvolvedor: Breno (solo, desde que o Matheus saiu do projeto em outubro de 2026), cuidando de todas as features.
 
 ## Stack
 - Back-end: Java 17, Spring Boot, MySQL 8 (banco `rosie_db`), porta 8080

@@ -1,6 +1,6 @@
 # Contrato da API
 
-Define os endpoints REST, formato de requisição/resposta e convenções compartilhadas entre Catálogo (Breno) e Painel Admin (Matheus), baseado no modelo de dados MySQL e nos requisitos funcionais (`docs/requisitos.md`).
+Define os endpoints REST, formato de requisição/resposta e convenções compartilhadas entre o Catálogo e o Painel Admin, baseado no modelo de dados MySQL e nos requisitos funcionais (`docs/requisitos.md`).
 
 Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verdade: **se um endpoint mudar, atualize este arquivo no mesmo PR.**
 
@@ -326,5 +326,4 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
 
 ## Próximos passos
 
-- [ ] Breno e Matheus revisarem juntos e ajustarem nomes de campos se necessário
 - [ ] Definir mensagens de erro específicas conforme forem surgindo casos reais
