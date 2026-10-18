@@ -289,6 +289,34 @@
   opacity: 1;
 }
 
+/* Estoque só para leitura na edição (#47) */
+dl.produto-form__tamanhos {
+  margin: 0;
+}
+
+.produto-form__quantidade {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--tinta);
+}
+
+.produto-form__oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.produto-form__link {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .produto-form__opcao {
   display: flex;
   align-items: flex-start;
