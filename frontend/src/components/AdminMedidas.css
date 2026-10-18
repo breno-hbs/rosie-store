@@ -1,6 +1,7 @@
 /* Tabela de medidas da categoria (#20). Sem frame no Figma: segue a Gestão de Estoque.
    No celular cada medida vira um bloco (nome, os quatro tamanhos lado a lado e as ações);
-   a partir de 768px, uma tabela com as colunas Medida, P, M, G e GG. */
+   a partir de 1024px, uma tabela com as colunas Medida, P, M, G e GG (antes disso, ao lado da
+   sidebar, as colunas cortam faixas como "107–112"). */
 
 .admin-medidas {
   display: flex;
@@ -261,7 +262,9 @@
   .admin-medidas {
     margin-top: 0;
   }
+}
 
+@media (min-width: 1024px) {
   .admin-medidas__tabela {
     display: table;
     table-layout: fixed;
