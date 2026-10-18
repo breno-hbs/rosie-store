@@ -1,0 +1,344 @@
+/* Seção Produtos do painel (Figma: "Admin — Lista de Produtos" e "Admin — Cadastro de Produto") */
+
+.admin-produtos {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.admin-produtos__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-produtos__novo {
+  min-height: 60px;
+  padding: 14px 22px;
+}
+
+.admin-produtos__aviso,
+.admin-produtos__estado {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-produtos__estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  color: var(--fumaca);
+}
+
+/* Tabela: no celular cada produto vira um bloco; a partir de 768px, as colunas do Figma */
+.admin-produtos__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid var(--linha);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-produtos__tabela thead {
+  display: none;
+}
+
+.admin-produtos__tabela tr {
+  display: block;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.admin-produtos__tabela th,
+.admin-produtos__tabela td {
+  display: block;
+  padding: 0;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.admin-produtos__tabela td[data-rotulo]::before {
+  content: attr(data-rotulo) ': ';
+  color: var(--fumaca);
+}
+
+.admin-produtos__nome {
+  color: var(--tinta);
+}
+
+.admin-produtos__marca {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 1px solid var(--linha);
+  vertical-align: 2px;
+}
+
+.admin-produtos__inativo td {
+  color: var(--fumaca);
+}
+
+.admin-produtos__acoes {
+  margin-top: 8px;
+}
+
+.admin-produtos__acao {
+  color: var(--acento);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+
+.admin-produtos__acao:hover {
+  color: var(--tinta);
+  text-decoration-color: currentColor;
+}
+
+.admin-produtos__acao:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+@media (min-width: 768px) {
+  .admin-produtos {
+    margin-top: 0;
+  }
+
+  .admin-produtos__tabela {
+    display: table;
+    table-layout: fixed;
+  }
+
+  .admin-produtos__tabela thead {
+    display: table-header-group;
+  }
+
+  .admin-produtos__tabela tr {
+    display: table-row;
+    padding: 0;
+  }
+
+  .admin-produtos__tabela th,
+  .admin-produtos__tabela td {
+    display: table-cell;
+    padding: 16px 16px 16px 0;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .admin-produtos__tabela th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  /* Larguras do Figma: 280 / 160 / 120 / 100 / 140 */
+  .admin-produtos__tabela th:nth-child(1) { width: 35%; }
+  .admin-produtos__tabela th:nth-child(2) { width: 20%; }
+  .admin-produtos__tabela th:nth-child(3) { width: 15%; }
+  .admin-produtos__tabela th:nth-child(4) { width: 12%; }
+  .admin-produtos__tabela th:nth-child(5) { width: 18%; }
+
+  .admin-produtos__tabela td[data-rotulo]::before {
+    content: none;
+  }
+
+  .admin-produtos__acoes {
+    margin-top: 0;
+  }
+}
+
+/* ---------- Cadastro e edição ---------- */
+
+.produto-form__voltar {
+  align-self: flex-start;
+}
+
+.produto-form__voltar:hover {
+  color: var(--tinta);
+}
+
+.produto-form {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.produto-form__fotos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 300px;
+}
+
+/* Placeholder até o upload de fotos (#15) */
+.produto-form__fotos-caixa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  aspect-ratio: 1;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+  text-align: center;
+  border: 1px dashed var(--linha);
+}
+
+.produto-form__dica {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.produto-form__campos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.produto-form__linha {
+  display: grid;
+  gap: 18px 16px;
+}
+
+.produto-form__select {
+  position: relative;
+}
+
+.produto-form__select select {
+  appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+/* Seta do select desenhada com borda (sem imagem nem gradiente) */
+.produto-form__select::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  bottom: 24px;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid var(--fumaca);
+  border-bottom: 1px solid var(--fumaca);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.produto-form__descricao {
+  min-height: 98px;
+  resize: vertical;
+}
+
+.produto-form__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.produto-form__grupo legend {
+  padding: 0;
+}
+
+.produto-form__tamanhos {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.produto-form__tamanho {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--linha);
+}
+
+.produto-form__tamanho:focus-within {
+  border-color: var(--tinta);
+}
+
+.produto-form__tamanho input {
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--tinta);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.produto-form__tamanho input::placeholder {
+  color: var(--pedra);
+  opacity: 1;
+}
+
+.produto-form__opcao {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.produto-form__opcao input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--tinta);
+  cursor: pointer;
+}
+
+.produto-form__opcao-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--tinta);
+}
+
+.produto-form__erro {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+.produto-form__salvar {
+  width: 100%;
+  min-height: 60px;
+}
+
+@media (min-width: 768px) {
+  .produto-form__linha {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .produto-form {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .produto-form__fotos {
+    flex-shrink: 0;
+    width: 300px;
+  }
+}

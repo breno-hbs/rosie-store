@@ -143,3 +143,47 @@ export function buscarUsuarioAdmin(opcoes) {
 export function sairDoPainel() {
   voltarParaLogin()
 }
+
+// Helpers genéricos das rotas /admin/** (sempre com token). Erro vira ApiError; 401 volta ao login.
+export function getAdmin(caminho, opcoes) {
+  return requisicao(caminho, { ...opcoes, autenticado: true })
+}
+
+export function postAdmin(caminho, corpo, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'POST', corpo, autenticado: true })
+}
+
+export function putAdmin(caminho, corpo, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'PUT', corpo, autenticado: true })
+}
+
+// Respostas 204 (sem corpo) resolvem com null
+export function deleteAdmin(caminho, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: true })
+}
+
+// GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, ativo, destaque }], inclusive inativos
+export function listarProdutosAdmin(opcoes) {
+  return getAdmin('/admin/produtos', opcoes)
+}
+
+// GET /admin/produtos/{id} → detalhe do produto + { ativo, destaque }
+export function buscarProdutoAdmin(id, opcoes) {
+  return getAdmin(`/admin/produtos/${id}`, opcoes)
+}
+
+// POST /admin/produtos; body: { nome, descricao, preco, categoriaId, destaque, estoque: [{ tamanho, quantidade }] }
+// Campo inválido: ApiError com codigo DADOS_INVALIDOS (status 400) e a mensagem do campo
+export function criarProduto(dados, opcoes) {
+  return postAdmin('/admin/produtos', dados, opcoes)
+}
+
+// PUT /admin/produtos/{id}; mesmo body do POST, mais `ativo` opcional (true reativa)
+export function atualizarProduto(id, dados, opcoes) {
+  return putAdmin(`/admin/produtos/${id}`, dados, opcoes)
+}
+
+// DELETE /admin/produtos/{id}: desativa (some da loja), não apaga
+export function desativarProduto(id, opcoes) {
+  return deleteAdmin(`/admin/produtos/${id}`, opcoes)
+}
