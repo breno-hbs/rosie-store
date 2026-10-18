@@ -16,6 +16,10 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /auth/registrar` | Implementado (público; 201; 400 `DADOS_INVALIDOS`; 409 com `EMAIL_JA_CADASTRADO`) | `LoginResponseDTO` |
 | `POST /auth/login` | Implementado (público; só `CLIENTE`; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /auth/me` | Implementado (exige token `CLIENTE`) | `UsuarioResumoDTO` |
+| `GET /carrinho` | Implementado (exige token `CLIENTE`; marca itens que ficaram indisponíveis sem apagá-los) | `CarrinhoDTO` |
+| `POST /carrinho/itens` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
+| `PUT /carrinho/itens/{itemId}` | Implementado (exige token `CLIENTE`; 400; 404; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
+| `DELETE /carrinho/itens/{itemId}` | Implementado (exige token `CLIENTE`; 200 com o carrinho; 404) | `CarrinhoDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
@@ -69,6 +73,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `CATEGORIA_DUPLICADA` | 409 | Criar ou renomear categoria com um nome que já existe (sem diferenciar maiúsculas) |
 | `CATEGORIA_EM_USO` | 409 | Remover categoria que ainda tem produtos (ativos ou inativos); `erro` diz quantos |
 | `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
+| `ESTOQUE_INSUFICIENTE` | 409 | Carrinho: a quantidade pedida (somada à que já está na sacola, no POST) passa do estoque do tamanho, ou o tamanho está esgotado; `erro` traz a mensagem pronta ("Só temos 3 no tamanho P") |
+| `PRODUTO_INDISPONIVEL` | 409 | Carrinho: adicionar ou mudar a quantidade de um produto desativado pela Roseane |
 
 ---
 
@@ -315,31 +321,91 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
 
 ## Carrinho (RF09) — requer autenticação CLIENTE
 
+Sempre o carrinho da cliente do token (o id vem do `sub` do JWT; nada de id de usuário na URL ou no corpo). Token de admin responde 403 `ACESSO_NEGADO`. **Todas as rotas respondem com o carrinho atualizado** (`CarrinhoDTO`, o mesmo do GET), para a tela e o número da "Sacola" na Nav se atualizarem com uma chamada só.
+
+**Decisão (#22): o carrinho só confere o estoque, não baixa.** Quem baixa é o checkout (#24), na hora do pedido. Por isso duas clientes podem ter a última peça na sacola ao mesmo tempo; o checkout confere de novo.
+
 ### Ver carrinho
 `GET /carrinho`
 
+Itens na ordem em que entraram. `preco` e `subtotal` usam o **preço atual** do produto (não o do momento em que o item entrou). `imagemPrincipal` já vem em 4:5 (ver "Corte 4:5 na entrega"), `null` sem foto.
+
 ```json
-// Response 200
+// Response 200 — CarrinhoDTO
 {
   "itens": [
-    { "id": 1, "produto": { "id": 10, "nome": "Conjunto Serpente", "preco": 189.00 }, "tamanho": "M", "quantidade": 1 }
+    {
+      "id": 1,
+      "produto": { "id": 10, "nome": "Conjunto Serpente", "preco": 189.00, "imagemPrincipal": "https://.../1.jpg" },
+      "tamanho": "M",
+      "quantidade": 2,
+      "subtotal": 378.00,
+      "estoqueDisponivel": 5,
+      "disponivel": true,
+      "motivoIndisponivel": null
+    },
+    {
+      "id": 2,
+      "produto": { "id": 10, "nome": "Conjunto Serpente", "preco": 189.00, "imagemPrincipal": "https://.../1.jpg" },
+      "tamanho": "P",
+      "quantidade": 4,
+      "subtotal": 756.00,
+      "estoqueDisponivel": 3,
+      "disponivel": false,
+      "motivoIndisponivel": "ESTOQUE_INSUFICIENTE"
+    }
   ],
-  "subtotal": 189.00
+  "quantidadeItens": 6,
+  "subtotal": 378.00,
+  "temIndisponiveis": true
 }
 ```
+
+| Campo | Significado |
+|---|---|
+| `itens[].subtotal` | `preco × quantidade` do item, mesmo se ele estiver indisponível |
+| `itens[].estoqueDisponivel` | Estoque atual do tamanho (tamanho sem estoque cadastrado = 0). O front usa para travar o "+" |
+| `itens[].disponivel` / `motivoIndisponivel` | Item que ficou indisponível **depois** de adicionado continua no carrinho (a API não apaga sozinha), com `disponivel: false` e o motivo: `PRODUTO_INATIVO` (a Roseane desativou o produto), `TAMANHO_ESGOTADO` (estoque do tamanho zerou) ou `ESTOQUE_INSUFICIENTE` (estoque menor que a quantidade). A cliente remove ou diminui a quantidade |
+| `quantidadeItens` | Soma das quantidades de todos os itens, inclusive indisponíveis: é o número da "Sacola" na Nav |
+| `subtotal` | Soma dos `subtotal` **só dos itens disponíveis** (o que dá para comprar agora). Sem frete: ele é calculado no checkout |
+| `temIndisponiveis` | `true` se algum item está com `disponivel: false` |
+
+Carrinho vazio: `{ "itens": [], "quantidadeItens": 0, "subtotal": 0, "temIndisponiveis": false }`.
 
 ### Adicionar item
 `POST /carrinho/itens`
 
+Mesmo produto e tamanho **somam no item que já existe** (uma linha por produto + tamanho). A soma também respeita o estoque.
+
 ```json
 // Request
 { "produtoId": 10, "tamanho": "M", "quantidade": 1 }
-// Response 201 (retorna o carrinho atualizado, igual ao GET acima)
+// Response 201 — CarrinhoDTO (o carrinho inteiro, igual ao GET)
+// Response 409 — passou do estoque do tamanho
+{ "erro": "Só temos 3 no tamanho P, e você já tem 2 na sacola", "codigo": "ESTOQUE_INSUFICIENTE" }
+// Response 409 — tamanho esgotado ou sem estoque cadastrado
+{ "erro": "O tamanho GG está esgotado", "codigo": "ESTOQUE_INSUFICIENTE" }
+// Response 409 — produto desativado
+{ "erro": "Este produto não está mais à venda", "codigo": "PRODUTO_INDISPONIVEL" }
+// Response 400
+{ "erro": "Escolha um tamanho", "codigo": "DADOS_INVALIDOS" }
 ```
 
-### Atualizar quantidade / Remover item
-- `PUT /carrinho/itens/{itemId}` — body: `{ "quantidade": 2 }`
-- `DELETE /carrinho/itens/{itemId}`
+| Campo | Regra |
+|---|---|
+| `produtoId` | Obrigatório. Produto que não existe responde **400** `DADOS_INVALIDOS` ("Produto não encontrado"), como `categoriaId` no cadastro de produto: o erro está no corpo, não no recurso da URL. Produto inativo responde **409** `PRODUTO_INDISPONIVEL` |
+| `tamanho` | Obrigatório, `P`, `M`, `G` ou `GG` (400 se outro). Tamanho sem linha de estoque cadastrada conta como esgotado: **409** `ESTOQUE_INSUFICIENTE` |
+| `quantidade` | Obrigatório, de 1 a 99 (400 fora disso). Quantidade + o que já está na sacola acima do estoque do tamanho: **409** `ESTOQUE_INSUFICIENTE`, e nada muda |
+
+### Atualizar quantidade
+`PUT /carrinho/itens/{itemId}` — body: `{ "quantidade": 2 }` → **200** com o `CarrinhoDTO`
+
+`quantidade` é a nova quantidade do item (não um acréscimo), de 1 a 99; para tirar o item, use o DELETE. Acima do estoque do tamanho: **409** `ESTOQUE_INSUFICIENTE`. Diminuir até o estoque deixa um item `ESTOQUE_INSUFICIENTE` disponível de novo. Item de produto desativado: **409** `PRODUTO_INDISPONIVEL` (só dá para remover).
+
+### Remover item
+`DELETE /carrinho/itens/{itemId}` → **200** com o `CarrinhoDTO` (não 204: a resposta é o carrinho atualizado, como nas outras rotas)
+
+Nos dois, `itemId` que não existe **ou é de outra cliente** responde **404** `RECURSO_NAO_ENCONTRADO` (a mesma resposta, para não revelar itens alheios).
 
 ---
 
