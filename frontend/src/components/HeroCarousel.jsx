@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './HeroCarousel.css'
 
-// Slides vêm da listagem de produtos: o contrato ainda não tem "destaques" próprios.
+// Slides vêm de GET /produtos/destaques; sem destaques, a Home passa os primeiros da listagem.
 export default function HeroCarousel({ produtos }) {
   const [indiceEscolhido, setIndice] = useState(0)
   const slides = produtos.filter((produto) => produto.imagemPrincipal)
