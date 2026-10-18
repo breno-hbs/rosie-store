@@ -111,8 +111,9 @@ class ProdutoImagemAdminControllerTest {
         mockMvc.perform(comAdmin(multipart(rota(produto.getId())).file(arquivo("foto.jpg", JPG))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.url").value("https://res.cloudinary.test/rosie/produtos/teste-1.jpg"))
-                .andExpect(jsonPath("$.ordem").value(2));
+                .andExpect(jsonPath("$.url").value(ArmazenamentoImagensFalso.ENTREGA + "rosie/produtos/teste-1.jpg"))
+                .andExpect(jsonPath("$.ordem").value(2))
+                .andExpect(jsonPath("$.enquadramento").value("AUTOMATICO"));
         entityManager.clear();
 
         // o painel recebe as fotos com id; a loja, só as URLs na ordem
@@ -122,10 +123,30 @@ class ProdutoImagemAdminControllerTest {
                 .andExpect(jsonPath("$.imagens[0].id").value(idsAntigos.get(0)))
                 .andExpect(jsonPath("$.imagens[0].url").value("https://placehold.co/a"))
                 .andExpect(jsonPath("$.imagens[0].ordem").value(0))
-                .andExpect(jsonPath("$.imagens[2].url").value("https://res.cloudinary.test/rosie/produtos/teste-1.jpg"));
+                .andExpect(jsonPath("$.imagens[2].url").value(ArmazenamentoImagensFalso.ENTREGA + "rosie/produtos/teste-1.jpg"));
         mockMvc.perform(get("/produtos/" + produto.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.imagens[2]").value("https://res.cloudinary.test/rosie/produtos/teste-1.jpg"));
+                .andExpect(jsonPath("$.imagens[2]").value(ArmazenamentoImagensFalso.ENTREGA + "rosie/produtos/teste-1.jpg"));
+    }
+
+    @Test
+    void uploadComEnquadramentoCortaPeloTopo() throws Exception {
+        mockMvc.perform(comAdmin(multipart(rota(produto.getId())).file(arquivo("foto.jpg", JPG))
+                        .param("enquadramento", "TOPO")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.url").value("https://res.cloudinary.com/rosie-teste/image/upload/"
+                        + "c_fill,ar_4:5,g_north/c_limit,w_1000/f_auto,q_auto/v1/rosie/produtos/teste-1.jpg"))
+                .andExpect(jsonPath("$.enquadramento").value("TOPO"));
+    }
+
+    @Test
+    void enquadramentoInvalidoResponde400() throws Exception {
+        mockMvc.perform(comAdmin(multipart(rota(produto.getId())).file(arquivo("foto.jpg", JPG))
+                        .param("enquadramento", "esquerda")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Enquadramento inválido: use AUTOMATICO, CENTRO ou TOPO"))
+                .andExpect(jsonPath("$.codigo").value("DADOS_INVALIDOS"));
+        assertThat(armazenamento.enviados).isEmpty();
     }
 
     @Test

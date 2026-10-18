@@ -4,6 +4,7 @@ import com.rosie.backend.dto.ProdutoImagemDTO;
 import com.rosie.backend.exception.ArquivoInvalidoException;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
+import com.rosie.backend.model.Enquadramento;
 import com.rosie.backend.model.Produto;
 import com.rosie.backend.model.ProdutoImagem;
 import com.rosie.backend.repository.ProdutoRepository;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -40,17 +42,20 @@ public class ProdutoImagemService {
         this.tamanhoMaximo = tamanhoMaximo;
     }
 
-    // A foto nova entra no fim da galeria
+    // A foto nova entra no fim da galeria. O Cloudinary guarda o original; o corte 4:5 sai na URL
+    // de entrega (UrlEntregaImagem), com o enquadramento escolhido no painel (vazio = automático).
     @Transactional
-    public ProdutoImagemDTO enviar(Long produtoId, MultipartFile arquivo) {
+    public ProdutoImagemDTO enviar(Long produtoId, MultipartFile arquivo, String enquadramento) {
         Produto produto = buscarProduto(produtoId);
         byte[] conteudo = validar(arquivo);
+        Enquadramento corte = enquadramento(enquadramento);
 
         ImagemArmazenada armazenada = armazenamento.enviar(conteudo);
         ProdutoImagem imagem = ProdutoImagem.builder()
                 .produto(produto)
                 .url(armazenada.url())
                 .publicId(armazenada.publicId())
+                .enquadramento(corte)
                 .ordem(Integer.MAX_VALUE)
                 .build();
         produto.getImagens().add(imagem);
@@ -129,6 +134,15 @@ public class ProdutoImagemService {
             throw ArquivoInvalidoException.formatoNaoSuportado();
         }
         return conteudo;
+    }
+
+    private Enquadramento enquadramento(String valor) {
+        if (valor == null || valor.isBlank()) return Enquadramento.AUTOMATICO;
+        try {
+            return Enquadramento.valueOf(valor.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new DadosInvalidosException("Enquadramento inválido: use AUTOMATICO, CENTRO ou TOPO");
+        }
     }
 
     // Mantém a ordem atual (empate: a mais antiga primeiro) e numera 0, 1, 2...

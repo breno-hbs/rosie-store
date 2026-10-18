@@ -150,3 +150,78 @@ button.produto-fotos__vazia:hover,
   background: transparent;
   border: 1px dashed var(--linha);
 }
+
+/* Prévia do corte 4:5 (#18): a foto inteira, escurecida fora da moldura do que vai para a loja.
+   O contorno largo da moldura faz o escurecido; o overflow do quadro corta o excesso. */
+.produto-fotos__item--recorte {
+  grid-column: 1 / -1;
+  gap: 10px;
+}
+
+.produto-fotos__recorte {
+  position: relative;
+  max-width: 100%;
+  margin-inline: auto;
+  overflow: hidden;
+  background: var(--foto-vazia);
+}
+
+.produto-fotos__recorte img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.produto-fotos__corte {
+  position: absolute;
+  border: 1px solid var(--papel);
+  outline: 1000px solid color-mix(in srgb, var(--tinta) 55%, transparent);
+  pointer-events: none;
+  transition: top 0.2s ease;
+}
+
+.produto-fotos__aviso {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.produto-fotos__enquadramento {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.produto-fotos__enquadramento legend {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.produto-fotos__opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tinta);
+  cursor: pointer;
+}
+
+.produto-fotos__opcao input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--tinta);
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .produto-fotos__corte {
+    transition: none;
+  }
+}

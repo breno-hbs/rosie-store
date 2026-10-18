@@ -12,6 +12,11 @@ import java.util.List;
 // O bean é compartilhado entre os testes do mesmo contexto: chame limpar() no @BeforeEach.
 public class ArmazenamentoImagensFalso implements ArmazenamentoImagens {
 
+    // Prefixo da URL guardada no banco e da URL entregue pela API (corte 4:5 automático)
+    public static final String ORIGINAL = "https://res.cloudinary.com/rosie-teste/image/upload/v1/";
+    public static final String ENTREGA = "https://res.cloudinary.com/rosie-teste/image/upload/"
+            + "c_fill,ar_4:5,g_auto/c_limit,w_1000/f_auto,q_auto/v1/";
+
     public final List<byte[]> enviados = new ArrayList<>();
     public final List<String> removidos = new ArrayList<>();
     public boolean falharNaRemocao;
@@ -23,7 +28,8 @@ public class ArmazenamentoImagensFalso implements ArmazenamentoImagens {
         enviados.add(conteudo);
         contador++;
         String publicId = "rosie/produtos/teste-" + contador;
-        return new ImagemArmazenada("https://res.cloudinary.test/" + publicId + ".jpg", publicId);
+        // Mesmo formato da secure_url do Cloudinary, para os testes verem o corte 4:5 na entrega
+        return new ImagemArmazenada(ORIGINAL + publicId + ".jpg", publicId);
     }
 
     @Override

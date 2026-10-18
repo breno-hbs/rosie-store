@@ -20,7 +20,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa; não altera o estoque) | `ProdutoAdminDTO` |
 | `PUT /admin/produtos/{id}/estoque` | Implementado (exige token `ADMIN`; só os tamanhos enviados) | `EstoqueProdutoDTO` |
 | `DELETE /admin/produtos/{id}` | Implementado (exige token `ADMIN`; 204, só desativa) | — |
-| `POST /admin/produtos/{id}/imagens` | Implementado (exige token `ADMIN`; multipart; 201; 400 com `FORMATO_NAO_SUPORTADO`/`ARQUIVO_MUITO_GRANDE`; 503 com `ARMAZENAMENTO_INDISPONIVEL`) | `ProdutoImagemDTO` |
+| `POST /admin/produtos/{id}/imagens` | Implementado (exige token `ADMIN`; multipart com `enquadramento` opcional; 201; 400 com `FORMATO_NAO_SUPORTADO`/`ARQUIVO_MUITO_GRANDE`/`DADOS_INVALIDOS`; 503 com `ARMAZENAMENTO_INDISPONIVEL`) | `ProdutoImagemDTO` |
 | `PUT /admin/produtos/{id}/imagens/ordem` | Implementado (exige token `ADMIN`; 400 se faltar ou repetir foto) | lista de `ProdutoImagemDTO` |
 | `DELETE /admin/produtos/{id}/imagens/{imagemId}` | Implementado (exige token `ADMIN`; 204; 404) | — |
 | `GET /admin/categorias` | Implementado (exige token `ADMIN`) | lista de `CategoriaAdminDTO` |
@@ -212,7 +212,7 @@ Cada item tem o mesmo formato de um item de `conteudo` em `GET /produtos` (`Prod
 ### Detalhe de um produto
 `GET /produtos/{id}`
 
-Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que não existe. `imagens` vem na ordem de exibição (a primeira é a principal), `composicao` ("Composição e cuidados", com quebras de linha `\n`) vem `null` quando não foi preenchida e `estoque` vem ordenado por tamanho (`P`, `M`, `G`, `GG`), só com os tamanhos cadastrados; `quantidade: 0` significa esgotado naquele tamanho.
+Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que não existe. `imagens` vem na ordem de exibição (a primeira é a principal), já em 4:5 (ver "Corte 4:5 na entrega"), `composicao` ("Composição e cuidados", com quebras de linha `\n`) vem `null` quando não foi preenchida e `estoque` vem ordenado por tamanho (`P`, `M`, `G`, `GG`), só com os tamanhos cadastrados; `quantidade: 0` significa esgotado naquele tamanho.
 
 ```json
 // Response 200 — ProdutoDetalheDTO
@@ -357,7 +357,7 @@ Serve às duas telas do painel: "Lista de Produtos" usa `estoqueTotal` e "Gestã
 ### Detalhe de um produto no painel
 `GET /admin/produtos/{id}`
 
-Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também responde para produto inativo. Diferente da loja, `imagens` traz cada foto com `id` e `ordem` (`ProdutoImagemDTO`), para o painel remover e reordenar; a de `ordem` 0 é a principal.
+Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também responde para produto inativo. Diferente da loja, `imagens` traz cada foto com `id`, `ordem` e `enquadramento` (`ProdutoImagemDTO`), para o painel remover e reordenar; a de `ordem` 0 é a principal. A `url` é a mesma da loja, já em 4:5.
 
 ```json
 // Response 200 — ProdutoAdminDTO
@@ -368,7 +368,7 @@ Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também respon
   "composicao": "...",
   "preco": 189.00,
   "categoria": { "id": 1, "nome": "Vestido" },
-  "imagens": [ { "id": 3, "url": "https://res.cloudinary.com/.../1.jpg", "ordem": 0 } ],
+  "imagens": [ { "id": 3, "url": "https://res.cloudinary.com/<cloud>/image/upload/c_fill,ar_4:5,g_auto/c_limit,w_1000/f_auto,q_auto/v1/rosie/produtos/abc123.jpg", "ordem": 0, "enquadramento": "AUTOMATICO" } ],
   "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ],
   "ativo": true,
   "destaque": false
@@ -438,15 +438,21 @@ Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque`, 
 **Decisão (#14): remover desativa, não apaga.** O produto fica com `ativo = false`: some de `GET /produtos`, `GET /produtos/destaques` e `GET /produtos/{id}` (404), mas continua no banco e no painel, porque pedidos e carrinhos antigos apontam para ele (`pedido_item.produto_id`). Remover um produto já inativo também responde 204.
 
 ### Upload de imagem
-`POST /admin/produtos/{id}/imagens` — multipart/form-data, campo `arquivo`
+`POST /admin/produtos/{id}/imagens` — multipart/form-data, campo `arquivo` e, opcional, `enquadramento` (`AUTOMATICO`, `CENTRO` ou `TOPO`; vazio = `AUTOMATICO`)
 
 ```json
-// Response 201 — ProdutoImagemDTO: a foto nova, sempre no fim da galeria
-{ "id": 3, "url": "https://res.cloudinary.com/<cloud>/image/upload/v1/rosie/produtos/abc123.jpg", "ordem": 2 }
+// Response 201 — ProdutoImagemDTO: a foto nova, sempre no fim da galeria, com a url já cortada em 4:5
+{
+  "id": 3,
+  "url": "https://res.cloudinary.com/<cloud>/image/upload/c_fill,ar_4:5,g_north/c_limit,w_1000/f_auto,q_auto/v1/rosie/produtos/abc123.jpg",
+  "ordem": 2,
+  "enquadramento": "TOPO"
+}
 // Response 400
 { "erro": "Formato não aceito: envie a foto em JPG, PNG ou WEBP", "codigo": "FORMATO_NAO_SUPORTADO" }
 { "erro": "A foto passa de 5 MB: diminua o arquivo e tente de novo", "codigo": "ARQUIVO_MUITO_GRANDE" }
 { "erro": "Envie a foto no campo arquivo", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "Enquadramento inválido: use AUTOMATICO, CENTRO ou TOPO", "codigo": "DADOS_INVALIDOS" }
 // Response 503 (sem CLOUDINARY_URL no servidor, ou Cloudinary fora do ar)
 { "erro": "O envio de fotos não está configurado no servidor (falta CLOUDINARY_URL)", "codigo": "ARMAZENAMENTO_INDISPONIVEL" }
 ```
@@ -455,13 +461,25 @@ Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque`, 
 |---|---|
 | Formatos | JPG, PNG ou WEBP, reconhecidos pelo conteúdo do arquivo (a extensão e o `Content-Type` enviados não contam) |
 | Tamanho | Até 5 MB por foto (`rosie.imagens.tamanho-maximo`); uma foto por requisição |
-| Proporção | 4:5 em retrato, ex.: 1000 x 1250 px (RNF09). É só orientação na tela: a API não recusa outras proporções; o corte fica com a #18 |
+| Proporção | Qualquer uma: a API não recusa. A foto original fica no Cloudinary e sai sempre em 4:5 (RNF09), ver "Corte 4:5 na entrega". Referência: 1000 x 1250 px |
+| Enquadramento | Que parte fica no corte: `AUTOMATICO` (o Cloudinary acha o ponto de interesse, `g_auto`), `CENTRO` (`g_center`) ou `TOPO` (`g_north`, corta só embaixo). Guardado por foto; vem de volta em `ProdutoImagemDTO.enquadramento` |
 | Ordem | A foto de `ordem` 0 é a principal (`imagemPrincipal` em `GET /produtos` e a primeira de `imagens` em `GET /produtos/{id}`). A ordem é sempre 0, 1, 2... sem buracos |
 | Produto | Precisa já existir (404 `RECURSO_NAO_ENCONTRADO`): no cadastro novo, o painel salva o produto antes de liberar as fotos. Funciona também para produto inativo |
 
 O `id` do produto é conferido antes do arquivo: produto inexistente responde 404 mesmo com arquivo inválido. Arquivo acima do limite é recusado pelo servidor antes disso (400 `ARQUIVO_MUITO_GRANDE`).
 
 **Decisão (#15): fotos no Cloudinary.** O disco do Railway é efêmero, então as fotos ficam num storage externo. A API recebe o multipart, envia para o Cloudinary (pasta `rosie/produtos`) e guarda em `produto_imagem` a `url` segura (https) e o `public_id`, usado para apagar a foto de lá quando ela sai do produto. A credencial fica só na variável `CLOUDINARY_URL` (local: `rosie.cloudinary.url` no `application-local.properties`; produção: variável do Railway), nunca no repositório. Sem ela, a API sobe normalmente e só o upload responde 503. As imagens cadastradas antes desta mudança ficam com `public_id` nulo e continuam funcionando. Os testes automatizados usam um armazenamento falso no lugar do Cloudinary, e o CI não precisa das chaves.
+
+#### Corte 4:5 na entrega
+**Decisão (#18): o corte vai na URL de entrega, não no upload.** O banco guarda a `url` do original, e toda URL de foto que sai da API (`imagemPrincipal` em `GET /produtos` e `/produtos/destaques`, `imagens` em `GET /produtos/{id}` e `url` em `ProdutoImagemDTO` no painel) passa pela transformação do Cloudinary, inserida logo depois de `/image/upload/`:
+
+```
+c_fill,ar_4:5,<gravidade>/c_limit,w_1000/f_auto,q_auto
+```
+
+Corta em 4:5 na resolução original com a gravidade do enquadramento, reduz para no máximo 1000 px de largura (1000 x 1250, sem ampliar foto pequena) e deixa o Cloudinary escolher formato (WEBP/AVIF quando o navegador aceita) e qualidade. A URL é montada num lugar só do back-end (`UrlEntregaImagem`). Imagens sem `public_id` (as antigas, ex.: placehold.co) e URLs que não são do Cloudinary saem como foram salvas. Foto enviada antes desta mudança (sem enquadramento guardado) fica no `AUTOMATICO`.
+
+Por que não cortar no upload (`transformation`/`eager`): cortar na chegada joga fora o resto da foto, e mudar o enquadramento depois exigiria reenviar o arquivo. Na entrega, o Cloudinary gera cada versão uma vez e serve do cache da CDN; o original continua lá. O painel mostra antes de enviar uma prévia do corte das fotos fora de 4:5 (calculada no navegador) e deixa escolher o enquadramento.
 
 ### Reordenar imagens
 `PUT /admin/produtos/{id}/imagens/ordem`
@@ -471,9 +489,9 @@ O `id` do produto é conferido antes do arquivo: produto inexistente responde 40
 { "imagens": [5, 3, 4] }
 // Response 200 — lista de ProdutoImagemDTO na nova ordem
 [
-  { "id": 5, "url": "https://.../c.jpg", "ordem": 0 },
-  { "id": 3, "url": "https://.../a.jpg", "ordem": 1 },
-  { "id": 4, "url": "https://.../b.jpg", "ordem": 2 }
+  { "id": 5, "url": "https://.../c.jpg", "ordem": 0, "enquadramento": "AUTOMATICO" },
+  { "id": 3, "url": "https://.../a.jpg", "ordem": 1, "enquadramento": "TOPO" },
+  { "id": 4, "url": "https://.../b.jpg", "ordem": 2, "enquadramento": "AUTOMATICO" }
 ]
 // Response 400
 { "erro": "Envie todas as fotos do produto, cada uma uma vez", "codigo": "DADOS_INVALIDOS" }

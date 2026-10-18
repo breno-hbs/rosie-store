@@ -170,21 +170,25 @@ export function listarProdutosAdmin(opcoes) {
   return getAdmin('/admin/produtos', opcoes)
 }
 
-// GET /admin/produtos/{id} → detalhe do produto + { ativo, destaque }; aqui imagens é [{ id, url, ordem }]
+// GET /admin/produtos/{id} → detalhe do produto + { ativo, destaque }; aqui imagens é
+// [{ id, url, ordem, enquadramento }]
 export function buscarProdutoAdmin(id, opcoes) {
   return getAdmin(`/admin/produtos/${id}`, opcoes)
 }
 
-// POST /admin/produtos/{id}/imagens (multipart, campo "arquivo") → { id, url, ordem }, no fim da galeria.
+// POST /admin/produtos/{id}/imagens (multipart, campos "arquivo" e "enquadramento": AUTOMATICO, CENTRO
+// ou TOPO) → { id, url, ordem, enquadramento }, no fim da galeria; a url já vem cortada em 4:5.
 // Recusa: ApiError com codigo FORMATO_NAO_SUPORTADO ou ARQUIVO_MUITO_GRANDE (400);
 // ARMAZENAMENTO_INDISPONIVEL (503) quando o servidor está sem Cloudinary
-export function enviarImagemProduto(id, arquivo, opcoes) {
+export function enviarImagemProduto(id, arquivo, enquadramento, opcoes) {
   const corpo = new FormData()
   corpo.append('arquivo', arquivo)
+  if (enquadramento) corpo.append('enquadramento', enquadramento)
   return postAdmin(`/admin/produtos/${id}/imagens`, corpo, opcoes)
 }
 
-// PUT /admin/produtos/{id}/imagens/ordem; body: ids de todas as fotos, a principal primeiro → [{ id, url, ordem }]
+// PUT /admin/produtos/{id}/imagens/ordem; body: ids de todas as fotos, a principal primeiro
+// → [{ id, url, ordem, enquadramento }]
 export function reordenarImagensProduto(id, idsImagens, opcoes) {
   return putAdmin(`/admin/produtos/${id}/imagens/ordem`, { imagens: idsImagens }, opcoes)
 }

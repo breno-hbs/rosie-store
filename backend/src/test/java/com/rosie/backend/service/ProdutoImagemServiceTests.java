@@ -5,6 +5,7 @@ import com.rosie.backend.exception.ArquivoInvalidoException;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
 import com.rosie.backend.model.Categoria;
+import com.rosie.backend.model.Enquadramento;
 import com.rosie.backend.model.Produto;
 import com.rosie.backend.model.ProdutoImagem;
 import com.rosie.backend.repository.CategoriaRepository;
@@ -26,6 +27,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 // Fotos do produto (RF15) contra o MySQL local, com o Cloudinary trocado por um falso;
 // @Transactional desfaz tudo no fim
@@ -75,29 +77,89 @@ class ProdutoImagemServiceTests {
     void fotoEnviadaEntraNoFimDaGaleriaComUrlEPublicId() {
         Produto produto = produtoComImagens("https://placehold.co/1000x1250?text=antiga");
 
-        ProdutoImagemDTO nova = produtoImagemService.enviar(produto.getId(), arquivo("foto.png", PNG));
+        ProdutoImagemDTO nova = enviar(produto.getId(), arquivo("foto.png", PNG));
 
         assertThat(nova.id()).isNotNull();
         assertThat(nova.ordem()).isEqualTo(1);
-        assertThat(nova.url()).isEqualTo("https://res.cloudinary.test/rosie/produtos/teste-1.jpg");
+        // entregue já em 4:5; sem enquadramento escolhido, fica no automático
+        assertThat(nova.url()).isEqualTo(ArmazenamentoImagensFalso.ENTREGA + "rosie/produtos/teste-1.jpg");
+        assertThat(nova.enquadramento()).isEqualTo(Enquadramento.AUTOMATICO);
         assertThat(armazenamento.enviados).hasSize(1);
         assertThat(armazenamento.enviados.get(0)).isEqualTo(PNG);
 
         entityManager.clear();
         ProdutoImagem salva = produtoImagemRepository.findById(nova.id()).orElseThrow();
         assertThat(salva.getPublicId()).isEqualTo("rosie/produtos/teste-1");
-        // a imagem antiga continua como principal, sem public_id
+        // o banco guarda a URL do original, para o corte poder mudar depois
+        assertThat(salva.getUrl()).isEqualTo(ArmazenamentoImagensFalso.ORIGINAL + "rosie/produtos/teste-1.jpg");
+        assertThat(salva.getEnquadramento()).isEqualTo(Enquadramento.AUTOMATICO);
+        // a imagem antiga continua como principal, sem public_id e sem corte
         assertThat(produtoService.buscarPorId(produto.getId()).imagens()).containsExactly(
                 "https://placehold.co/1000x1250?text=antiga", nova.url());
+    }
+
+    @Test
+    void enquadramentoEscolhidoFicaGuardadoEMudaOCorteNaVitrineENoPainel() {
+        Produto produto = produtoComImagens();
+
+        ProdutoImagemDTO topo = produtoImagemService.enviar(produto.getId(), arquivo("1.jpg", JPG), "TOPO");
+        // aceita minúsculas, como vem de um formulário
+        ProdutoImagemDTO centro = produtoImagemService.enviar(produto.getId(), arquivo("2.jpg", JPG), "centro");
+        ProdutoImagemDTO automatico = produtoImagemService.enviar(produto.getId(), arquivo("3.jpg", JPG), " ");
+
+        assertThat(topo.enquadramento()).isEqualTo(Enquadramento.TOPO);
+        assertThat(centro.enquadramento()).isEqualTo(Enquadramento.CENTRO);
+        assertThat(automatico.enquadramento()).isEqualTo(Enquadramento.AUTOMATICO);
+
+        entityManager.clear();
+        String base = "https://res.cloudinary.com/rosie-teste/image/upload/c_fill,ar_4:5,";
+        String resto = "/c_limit,w_1000/f_auto,q_auto/v1/rosie/produtos/teste-";
+        assertThat(produtoService.buscarPorId(produto.getId()).imagens()).containsExactly(
+                base + "g_north" + resto + "1.jpg",
+                base + "g_center" + resto + "2.jpg",
+                base + "g_auto" + resto + "3.jpg");
+        assertThat(produtoService.listar(categoria.getId(), 0, 12).conteudo().get(0).imagemPrincipal())
+                .isEqualTo(base + "g_north" + resto + "1.jpg");
+        assertThat(produtoAdminService.buscarPorId(produto.getId()).imagens())
+                .extracting(ProdutoImagemDTO::url, ProdutoImagemDTO::enquadramento)
+                .containsExactly(
+                        tuple(base + "g_north" + resto + "1.jpg", Enquadramento.TOPO),
+                        tuple(base + "g_center" + resto + "2.jpg", Enquadramento.CENTRO),
+                        tuple(base + "g_auto" + resto + "3.jpg", Enquadramento.AUTOMATICO));
+    }
+
+    @Test
+    void enquadramentoInvalidoFalhaSemEnviar() {
+        Produto produto = produtoComImagens();
+
+        assertThatThrownBy(() -> produtoImagemService.enviar(produto.getId(), arquivo("1.jpg", JPG), "esquerda"))
+                .isInstanceOf(DadosInvalidosException.class)
+                .hasMessage("Enquadramento inválido: use AUTOMATICO, CENTRO ou TOPO");
+        assertThat(armazenamento.enviados).isEmpty();
+    }
+
+    @Test
+    void fotoEnviadaAntesDoCorteFicaNoAutomatico() {
+        Produto produto = produtoComImagens();
+        ProdutoImagemDTO foto = enviar(produto.getId(), arquivo("1.jpg", JPG));
+        limparContexto();
+        // como as fotos da #15, gravadas antes de existir a coluna enquadramento
+        entityManager.createNativeQuery("update produto_imagem set enquadramento = null where id = :id")
+                .setParameter("id", foto.id())
+                .executeUpdate();
+        entityManager.clear();
+
+        assertThat(produtoAdminService.buscarPorId(produto.getId()).imagens())
+                .containsExactly(new ProdutoImagemDTO(foto.id(), foto.url(), 0, Enquadramento.AUTOMATICO));
     }
 
     @Test
     void aceitaJpgPngEWebpPeloConteudoMesmoComNomeEContentTypeErrados() {
         Produto produto = produtoComImagens();
 
-        produtoImagemService.enviar(produto.getId(), new MockMultipartFile("arquivo", "foto.jpg", "image/jpeg", JPG));
-        produtoImagemService.enviar(produto.getId(), new MockMultipartFile("arquivo", "foto", "application/octet-stream", PNG));
-        ProdutoImagemDTO terceira = produtoImagemService.enviar(produto.getId(),
+        enviar(produto.getId(), new MockMultipartFile("arquivo", "foto.jpg", "image/jpeg", JPG));
+        enviar(produto.getId(), new MockMultipartFile("arquivo", "foto", "application/octet-stream", PNG));
+        ProdutoImagemDTO terceira = enviar(produto.getId(),
                 new MockMultipartFile("arquivo", "foto.webp", "image/webp", WEBP));
 
         assertThat(armazenamento.enviados).hasSize(3);
@@ -108,12 +170,12 @@ class ProdutoImagemServiceTests {
     void formatoForaDeJpgPngWebpFalhaSemEnviar() {
         Produto produto = produtoComImagens();
 
-        assertThatThrownBy(() -> produtoImagemService.enviar(produto.getId(), arquivo("foto.gif", GIF)))
+        assertThatThrownBy(() -> enviar(produto.getId(), arquivo("foto.gif", GIF)))
                 .isInstanceOf(ArquivoInvalidoException.class)
                 .hasMessage("Formato não aceito: envie a foto em JPG, PNG ou WEBP")
                 .extracting("codigo").isEqualTo("FORMATO_NAO_SUPORTADO");
         // extensão de imagem não basta: o conteúdo é que manda
-        assertThatThrownBy(() -> produtoImagemService.enviar(produto.getId(),
+        assertThatThrownBy(() -> enviar(produto.getId(),
                 new MockMultipartFile("arquivo", "foto.jpg", "image/jpeg", "não sou foto".getBytes(StandardCharsets.UTF_8))))
                 .isInstanceOf(ArquivoInvalidoException.class);
         assertThat(armazenamento.enviados).isEmpty();
@@ -124,14 +186,14 @@ class ProdutoImagemServiceTests {
         Produto produto = produtoComImagens();
         byte[] grande = Arrays.copyOf(JPG, 5 * 1024 * 1024 + 1);
 
-        assertThatThrownBy(() -> produtoImagemService.enviar(produto.getId(), arquivo("grande.jpg", grande)))
+        assertThatThrownBy(() -> enviar(produto.getId(), arquivo("grande.jpg", grande)))
                 .isInstanceOf(ArquivoInvalidoException.class)
                 .hasMessage("A foto passa de 5 MB: diminua o arquivo e tente de novo")
                 .extracting("codigo").isEqualTo("ARQUIVO_MUITO_GRANDE");
         assertThat(armazenamento.enviados).isEmpty();
 
         // exatamente 5 MB passa
-        produtoImagemService.enviar(produto.getId(), arquivo("limite.jpg", Arrays.copyOf(JPG, 5 * 1024 * 1024)));
+        enviar(produto.getId(), arquivo("limite.jpg", Arrays.copyOf(JPG, 5 * 1024 * 1024)));
         assertThat(armazenamento.enviados).hasSize(1);
     }
 
@@ -139,14 +201,14 @@ class ProdutoImagemServiceTests {
     void arquivoVazioFalha() {
         Produto produto = produtoComImagens();
 
-        assertThatThrownBy(() -> produtoImagemService.enviar(produto.getId(), arquivo("vazio.jpg", new byte[0])))
+        assertThatThrownBy(() -> enviar(produto.getId(), arquivo("vazio.jpg", new byte[0])))
                 .isInstanceOf(DadosInvalidosException.class)
                 .hasMessage("Envie a foto no campo arquivo");
     }
 
     @Test
     void produtoInexistenteFalhaSemEnviar() {
-        assertThatThrownBy(() -> produtoImagemService.enviar(-1L, arquivo("foto.jpg", JPG)))
+        assertThatThrownBy(() -> enviar(-1L, arquivo("foto.jpg", JPG)))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
         assertThat(armazenamento.enviados).isEmpty();
     }
@@ -154,8 +216,8 @@ class ProdutoImagemServiceTests {
     @Test
     void removerTiraDoProdutoRenumeraEApagaDoArmazenamento() {
         Produto produto = produtoComImagens();
-        ProdutoImagemDTO primeira = produtoImagemService.enviar(produto.getId(), arquivo("1.jpg", JPG));
-        ProdutoImagemDTO segunda = produtoImagemService.enviar(produto.getId(), arquivo("2.jpg", JPG));
+        ProdutoImagemDTO primeira = enviar(produto.getId(), arquivo("1.jpg", JPG));
+        ProdutoImagemDTO segunda = enviar(produto.getId(), arquivo("2.jpg", JPG));
         limparContexto();
 
         produtoImagemService.remover(produto.getId(), primeira.id());
@@ -164,7 +226,7 @@ class ProdutoImagemServiceTests {
         entityManager.clear();
         // a segunda vira a principal
         assertThat(produtoAdminService.buscarPorId(produto.getId()).imagens())
-                .containsExactly(new ProdutoImagemDTO(segunda.id(), segunda.url(), 0));
+                .containsExactly(new ProdutoImagemDTO(segunda.id(), segunda.url(), 0, Enquadramento.AUTOMATICO));
     }
 
     @Test
@@ -182,7 +244,7 @@ class ProdutoImagemServiceTests {
     @Test
     void falhaNoArmazenamentoNaoImpedeARemocao() {
         Produto produto = produtoComImagens();
-        ProdutoImagemDTO foto = produtoImagemService.enviar(produto.getId(), arquivo("1.jpg", JPG));
+        ProdutoImagemDTO foto = enviar(produto.getId(), arquivo("1.jpg", JPG));
         limparContexto();
         armazenamento.falharNaRemocao = true;
 
@@ -241,6 +303,11 @@ class ProdutoImagemServiceTests {
                     .isInstanceOf(DadosInvalidosException.class)
                     .hasMessage("Envie todas as fotos do produto, cada uma uma vez");
         }
+    }
+
+    // Sem enquadramento, como o painel antigo e quem chama a API sem o campo
+    private ProdutoImagemDTO enviar(Long produtoId, MockMultipartFile arquivo) {
+        return produtoImagemService.enviar(produtoId, arquivo, null);
     }
 
     private MockMultipartFile arquivo(String nome, byte[] conteudo) {
