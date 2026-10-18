@@ -1,5 +1,7 @@
 package com.rosie.backend.controller;
 
+import com.rosie.backend.dto.EstoqueProdutoDTO;
+import com.rosie.backend.dto.EstoqueRequestDTO;
 import com.rosie.backend.dto.ProdutoAdminDTO;
 import com.rosie.backend.dto.ProdutoAdminResumoDTO;
 import com.rosie.backend.dto.ProdutoRequestDTO;
@@ -46,6 +48,11 @@ public class ProdutoAdminController {
     @PutMapping("/{id}")
     public ProdutoAdminDTO atualizar(@PathVariable Long id, @Valid @RequestBody ProdutoRequestDTO dados) {
         return produtoAdminService.atualizar(id, dados);
+    }
+
+    @PutMapping("/{id}/estoque")
+    public EstoqueProdutoDTO atualizarEstoque(@PathVariable Long id, @Valid @RequestBody EstoqueRequestDTO dados) {
+        return produtoAdminService.atualizarEstoque(id, dados.estoque());
     }
 
     @DeleteMapping("/{id}")
