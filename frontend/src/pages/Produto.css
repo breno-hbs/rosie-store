@@ -8,6 +8,13 @@
   color: var(--fumaca);
 }
 
+/* Padding em elemento inline aumenta a área de toque (38px) sem mexer na linha;
+   a margem negativa desfaz o padding lateral */
+.produto__trilha a {
+  margin: 0 -9px;
+  padding: 10px 9px;
+}
+
 .produto__trilha a:hover {
   color: var(--tinta);
   text-decoration: underline;

@@ -36,23 +36,33 @@
   right: 24px;
 }
 
+/* O centro dos pontos continua a 36,5px da base (33px + metade do ponto) */
 .hero__pontos {
   position: absolute;
-  bottom: 33px;
+  bottom: 17.5px;
   left: 50%;
   display: flex;
-  gap: 8px;
   transform: translateX(-50%);
 }
 
+/* Área de toque de 38px; o ponto de 7px é desenhado no ::before */
 .hero__ponto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+}
+
+.hero__ponto::before {
+  content: '';
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--pedra);
 }
 
-.hero__ponto[aria-current='true'] {
+.hero__ponto[aria-current='true']::before {
   background: var(--tinta);
 }
 
