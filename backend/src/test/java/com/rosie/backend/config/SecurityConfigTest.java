@@ -45,6 +45,15 @@ class SecurityConfigTest {
     }
 
     @Test
+    void listarDestaquesSemAutenticacaoEhPermitido() throws Exception {
+        when(produtoService.listarDestaques(anyInt())).thenReturn(List.of());
+
+        mockMvc.perform(get("/produtos/destaques"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
     void preflightDoFrontRetornaAllowOrigin() throws Exception {
         mockMvc.perform(options("/produtos")
                         .header(HttpHeaders.ORIGIN, ORIGEM_FRONT)

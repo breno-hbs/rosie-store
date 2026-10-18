@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { listarCategorias, listarProdutos } from '../api.js'
+import { listarCategorias, listarDestaques, listarProdutos } from '../api.js'
 import Nav from '../components/Nav.jsx'
 import HeroCarousel from '../components/HeroCarousel.jsx'
 import CategoryTiles from '../components/CategoryTiles.jsx'
@@ -9,7 +9,7 @@ import { linkWhatsApp } from '../formato.js'
 import './Home.css'
 
 const TAMANHO_PAGINA = 12
-const QTD_DESTAQUES = 3
+const QTD_SLIDES = 3
 const WHATSAPP = linkWhatsApp()
 
 function categoriaDaUrl() {
@@ -19,7 +19,10 @@ function categoriaDaUrl() {
 
 export default function Home() {
   const [categorias, setCategorias] = useState([])
-  const [destaques, setDestaques] = useState([])
+  // null enquanto carrega; [] quando não há destaques marcados ou a chamada falhou
+  const [destaques, setDestaques] = useState(null)
+  const [slidesReserva, setSlidesReserva] = useState([])
+  const [verTodos, setVerTodos] = useState(false)
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(categoriaDaUrl)
   const [tentativa, setTentativa] = useState(0)
   const [lista, setLista] = useState({ chave: null, produtos: [], pagina: 0, totalPaginas: 0, erro: null })
@@ -31,18 +34,37 @@ export default function Home() {
   const chave = `${categoriaSelecionada ?? 'todas'}:${tentativa}`
   const carregando = lista.chave !== chave
 
+  // Sem filtro, o "Best Sellers" mostra os destaques; sem destaques (ou com erro) cai na listagem comum
+  const naVitrine = !categoriaSelecionada && !verTodos
+  const temDestaques = destaques?.length > 0
+  const mostrarDestaques = naVitrine && temDestaques
+  const usarListagem = !naVitrine || destaques?.length === 0
+
   useEffect(() => {
     const controle = new AbortController()
     listarCategorias({ signal: controle.signal })
       .then(setCategorias)
       .catch(() => {}) // Sem categorias a Home segue só com a listagem
-    listarProdutos({ pagina: 0, tamanho: QTD_DESTAQUES }, { signal: controle.signal })
-      .then((resposta) => setDestaques(resposta.conteudo))
-      .catch(() => {})
+    listarDestaques({ limite: TAMANHO_PAGINA }, { signal: controle.signal })
+      .then(setDestaques)
+      .catch((erro) => {
+        if (erro.name !== 'AbortError') setDestaques([])
+      })
     return () => controle.abort()
   }, [])
 
+  // Hero sem destaques: primeiros produtos da listagem comum, como antes
   useEffect(() => {
+    if (destaques?.length !== 0) return
+    const controle = new AbortController()
+    listarProdutos({ pagina: 0, tamanho: QTD_SLIDES }, { signal: controle.signal })
+      .then((resposta) => setSlidesReserva(resposta.conteudo))
+      .catch(() => {})
+    return () => controle.abort()
+  }, [destaques])
+
+  useEffect(() => {
+    if (!usarListagem) return
     const controle = new AbortController()
     listarProdutos(
       { categoriaId: categoriaSelecionada, pagina: 0, tamanho: TAMANHO_PAGINA },
@@ -63,7 +85,7 @@ export default function Home() {
         }
       })
     return () => controle.abort()
-  }, [chave, categoriaSelecionada])
+  }, [chave, categoriaSelecionada, usarListagem])
 
   function selecionarCategoria(id) {
     const nova = id === categoriaSelecionada ? null : id
@@ -104,8 +126,16 @@ export default function Home() {
     }
   }
 
+  function alternarVerTodos(valor) {
+    setVerTodos(valor)
+    selecionarCategoria(null)
+  }
+
   const categoriaAtual = categorias.find((categoria) => categoria.id === categoriaSelecionada)
-  const temMais = !carregando && lista.pagina + 1 < lista.totalPaginas
+  const carregandoGrade = !mostrarDestaques && carregando
+  const produtos = mostrarDestaques ? destaques : lista.produtos
+  const temMais = !mostrarDestaques && !carregando && lista.pagina + 1 < lista.totalPaginas
+  const slides = temDestaques ? destaques.slice(0, QTD_SLIDES) : slidesReserva
 
   return (
     <>
@@ -116,7 +146,7 @@ export default function Home() {
       />
 
       <main>
-        <HeroCarousel produtos={destaques} />
+        <HeroCarousel produtos={slides} />
 
         <CategoryTiles
           categorias={categorias}
@@ -124,14 +154,22 @@ export default function Home() {
           onSelecionarCategoria={selecionarCategoria}
         />
 
-        <section className="produtos" ref={secaoProdutos} aria-busy={carregando}>
+        <section className="produtos" ref={secaoProdutos} aria-busy={carregandoGrade}>
           <div className="secao-titulo">
             {categoriaSelecionada ? (
               <>
                 <p className="eyebrow">Categoria</p>
                 <h2 className="titulo-2">{categoriaAtual?.nome ?? 'Produtos'}</h2>
-                <button type="button" className="secao-titulo__limpar" onClick={() => selecionarCategoria(null)}>
+                <button type="button" className="secao-titulo__limpar" onClick={() => alternarVerTodos(true)}>
                   Ver todos os produtos
+                </button>
+              </>
+            ) : verTodos && temDestaques ? (
+              <>
+                <p className="eyebrow">Catálogo</p>
+                <h2 className="titulo-2">Todos os produtos</h2>
+                <button type="button" className="secao-titulo__limpar" onClick={() => alternarVerTodos(false)}>
+                  Ver os destaques
                 </button>
               </>
             ) : (
@@ -142,26 +180,26 @@ export default function Home() {
             )}
           </div>
 
-          {carregando ? (
+          {carregandoGrade ? (
             <div className="produtos__grade">
               {Array.from({ length: 4 }, (_, i) => (
                 <ProductCard key={i} />
               ))}
             </div>
-          ) : lista.erro ? (
+          ) : !mostrarDestaques && lista.erro ? (
             <div className="produtos__aviso" role="alert">
               <p>Não foi possível carregar os produtos.</p>
               <button type="button" className="botao botao--contorno" onClick={() => setTentativa((t) => t + 1)}>
                 Tentar de novo
               </button>
             </div>
-          ) : lista.produtos.length === 0 ? (
+          ) : produtos.length === 0 ? (
             <div className="produtos__aviso">
               <p>Nenhum produto por aqui ainda.</p>
             </div>
           ) : (
             <div className="produtos__grade">
-              {lista.produtos.map((produto) => (
+              {produtos.map((produto) => (
                 <ProductCard key={produto.id} produto={produto} />
               ))}
             </div>
@@ -178,6 +216,14 @@ export default function Home() {
                 {carregandoMais ? 'Carregando…' : 'Ver mais'}
               </button>
               {erroMais && <p role="alert">Não foi possível carregar mais produtos.</p>}
+            </div>
+          )}
+
+          {mostrarDestaques && (
+            <div className="produtos__mais">
+              <button type="button" className="botao botao--contorno" onClick={() => alternarVerTodos(true)}>
+                Ver todos os produtos
+              </button>
             </div>
           )}
         </section>

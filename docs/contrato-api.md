@@ -9,6 +9,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | Endpoint | Status | DTO de resposta |
 |---|---|---|
 | `GET /produtos` | Implementado | `ProdutoListaResponseDTO` |
+| `GET /produtos/destaques` | Implementado (público, só ativos com `destaque = true`) | lista de `ProdutoResumoDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
 | Demais endpoints | Não implementados | — |
@@ -122,6 +123,31 @@ Lista só produtos ativos (`ativo = true`), com ou sem `categoriaId`. Produto in
   "totalPaginas": 3,
   "totalItens": 34
 }
+```
+
+### Listar destaques da Home
+`GET /produtos/destaques?limite=12`
+
+Pública (sem token). Lista os produtos ativos marcados com `destaque = true`, do mais recente para o mais antigo (RF01). Alimenta o carrossel e o "Best Sellers" da Home.
+
+Parâmetro opcional: `limite` (padrão `12`, máximo `50`). Valores fora de `1..50` são ajustados para o mais próximo, sem erro. Não é paginado: a Roseane marca poucos produtos.
+
+A marcação é manual: o campo `destaque` do produto (padrão `false`) é editado pelo painel admin (#14); até lá, direto no banco. Sem nenhum destaque marcado, a resposta é `[]` e a Home cai na listagem comum de `GET /produtos`.
+
+Cada item tem o mesmo formato de um item de `conteudo` em `GET /produtos` (`ProdutoResumoDTO`).
+
+```json
+// Response 200 — lista de ProdutoResumoDTO
+[
+  {
+    "id": 10,
+    "nome": "Conjunto Serpente",
+    "preco": 189.00,
+    "categoria": { "id": 1, "nome": "Vestido" },
+    "imagemPrincipal": "https://.../conjunto-serpente-1.jpg",
+    "disponivel": true
+  }
+]
 ```
 
 ### Detalhe de um produto
@@ -251,6 +277,7 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
   "descricao": "...",
   "preco": 189.00,
   "categoriaId": 1,
+  "destaque": false,
   "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ]
 }
 // Response 201 (retorna o produto criado, mesmo formato do GET /produtos/{id})

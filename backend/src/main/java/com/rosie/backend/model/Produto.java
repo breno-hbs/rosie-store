@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -42,6 +43,13 @@ public class Produto {
     @Column(nullable = false)
     @Builder.Default
     private Boolean ativo = true;
+
+    // Marcado pela Roseane para aparecer nos destaques da Home (RF01). O default no banco
+    // preenche os produtos que já existiam quando a coluna foi criada.
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    @Builder.Default
+    private Boolean destaque = false;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

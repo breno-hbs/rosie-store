@@ -141,6 +141,53 @@ class ProdutoServiceTests {
                 .containsEntry(semEstoque.getId(), false);
     }
 
+    @Test
+    void listarDestaquesRetornaSoAtivosMarcados() {
+        Produto destaque = salvarProduto("Produto destaque", true, true);
+        Produto destaqueInativo = salvarProduto("Produto destaque inativo", false, true);
+
+        List<Long> ids = idsDe(produtoService.listarDestaques(ProdutoService.LIMITE_MAXIMO_DESTAQUES));
+
+        assertThat(ids)
+                .contains(destaque.getId())
+                .doesNotContain(ativo.getId(), inativo.getId(), destaqueInativo.getId());
+    }
+
+    @Test
+    void listarDestaquesRespeitaLimiteComMaisRecentesPrimeiro() {
+        salvarProduto("Destaque 1", true, true);
+        Produto segundo = salvarProduto("Destaque 2", true, true);
+        Produto terceiro = salvarProduto("Destaque 3", true, true);
+
+        List<Long> ids = idsDe(produtoService.listarDestaques(2));
+
+        assertThat(ids).containsExactly(terceiro.getId(), segundo.getId());
+    }
+
+    @Test
+    void listarDestaquesAjustaLimiteForaDoIntervalo() {
+        salvarProduto("Destaque 1", true, true);
+        salvarProduto("Destaque 2", true, true);
+
+        assertThat(produtoService.listarDestaques(0)).hasSize(1);
+        assertThat(produtoService.listarDestaques(10_000)).hasSizeLessThanOrEqualTo(ProdutoService.LIMITE_MAXIMO_DESTAQUES);
+    }
+
+    @Test
+    void produtoNovoNaoEhDestaquePorPadrao() {
+        assertThat(produtoRepository.findById(ativo.getId()).orElseThrow().getDestaque()).isFalse();
+    }
+
+    private Produto salvarProduto(String nome, boolean ativo, boolean destaque) {
+        return produtoRepository.save(Produto.builder()
+                .categoria(categoria)
+                .nome(nome)
+                .preco(new BigDecimal("100.00"))
+                .ativo(ativo)
+                .destaque(destaque)
+                .build());
+    }
+
     private void adicionarEstoque(Produto produto, Tamanho tamanho, int quantidade) {
         produto.getEstoque().add(ProdutoEstoque.builder()
                 .produto(produto)
