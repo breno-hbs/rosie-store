@@ -4,6 +4,37 @@ export function formatarPreco(valor) {
   return formatoPreco.format(valor)
 }
 
+// "2026-08-20T14:30:00.123456" (data local da API, sem fuso) → "20/08/2026". Lido direto do texto: sem
+// passar por Date, não há fuso nem diferença entre navegadores na leitura dos microssegundos.
+export function formatarData(dataIso) {
+  const [ano, mes, dia] = dataIso.slice(0, 10).split('-')
+  return `${dia}/${mes}/${ano}`
+}
+
+// Status do pedido (StatusPedido no back-end) como a cliente lê. Status novo que ainda não esteja
+// aqui aparece com o nome do enum em minúsculas ("EM_SEPARACAO" → "Em separacao").
+const STATUS_PEDIDO = {
+  AGUARDANDO_PAGAMENTO: 'Aguardando pagamento',
+  PAGAMENTO_RECUSADO: 'Pagamento recusado',
+  PAGO: 'Pago',
+  // Pago, mas a Roseane precisa resolver algo (estoque ou valor) antes de enviar
+  PAGO_COM_PENDENCIA: 'Pago, em análise',
+  ENVIADO: 'Enviado',
+  ENTREGUE: 'Entregue',
+  CANCELADO: 'Cancelado',
+}
+
+export function rotuloStatusPedido(status) {
+  if (STATUS_PEDIDO[status]) return STATUS_PEDIDO[status]
+  const texto = status.replace(/_/g, ' ').toLowerCase()
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+// Pedido que não segue adiante: o selo fica apagado (fumaça), como "Cancelado" no Figma
+export function statusEncerrado(status) {
+  return status === 'CANCELADO' || status === 'PAGAMENTO_RECUSADO'
+}
+
 // Máscara do telefone enquanto a pessoa digita: (11) 98765-4321 ou (11) 3456-7890.
 // A API recebe só os dígitos (somenteDigitos).
 export function mascararTelefone(valor) {

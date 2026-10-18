@@ -65,23 +65,18 @@
 }
 
 .nav__conta:hover,
-.nav__sacola:hover,
-.nav__sair:hover {
+.nav__sacola:hover {
   text-decoration: underline;
   text-underline-offset: 6px;
 }
 
-/* Primeiro nome do cliente logado; nomes longos não empurram a sacola para fora no celular */
+/* Primeiro nome do cliente logado (link para a Minha Conta); nomes longos não empurram a sacola
+   para fora no celular */
 .nav__cliente {
+  display: inline-block;
   max-width: 10ch;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.nav__sair {
-  color: var(--fumaca);
-  letter-spacing: inherit;
-  line-height: inherit;
 }
 
 @media (min-width: 768px) {
