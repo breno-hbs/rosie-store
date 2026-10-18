@@ -102,4 +102,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(new ErroResponseDTO(ex.getMessage(), "FRETE_FALHOU"));
     }
+
+    // Sem as variáveis do Mercado Pago, ou access token recusado
+    @ExceptionHandler(PagamentoIndisponivelException.class)
+    public ResponseEntity<ErroResponseDTO> handlePagamentoIndisponivel(PagamentoIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErroResponseDTO(ex.getMessage(), "PAGAMENTO_INDISPONIVEL"));
+    }
+
+    // Mercado Pago fora do ar, lento demais ou com resposta inesperada
+    @ExceptionHandler(PagamentoFalhouException.class)
+    public ResponseEntity<ErroResponseDTO> handlePagamentoFalhou(PagamentoFalhouException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ErroResponseDTO(ex.getMessage(), "PAGAMENTO_FALHOU"));
+    }
+
+    // Webhook com assinatura que não confere: a mensagem não diz o motivo
+    @ExceptionHandler(AssinaturaInvalidaException.class)
+    public ResponseEntity<ErroResponseDTO> handleAssinaturaInvalida(AssinaturaInvalidaException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErroResponseDTO("Assinatura inválida", "ASSINATURA_INVALIDA"));
+    }
 }
