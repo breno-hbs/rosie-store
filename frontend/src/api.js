@@ -329,3 +329,25 @@ export function renomearCategoria(id, nome, opcoes) {
 export function removerCategoria(id, opcoes) {
   return deleteAdmin(`/admin/categorias/${id}`, opcoes)
 }
+
+// GET /categorias/{id}/medidas (pública) → { categoriaId, categoria, unidade: 'cm',
+// medidas: [{ nome, valores: { P, M, G, GG } }] }; valor vazio vem como "". Sem tabela: medidas = []
+export function buscarTabelaMedidas(categoriaId, opcoes) {
+  return requisicao(`/categorias/${categoriaId}/medidas`, opcoes)
+}
+
+// GET /admin/categorias/{id}/medidas → mesma resposta da rota pública
+export function buscarTabelaMedidasAdmin(categoriaId, opcoes) {
+  return getAdmin(`/admin/categorias/${categoriaId}/medidas`, opcoes)
+}
+
+// PUT /admin/categorias/{id}/medidas; body: { medidas: [{ nome, valores: { P, M, G, GG } }] }, na ordem
+// de exibição. Troca a tabela inteira. Nome vazio ou repetido: ApiError com codigo DADOS_INVALIDOS (400)
+export function salvarTabelaMedidas(categoriaId, medidas, opcoes) {
+  return putAdmin(`/admin/categorias/${categoriaId}/medidas`, { medidas }, opcoes)
+}
+
+// DELETE /admin/categorias/{id}/medidas → null; a categoria fica sem tabela
+export function removerTabelaMedidas(categoriaId, opcoes) {
+  return deleteAdmin(`/admin/categorias/${categoriaId}/medidas`, opcoes)
+}

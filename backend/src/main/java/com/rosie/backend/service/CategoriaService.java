@@ -6,6 +6,7 @@ import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
 import com.rosie.backend.model.Categoria;
 import com.rosie.backend.repository.CategoriaRepository;
+import com.rosie.backend.repository.MedidaCategoriaRepository;
 import com.rosie.backend.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,6 +24,7 @@ public class CategoriaService {
 
     private final CategoriaRepository categoriaRepository;
     private final ProdutoRepository produtoRepository;
+    private final MedidaCategoriaRepository medidaRepository;
 
     public List<CategoriaResumoDTO> listar() {
         return categoriaRepository.findAll(Sort.by("nome")).stream()
@@ -57,7 +59,8 @@ public class CategoriaService {
         return new CategoriaAdminDTO(categoria.getId(), categoria.getNome(), produtoRepository.countByCategoriaId(id));
     }
 
-    // Só remove categoria vazia: produto inativo também conta, porque continua ligado a ela no banco
+    // Só remove categoria vazia: produto inativo também conta, porque continua ligado a ela no banco.
+    // A tabela de medidas (#20) não bloqueia: sai junto com a categoria.
     @Transactional
     public void remover(Long id) {
         Categoria categoria = buscar(id);
@@ -69,6 +72,7 @@ public class CategoriaService {
                             .formatted(categoria.getNome(), quantidade),
                     "CATEGORIA_EM_USO");
         }
+        medidaRepository.removerDaCategoria(id);
         categoriaRepository.delete(categoria);
     }
 

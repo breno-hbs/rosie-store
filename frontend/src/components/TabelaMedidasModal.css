@@ -1,0 +1,148 @@
+/* Modal da tabela de medidas (#20). Sem frame no Figma: caixa de papel com linhas de 1px,
+   sem sombra; o fundo é a tinta translúcida. O <dialog> cobre a tela e centraliza a caixa. */
+
+:root.sem-rolagem {
+  overflow: hidden;
+}
+
+.medidas-modal {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 8px;
+  background: transparent;
+  border: 0;
+}
+
+.medidas-modal[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.medidas-modal::backdrop {
+  background: color-mix(in srgb, var(--tinta) 55%, transparent);
+}
+
+.medidas-modal__caixa {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 100%;
+  padding: 24px var(--margem) 28px;
+  overflow-y: auto;
+  background: var(--papel);
+  border: 1px solid var(--linha);
+}
+
+.medidas-modal__topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.medidas-modal__titulo {
+  margin-top: 8px;
+}
+
+/* Área de toque de 44px; o "×" fica alinhado ao topo do título */
+.medidas-modal__fechar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin: -10px -12px 0 0;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--tinta);
+}
+
+.medidas-modal__rolagem {
+  overflow-x: auto;
+}
+
+.medidas-modal__tabela {
+  width: 100%;
+  min-width: 300px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--acento);
+  font-variant-numeric: tabular-nums;
+}
+
+.medidas-modal__legenda {
+  padding-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+  text-align: left;
+}
+
+.medidas-modal__tabela th,
+.medidas-modal__tabela td {
+  padding: 12px 4px;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--linha);
+}
+
+.medidas-modal__tabela thead th {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-top: 1px solid var(--linha);
+}
+
+.medidas-modal__tabela th:first-child {
+  padding-left: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.medidas-modal__tabela tbody th {
+  font-weight: 400;
+  color: var(--tinta);
+}
+
+.medidas-modal__tabela td:last-child,
+.medidas-modal__tabela th:last-child {
+  padding-right: 0;
+}
+
+.medidas-modal__oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .medidas-modal {
+    padding: var(--margem);
+  }
+
+  .medidas-modal__tabela th,
+  .medidas-modal__tabela td {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .medidas-modal__caixa {
+    padding: 32px 40px 40px;
+  }
+
+  .medidas-modal__tabela {
+    font-size: 14px;
+  }
+}

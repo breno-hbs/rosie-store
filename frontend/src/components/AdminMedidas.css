@@ -1,0 +1,337 @@
+/* Tabela de medidas da categoria (#20). Sem frame no Figma: segue a Gestão de Estoque.
+   No celular cada medida vira um bloco (nome, os quatro tamanhos lado a lado e as ações);
+   a partir de 1024px, uma tabela com as colunas Medida, P, M, G e GG (antes disso, ao lado da
+   sidebar, as colunas cortam faixas como "107–112"). */
+
+.admin-medidas {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.admin-medidas__voltar {
+  align-self: flex-start;
+  margin: 0 -8px -12px;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.admin-medidas__voltar:hover {
+  color: var(--tinta);
+}
+
+.admin-medidas__cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: -8px;
+}
+
+.admin-medidas__estado,
+.admin-medidas__dica {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.admin-medidas__estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* O texto da sugestão é longo: no celular o botão quebra linha em vez de vazar */
+.admin-medidas__estado .botao {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.admin-medidas__oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.admin-medidas__tabela {
+  display: block;
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid var(--linha);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-medidas__tabela thead {
+  display: none;
+}
+
+.admin-medidas__tabela tbody {
+  display: block;
+}
+
+.admin-medidas__linha {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.admin-medidas__tabela th,
+.admin-medidas__tabela td {
+  padding: 0;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.admin-medidas__nome,
+.admin-medidas__acoes {
+  grid-column: 1 / -1;
+}
+
+.admin-medidas__valor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Rótulo do tamanho no celular, onde o cabeçalho da tabela some */
+.admin-medidas__valor::before {
+  content: attr(data-rotulo);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  color: var(--fumaca);
+}
+
+.admin-medidas__campo {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--tinta);
+  background: transparent;
+  border: 1px solid var(--linha);
+  border-radius: 0;
+}
+
+.admin-medidas__campo--nome {
+  font-weight: 400;
+}
+
+.admin-medidas__campo::placeholder {
+  color: var(--fumaca);
+  opacity: 1;
+}
+
+.admin-medidas__campo:focus {
+  border-color: var(--tinta);
+  outline: none;
+}
+
+.admin-medidas__campo[aria-invalid='true'] {
+  border-color: var(--tinta);
+}
+
+.admin-medidas__campo:disabled {
+  color: var(--fumaca);
+}
+
+.admin-medidas__acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-medidas__acao {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--acento);
+  border: 1px solid var(--linha);
+}
+
+.admin-medidas__acao:hover:not(:disabled) {
+  color: var(--tinta);
+  border-color: var(--tinta);
+}
+
+.admin-medidas__acao:disabled {
+  cursor: default;
+  color: var(--pedra);
+}
+
+/* Ações em texto (Remover, Apagar tabela, Cancelar): sem caixa, como em Categorias */
+.admin-medidas__acao--texto,
+.admin-medidas__acao--forte {
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  border: 0;
+  color: var(--fumaca);
+}
+
+.admin-medidas__acoes .admin-medidas__acao--texto {
+  margin-left: auto;
+}
+
+.admin-medidas__acao--forte {
+  font-weight: 400;
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-medidas__adicionar {
+  align-self: flex-start;
+  min-height: 44px;
+  margin-top: -12px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.admin-medidas__adicionar:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.admin-medidas__adicionar:disabled {
+  cursor: default;
+  color: var(--pedra);
+}
+
+.admin-medidas__aviso {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-medidas__aviso--sucesso {
+  color: var(--fumaca);
+}
+
+.admin-medidas__aviso--erro {
+  font-weight: 400;
+  color: var(--tinta);
+}
+
+.admin-medidas__rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-medidas__rodape .botao--primario {
+  min-height: 48px;
+}
+
+.admin-medidas__confirmar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.admin-medidas__pergunta {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+@media (min-width: 768px) {
+  .admin-medidas {
+    margin-top: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-medidas__tabela {
+    display: table;
+    table-layout: fixed;
+  }
+
+  .admin-medidas__tabela thead {
+    display: table-header-group;
+  }
+
+  .admin-medidas__tabela tbody {
+    display: table-row-group;
+  }
+
+  .admin-medidas__tabela tr,
+  .admin-medidas__linha {
+    display: table-row;
+    padding: 0;
+  }
+
+  .admin-medidas__tabela th,
+  .admin-medidas__tabela td {
+    display: table-cell;
+    padding: 12px 16px 12px 0;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .admin-medidas__tabela thead th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  /* Mesmas proporções da Gestão de Estoque, com espaço para as setas e o Remover */
+  .admin-medidas__tabela thead th:nth-child(1) { width: 30%; }
+  .admin-medidas__tabela thead th:nth-child(n + 2) { width: 12%; }
+  .admin-medidas__tabela thead th:nth-child(6) { width: 22%; }
+
+  .admin-medidas__valor::before {
+    content: none;
+  }
+
+  .admin-medidas__campo {
+    min-height: 40px;
+    padding: 6px 8px;
+  }
+
+  .admin-medidas__acao {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .admin-medidas__tabela td.admin-medidas__acoes {
+    display: table-cell;
+    padding-right: 0;
+    white-space: nowrap;
+  }
+
+  .admin-medidas__acoes .admin-medidas__acao + .admin-medidas__acao {
+    margin-left: 8px;
+  }
+
+  .admin-medidas__acoes .admin-medidas__acao--texto {
+    margin-left: 16px;
+  }
+
+  .admin-medidas__rodape {
+    justify-content: flex-start;
+    gap: 24px;
+  }
+}
