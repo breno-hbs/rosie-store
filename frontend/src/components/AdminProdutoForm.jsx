@@ -50,7 +50,8 @@ function mensagemDeErro(erro, padrao) {
 }
 
 // Cadastro e edição de produto (Figma: "Admin — Cadastro de Produto"). id null = produto novo.
-// Tamanho em branco não é vendido; 0 aparece na loja como esgotado.
+// No cadastro, tamanho em branco não é vendido e 0 aparece na loja como esgotado. Na edição o
+// estoque só aparece para leitura: quem muda é a Gestão de Estoque (/admin/estoque).
 // As fotos só existem para produto salvo: o cadastro novo salva e abre a edição para as fotos.
 export default function AdminProdutoForm({ id }) {
   const editando = id !== null
@@ -107,12 +108,16 @@ export default function AdminProdutoForm({ id }) {
       preco,
       categoriaId: form.categoriaId === '' ? null : Number(form.categoriaId),
       destaque: form.destaque,
-      estoque: TAMANHOS.filter((t) => form.estoque[t] !== '').map((tamanho) => ({
+    }
+    // Na edição o estoque não vai junto (#47): ele muda só pela tela de estoque
+    if (editando) {
+      dados.ativo = form.ativo
+    } else {
+      dados.estoque = TAMANHOS.filter((t) => form.estoque[t] !== '').map((tamanho) => ({
         tamanho,
         quantidade: Number(form.estoque[tamanho]),
-      })),
+      }))
     }
-    if (editando) dados.ativo = form.ativo
 
     setSalvando(true)
     setErro(null)
@@ -233,27 +238,59 @@ export default function AdminProdutoForm({ id }) {
               />
             </label>
 
-            <fieldset className="produto-form__grupo" disabled={salvando}>
-              <legend className="eyebrow">Estoque por tamanho</legend>
-              <div className="produto-form__tamanhos">
-                {TAMANHOS.map((tamanho) => (
-                  <label key={tamanho} className="produto-form__tamanho">
-                    <span className="eyebrow">{tamanho}</span>
-                    <input
-                      type="number"
-                      name={`estoque-${tamanho}`}
-                      min="0"
-                      step="1"
-                      inputMode="numeric"
-                      placeholder="—"
-                      value={form.estoque[tamanho]}
-                      onChange={(e) => alterarEstoque(tamanho, e.target.value)}
-                    />
-                  </label>
-                ))}
+            {editando ? (
+              <div className="produto-form__grupo">
+                <p className="eyebrow" id="estoque-atual">
+                  Estoque por tamanho
+                </p>
+                <dl className="produto-form__tamanhos" aria-labelledby="estoque-atual">
+                  {TAMANHOS.map((tamanho) => (
+                    <div key={tamanho} className="produto-form__tamanho">
+                      <dt className="eyebrow">{tamanho}</dt>
+                      <dd className="produto-form__quantidade">
+                        {form.estoque[tamanho] === '' ? (
+                          <>
+                            <span aria-hidden="true">—</span>
+                            <span className="produto-form__oculto">não cadastrado</span>
+                          </>
+                        ) : (
+                          form.estoque[tamanho]
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="produto-form__dica">
+                  Estoque de quando a página abriu. Para alterar, use a{' '}
+                  <a href="/admin/estoque" className="produto-form__link">
+                    Gestão de Estoque
+                  </a>
+                  .
+                </p>
               </div>
-              <p className="produto-form__dica">Deixe em branco os tamanhos que a peça não tem. 0 aparece como esgotado.</p>
-            </fieldset>
+            ) : (
+              <fieldset className="produto-form__grupo" disabled={salvando}>
+                <legend className="eyebrow">Estoque por tamanho</legend>
+                <div className="produto-form__tamanhos">
+                  {TAMANHOS.map((tamanho) => (
+                    <label key={tamanho} className="produto-form__tamanho">
+                      <span className="eyebrow">{tamanho}</span>
+                      <input
+                        type="number"
+                        name={`estoque-${tamanho}`}
+                        min="0"
+                        step="1"
+                        inputMode="numeric"
+                        placeholder="—"
+                        value={form.estoque[tamanho]}
+                        onChange={(e) => alterarEstoque(tamanho, e.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
+                <p className="produto-form__dica">Deixe em branco os tamanhos que a peça não tem. 0 aparece como esgotado.</p>
+              </fieldset>
+            )}
 
             <label className="produto-form__opcao">
               <input
