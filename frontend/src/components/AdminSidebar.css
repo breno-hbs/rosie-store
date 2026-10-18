@@ -1,0 +1,79 @@
+/* AdminSidebar (Figma: symbol 10:38). Mobile-first: no celular vira uma faixa no topo,
+   com o menu em linha; a partir de 768px é a coluna lateral de 240px. */
+
+.admin-sidebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 14px;
+  padding: 16px var(--margem) 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.admin-sidebar__menu {
+  display: flex;
+  flex-basis: 100%;
+  gap: 20px;
+  overflow-x: auto;
+}
+
+.admin-sidebar__item {
+  padding: 16px 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--acento);
+  text-align: left;
+}
+
+.admin-sidebar__item[aria-current='page'] {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+
+.admin-sidebar__item:hover {
+  color: var(--tinta);
+}
+
+/* "Sair" vai para o fim da linha no celular */
+.admin-sidebar__menu button.admin-sidebar__item {
+  margin-left: auto;
+}
+
+@media (min-width: 768px) {
+  .admin-sidebar {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 0;
+    width: 240px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 32px 28px 0;
+    border-bottom: 0;
+    border-right: 1px solid var(--linha);
+  }
+
+  .admin-sidebar__titulo {
+    margin-top: 14px;
+  }
+
+  .admin-sidebar__menu {
+    flex-direction: column;
+    flex-basis: auto;
+    gap: 2px;
+    width: 100%;
+    margin-top: 36px;
+    overflow: visible;
+  }
+
+  .admin-sidebar__item {
+    width: 100%;
+  }
+
+  .admin-sidebar__menu button.admin-sidebar__item {
+    margin-left: 0;
+  }
+}

@@ -102,11 +102,11 @@ Instale o MySQL Server 8 ([dev.mysql.com/downloads](https://dev.mysql.com/downlo
 
 ## Configuração
 
-### Back-end: credenciais do banco
+### Back-end: banco, JWT e admin inicial
 
 Escolha **uma** das duas formas.
 
-**1. Arquivo `application-local.properties`** (recomendado). Copie o exemplo e troque `sua_senha_aqui` pela senha do seu MySQL (e o usuário, se não for `root`):
+**1. Arquivo `application-local.properties`** (recomendado). Copie o exemplo e troque `sua_senha_aqui` pela senha do seu MySQL (e o usuário, se não for `root`). O exemplo já traz um `rosie.jwt.segredo` só de desenvolvimento; para criar o admin do painel, descomente e preencha `rosie.admin.email` e `rosie.admin.senha`:
 
 Windows (PowerShell):
 
@@ -120,7 +120,7 @@ macOS/Linux:
 cp backend/src/main/resources/application-example.properties backend/src/main/resources/application-local.properties
 ```
 
-O `application.properties` importa esse arquivo automaticamente quando ele existe; não é preciso ativar perfil.
+O `application.properties` importa esse arquivo automaticamente quando ele existe; não é preciso ativar perfil. Quem já tinha o arquivo antes do login admin precisa acrescentar a linha `rosie.jwt.segredo=...` (copie do exemplo), senão a API não sobe.
 
 **2. Variáveis de ambiente.** O `application.properties` lê:
 
@@ -130,6 +130,10 @@ O `application.properties` importa esse arquivo automaticamente quando ele exist
 | `DB_USERNAME` | `root` | Usuário do MySQL |
 | `DB_URL` | `jdbc:mysql://localhost:3306/rosie_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true` | URL JDBC |
 | `CORS_ORIGENS` | `http://localhost:5173` | Origens liberadas no CORS, separadas por vírgula |
+| `JWT_SECRET` | (nenhum, obrigatória) | Segredo que assina os tokens do painel (HS256), com pelo menos 32 caracteres |
+| `ROSIE_ADMIN_EMAIL` | (vazio) | E-mail do admin criado na subida, se ainda não houver nenhum admin |
+| `ROSIE_ADMIN_SENHA` | (vazio) | Senha desse admin, com pelo menos 8 caracteres (guardada só como hash BCrypt) |
+| `ROSIE_ADMIN_NOME` | `Roseane` | Nome desse admin |
 
 Windows (PowerShell, vale só para o terminal aberto):
 
@@ -144,6 +148,8 @@ export DB_PASSWORD=sua_senha
 ```
 
 `CORS_ORIGENS` só precisa ser definida se o front rodar em outro endereço que não `http://localhost:5173` (em produção, inclui `https://rosiestore.com.br`).
+
+O admin inicial é criado uma vez só: na primeira subida sem nenhum usuário `ADMIN` no banco. Depois disso `ROSIE_ADMIN_EMAIL` e `ROSIE_ADMIN_SENHA` são ignoradas (trocar a senha não altera o admin já criado). Em produção, gere um `JWT_SECRET` próprio (ex.: `openssl rand -base64 48`); trocar o segredo derruba todas as sessões abertas do painel.
 
 > Nunca commitar `application-local.properties`, `.env.local` nem qualquer arquivo com credenciais reais. Os dois já estão no `.gitignore`.
 
