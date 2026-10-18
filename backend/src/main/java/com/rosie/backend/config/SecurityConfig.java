@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,7 +14,11 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -24,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Configuration
+@Import(JwtConfig.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -34,21 +40,32 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        AuthenticationEntryPoint naoAutenticado = (request, response, e) -> escreverErro(response,
+                HttpStatus.UNAUTHORIZED, "Autenticação necessária", "NAO_AUTENTICADO");
+        AccessDeniedHandler acessoNegado = (request, response, e) -> escreverErro(response,
+                HttpStatus.FORBIDDEN, "Acesso negado", "ACESSO_NEGADO");
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/admin/auth/login").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
                         // Sem isso, exceções não tratadas viram 401 ao encaminhar para /error
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
+                // Token ausente, inválido ou expirado → 401; role errada → 403
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                        .authenticationEntryPoint(naoAutenticado)
+                        .accessDeniedHandler(acessoNegado)
+                )
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, e) -> escreverErro(response,
-                                HttpStatus.UNAUTHORIZED, "Autenticação necessária", "NAO_AUTENTICADO"))
-                        .accessDeniedHandler((request, response, e) -> escreverErro(response,
-                                HttpStatus.FORBIDDEN, "Acesso negado", "ACESSO_NEGADO"))
+                        .authenticationEntryPoint(naoAutenticado)
+                        .accessDeniedHandler(acessoNegado)
                 );
 
         return http.build();
@@ -64,6 +81,17 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    // A claim "role" do token (ADMIN ou CLIENTE) vira a authority ROLE_ADMIN / ROLE_CLIENTE
+    private JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
+        authorities.setAuthoritiesClaimName("role");
+        authorities.setAuthorityPrefix("ROLE_");
+
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authorities);
+        return converter;
     }
 
     private void escreverErro(HttpServletResponse response, HttpStatus status, String mensagem, String codigo)

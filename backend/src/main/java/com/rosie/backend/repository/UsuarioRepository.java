@@ -1,5 +1,6 @@
 package com.rosie.backend.repository;
 
+import com.rosie.backend.model.Role;
 import com.rosie.backend.model.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -11,4 +12,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    // Usado na criação do admin inicial
+    boolean existsByRole(Role role);
 }
