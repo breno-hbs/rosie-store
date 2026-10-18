@@ -1,0 +1,282 @@
+/* Gestão de estoque (Figma: "Admin — Gestão de Estoque"). No celular cada produto vira um
+   bloco com os quatro tamanhos lado a lado; a partir de 768px, as colunas do Figma. */
+
+.admin-estoque {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.admin-estoque__estado,
+.admin-estoque__dica {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+}
+
+.admin-estoque__estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.admin-estoque__estado a {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-estoque__dica {
+  margin-top: -8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-estoque__oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.admin-estoque__tabela {
+  display: block;
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid var(--linha);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-estoque__tabela thead {
+  display: none;
+}
+
+.admin-estoque__produto {
+  display: block;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.admin-estoque__produto tr:first-child {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-estoque__tabela th,
+.admin-estoque__tabela td {
+  padding: 0;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.admin-estoque__nome {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+
+.admin-estoque__marca {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 1px solid var(--linha);
+  vertical-align: 2px;
+}
+
+.admin-estoque__produto--inativo .admin-estoque__nome {
+  color: var(--fumaca);
+}
+
+.admin-estoque__tamanho {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Rótulo do tamanho no celular, onde o cabeçalho da tabela some */
+.admin-estoque__tamanho::before {
+  content: attr(data-rotulo);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  color: var(--fumaca);
+}
+
+.admin-estoque__campo {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--acento);
+  background: transparent;
+  border: 1px solid var(--linha);
+  border-radius: 0;
+}
+
+.admin-estoque__campo::placeholder {
+  color: var(--acento);
+  opacity: 1;
+}
+
+.admin-estoque__campo:focus {
+  border-color: var(--tinta);
+  outline: none;
+}
+
+.admin-estoque__campo:disabled {
+  color: var(--fumaca);
+}
+
+/* Valor ainda não salvo */
+.admin-estoque__campo--alterado {
+  font-weight: 400;
+  color: var(--tinta);
+}
+
+.admin-estoque__campo[aria-invalid='true'] {
+  border-color: var(--tinta);
+}
+
+.admin-estoque__acoes {
+  grid-column: 1 / -1;
+}
+
+.admin-estoque__salvar {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--acento);
+  border: 1px solid var(--linha);
+}
+
+.admin-estoque__salvar:not(:disabled) {
+  font-weight: 400;
+  color: var(--tinta);
+  border-color: var(--tinta);
+}
+
+.admin-estoque__salvar:disabled {
+  cursor: default;
+}
+
+.admin-estoque__linha-aviso,
+.admin-estoque__linha-aviso td {
+  display: block;
+}
+
+.admin-estoque__aviso {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-estoque__aviso--sucesso {
+  color: var(--fumaca);
+}
+
+.admin-estoque__aviso--erro {
+  font-weight: 400;
+  color: var(--tinta);
+}
+
+@media (min-width: 768px) {
+  .admin-estoque {
+    margin-top: 0;
+  }
+
+  .admin-estoque__tabela {
+    display: table;
+    table-layout: fixed;
+  }
+
+  .admin-estoque__tabela thead {
+    display: table-header-group;
+  }
+
+  .admin-estoque__produto {
+    display: table-row-group;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .admin-estoque__tabela tr,
+  .admin-estoque__produto tr:first-child {
+    display: table-row;
+  }
+
+  .admin-estoque__tabela th,
+  .admin-estoque__tabela td {
+    display: table-cell;
+    padding: 16px 20px 16px 0;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .admin-estoque__tabela thead th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  /* Larguras do Figma: 300 / 100 / 90 / 90 / 90 / 90 */
+  .admin-estoque__tabela thead th:nth-child(1) { width: 36%; }
+  .admin-estoque__tabela thead th:nth-child(n + 2) { width: 12.8%; }
+
+  /* O aviso fica logo abaixo da linha do produto, sem divisória entre os dois */
+  .admin-estoque__produto:has(.admin-estoque__linha-aviso) tr:first-child > * {
+    border-bottom: 0;
+  }
+
+  .admin-estoque__linha-aviso td {
+    display: table-cell;
+    padding-top: 0;
+  }
+
+  .admin-estoque__aviso {
+    margin-top: 0;
+  }
+
+  .admin-estoque__tamanho::before {
+    content: none;
+  }
+
+  /* No desktop o número parece texto, como no Figma; a linha aparece ao passar o mouse ou focar */
+  .admin-estoque__campo {
+    width: 100%;
+    max-width: 64px;
+    min-height: 0;
+    padding: 0 0 2px;
+    border: 0;
+    border-bottom: 1px solid transparent;
+  }
+
+  .admin-estoque__campo:hover:not(:disabled) {
+    border-bottom-color: var(--linha);
+  }
+
+  .admin-estoque__campo:focus,
+  .admin-estoque__campo[aria-invalid='true'] {
+    border-bottom-color: var(--tinta);
+  }
+
+  .admin-estoque__salvar {
+    width: auto;
+    min-height: 0;
+    border: 0;
+    text-align: left;
+  }
+
+  .admin-estoque__salvar:not(:disabled) {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}

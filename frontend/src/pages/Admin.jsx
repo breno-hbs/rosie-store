@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { buscarUsuarioAdmin, lerSessaoAdmin, sairDoPainel } from '../api.js'
 import AdminCategorias from '../components/AdminCategorias.jsx'
+import AdminEstoque from '../components/AdminEstoque.jsx'
 import AdminProdutoForm from '../components/AdminProdutoForm.jsx'
 import AdminProdutos from '../components/AdminProdutos.jsx'
 import AdminSidebar from '../components/AdminSidebar.jsx'
 import { SECOES_ADMIN } from '../components/adminSecoes.js'
 import './Admin.css'
 
-// Casca do painel. Produtos (#14) e categorias (#17) já têm tela; estoque (#16)
-// ainda mostra só um aviso. produtoId: 'novo' ou o id do produto em edição.
+// Casca do painel: produtos (#14), estoque (#16) e categorias (#17).
+// produtoId: 'novo' ou o id do produto em edição.
 export default function Admin({ secao, produtoId }) {
   const [usuario, setUsuario] = useState(() => lerSessaoAdmin()?.usuario ?? null)
   const nomeSecao = SECOES_ADMIN.find((s) => s.id === secao)?.nome
@@ -27,6 +28,8 @@ export default function Admin({ secao, produtoId }) {
     conteudo = <AdminProdutoForm id={produtoId === 'novo' ? null : produtoId} />
   } else if (secao === 'produtos') {
     conteudo = <AdminProdutos />
+  } else if (secao === 'estoque') {
+    conteudo = <AdminEstoque />
   } else if (secao === 'categorias') {
     conteudo = (
       <>
