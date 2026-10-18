@@ -141,3 +141,37 @@ a {
   cursor: default;
   opacity: 0.5;
 }
+
+/* TextInput (login e formulários do painel) */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.campo__caixa {
+  width: 100%;
+  padding: 13px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--tinta);
+  background: transparent;
+  border: 1px solid var(--linha);
+  border-radius: 0;
+}
+
+.campo__caixa::placeholder {
+  color: var(--fumaca);
+  opacity: 1;
+}
+
+.campo__caixa:focus {
+  border-color: var(--tinta);
+  outline: none;
+}
+
+.campo__caixa:disabled {
+  color: var(--fumaca);
+}
