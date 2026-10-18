@@ -1,11 +1,16 @@
 // Todas as chamadas à API do Rosie passam por aqui (contrato em docs/contrato-api.md).
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
 
-// Sessão do painel admin: { token, usuario: { id, nome, role } }.
-// Fica no sessionStorage: some ao fechar a aba, então um computador compartilhado não
-// continua logado no painel. O token vale 2 horas de qualquer forma.
-const CHAVE_SESSAO_ADMIN = 'rosie.admin.sessao'
+// Sessões: { token, usuario: { id, nome, role } }, uma por área, em chaves separadas.
+// Painel: sessionStorage, some ao fechar a aba (computador compartilhado não continua logado).
+// Loja: localStorage, o cliente segue logado entre abas e ao reabrir o navegador.
+// O token vale 2 horas nos dois casos.
+const SESSOES = {
+  admin: { chave: 'rosie.admin.sessao', armazenamento: () => sessionStorage },
+  cliente: { chave: 'rosie.cliente.sessao', armazenamento: () => localStorage },
+}
 const ROTA_LOGIN_ADMIN = '/admin/login'
+const ROTA_LOGIN_CLIENTE = '/entrar'
 
 // Erro no formato do contrato: {"erro": "...", "codigo": "..."}
 export class ApiError extends Error {
@@ -28,34 +33,76 @@ function tokenExpirado(token) {
   }
 }
 
-// Sessão válida (token ainda no prazo) ou null
-export function lerSessaoAdmin() {
+// Sessão válida (token ainda no prazo) da área ('admin' ou 'cliente'), ou null
+function lerSessao(area) {
+  const { chave, armazenamento } = SESSOES[area]
   try {
-    const sessao = JSON.parse(sessionStorage.getItem(CHAVE_SESSAO_ADMIN))
+    const sessao = JSON.parse(armazenamento().getItem(chave))
     if (sessao?.token && !tokenExpirado(sessao.token)) return sessao
   } catch {
-    // sessionStorage indisponível ou valor corrompido: trata como deslogado
+    // Armazenamento indisponível ou valor corrompido: trata como deslogado
   }
-  limparSessaoAdmin()
+  limparSessao(area)
   return null
 }
 
-function limparSessaoAdmin() {
+function guardarSessao(area, sessao) {
+  const { chave, armazenamento } = SESSOES[area]
   try {
-    sessionStorage.removeItem(CHAVE_SESSAO_ADMIN)
+    armazenamento().setItem(chave, JSON.stringify(sessao))
+  } catch {
+    throw new ApiError('O navegador bloqueou o armazenamento da sessão', 'SEM_ARMAZENAMENTO', 0)
+  }
+}
+
+function limparSessao(area) {
+  const { chave, armazenamento } = SESSOES[area]
+  try {
+    armazenamento().removeItem(chave)
   } catch {
     // nada a limpar
   }
 }
 
-function voltarParaLogin(motivo) {
-  limparSessaoAdmin()
-  window.location.assign(motivo ? `${ROTA_LOGIN_ADMIN}?motivo=${motivo}` : ROTA_LOGIN_ADMIN)
+export function lerSessaoAdmin() {
+  return lerSessao('admin')
 }
 
-// O token só vai nas chamadas `autenticado`: as rotas públicas do catálogo não recebem
-// Authorization, porque um token vencido faria a API responder 401 mesmo nelas.
-async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenticado = false, signal } = {}) {
+export function lerSessaoCliente() {
+  return lerSessao('cliente')
+}
+
+// Destino depois do login da loja: só caminhos deste site ("/produtos/1"), nunca outro
+// domínio ("//site.com" ou "https://..."), para o ?voltar= não virar redirecionamento aberto
+export function destinoSeguro(voltar) {
+  return typeof voltar === 'string' && /^\/(?![/\\])/.test(voltar) ? voltar : '/'
+}
+
+// Leva o ?voltar= adiante (ex.: do login para o cadastro), para a pessoa voltar à mesma página
+export function comVoltar(caminho, voltar) {
+  return destinoSeguro(voltar) === '/' ? caminho : `${caminho}?voltar=${encodeURIComponent(voltar)}`
+}
+
+// Login da loja levando a página atual em ?voltar=, para a pessoa voltar para ela depois de entrar
+export function rotaLoginCliente({ motivo, voltar = window.location.pathname + window.location.search } = {}) {
+  const rota = comVoltar(ROTA_LOGIN_CLIENTE, voltar)
+  if (!motivo) return rota
+  return `${rota}${rota.includes('?') ? '&' : '?'}motivo=${motivo}`
+}
+
+function voltarParaLogin(area, motivo) {
+  limparSessao(area)
+  if (area === 'cliente') {
+    window.location.assign(rotaLoginCliente({ motivo }))
+  } else {
+    window.location.assign(motivo ? `${ROTA_LOGIN_ADMIN}?motivo=${motivo}` : ROTA_LOGIN_ADMIN)
+  }
+}
+
+// `autenticado` diz de qual área é o token: 'admin' (rotas /admin/**) ou 'cliente' (conta,
+// carrinho, pedidos, trocas). Sem ele, a chamada vai sem Authorization: as rotas públicas do
+// catálogo não recebem token, porque um token vencido faria a API responder 401 mesmo nelas.
+async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenticado, signal } = {}) {
   const url = new URL(API_URL + caminho)
   for (const [chave, valor] of Object.entries(params)) {
     if (valor !== undefined && valor !== null && valor !== '') {
@@ -68,9 +115,9 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
   const headers = { Accept: 'application/json' }
   if (corpo !== undefined && !multipart) headers['Content-Type'] = 'application/json'
   if (autenticado) {
-    const sessao = lerSessaoAdmin()
+    const sessao = lerSessao(autenticado)
     if (!sessao) {
-      voltarParaLogin('expirou')
+      voltarParaLogin(autenticado, 'expirou')
       throw new ApiError('Sua sessão expirou', 'NAO_AUTENTICADO', 401)
     }
     headers.Authorization = `Bearer ${sessao.token}`
@@ -91,8 +138,8 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
 
   const conteudo = await resposta.json().catch(() => null)
   if (!resposta.ok) {
-    // Token vencido ou inválido no meio do uso do painel: volta para o login
-    if (autenticado && resposta.status === 401) voltarParaLogin('expirou')
+    // Token vencido ou inválido no meio do uso: volta para o login da área
+    if (autenticado && resposta.status === 401) voltarParaLogin(autenticado, 'expirou')
     throw new ApiError(
       conteudo?.erro ?? `Erro ${resposta.status}`,
       conteudo?.codigo ?? 'ERRO_DESCONHECIDO',
@@ -128,40 +175,81 @@ export function buscarProduto(id, opcoes) {
 // Credencial errada: ApiError com codigo CREDENCIAIS_INVALIDAS (status 401)
 export async function entrarNoPainel(email, senha) {
   const sessao = await requisicao('/admin/auth/login', { metodo: 'POST', corpo: { email, senha } })
-  try {
-    sessionStorage.setItem(CHAVE_SESSAO_ADMIN, JSON.stringify(sessao))
-  } catch {
-    throw new ApiError('O navegador bloqueou o armazenamento da sessão', 'SEM_ARMAZENAMENTO', 0)
-  }
+  guardarSessao('admin', sessao)
   return sessao.usuario
 }
 
 // GET /admin/auth/me → { id, nome, role }. Serve para conferir se o token ainda vale.
 export function buscarUsuarioAdmin(opcoes) {
-  return requisicao('/admin/auth/me', { ...opcoes, autenticado: true })
+  return requisicao('/admin/auth/me', { ...opcoes, autenticado: 'admin' })
 }
 
 // Sem logout no servidor (JWT sem estado): basta esquecer o token
 export function sairDoPainel() {
-  voltarParaLogin()
+  voltarParaLogin('admin')
 }
 
 // Helpers genéricos das rotas /admin/** (sempre com token). Erro vira ApiError; 401 volta ao login.
 export function getAdmin(caminho, opcoes) {
-  return requisicao(caminho, { ...opcoes, autenticado: true })
+  return requisicao(caminho, { ...opcoes, autenticado: 'admin' })
 }
 
 export function postAdmin(caminho, corpo, opcoes) {
-  return requisicao(caminho, { ...opcoes, metodo: 'POST', corpo, autenticado: true })
+  return requisicao(caminho, { ...opcoes, metodo: 'POST', corpo, autenticado: 'admin' })
 }
 
 export function putAdmin(caminho, corpo, opcoes) {
-  return requisicao(caminho, { ...opcoes, metodo: 'PUT', corpo, autenticado: true })
+  return requisicao(caminho, { ...opcoes, metodo: 'PUT', corpo, autenticado: 'admin' })
 }
 
 // Respostas 204 (sem corpo) resolvem com null
 export function deleteAdmin(caminho, opcoes) {
-  return requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: true })
+  return requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: 'admin' })
+}
+
+// POST /auth/registrar; dados: { nome, email, senha, telefone (só dígitos), aceitePrivacidade }
+// → { token, usuario: { id, nome, role } }; guarda a sessão (quem se cadastra sai logado).
+// E-mail já cadastrado: ApiError com codigo EMAIL_JA_CADASTRADO (409); campo inválido: DADOS_INVALIDOS (400)
+export async function cadastrarCliente(dados) {
+  const sessao = await requisicao('/auth/registrar', { metodo: 'POST', corpo: dados })
+  guardarSessao('cliente', sessao)
+  return sessao.usuario
+}
+
+// POST /auth/login → { token, usuario: { id, nome, role } }; guarda a sessão.
+// Credencial errada (ou conta de admin): ApiError com codigo CREDENCIAIS_INVALIDAS (401)
+export async function entrarNaLoja(email, senha) {
+  const sessao = await requisicao('/auth/login', { metodo: 'POST', corpo: { email, senha } })
+  guardarSessao('cliente', sessao)
+  return sessao.usuario
+}
+
+// GET /auth/me → { id, nome, role }. Confere se o token de cliente ainda vale.
+export function buscarCliente(opcoes) {
+  return getCliente('/auth/me', opcoes)
+}
+
+// Sem logout no servidor: esquece o token e continua na página
+export function sairDaLoja() {
+  limparSessao('cliente')
+}
+
+// Helpers das rotas de cliente (conta, carrinho, pedidos, trocas), sempre com o token de cliente.
+// Erro vira ApiError; 401 limpa a sessão e leva a /entrar?voltar=<página atual>.
+export function getCliente(caminho, opcoes) {
+  return requisicao(caminho, { ...opcoes, autenticado: 'cliente' })
+}
+
+export function postCliente(caminho, corpo, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'POST', corpo, autenticado: 'cliente' })
+}
+
+export function putCliente(caminho, corpo, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'PUT', corpo, autenticado: 'cliente' })
+}
+
+export function deleteCliente(caminho, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: 'cliente' })
 }
 
 // GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, estoque: [{ tamanho, quantidade }], ativo, destaque }],

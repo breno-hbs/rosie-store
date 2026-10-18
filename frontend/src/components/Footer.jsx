@@ -46,7 +46,8 @@ export default function Footer() {
 
       <div className="footer__base">
         <p>© Rosie — todos os direitos reservados</p>
-        <p>Política de privacidade</p>
+        {/* Âncora do link do cadastro até a página da política existir (#31) */}
+        <p id="politica-privacidade">Política de privacidade</p>
       </div>
     </footer>
   )
