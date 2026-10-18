@@ -7,6 +7,25 @@ import './AdminProdutoFotos.css'
 const TIPOS_ACEITOS = ['image/jpeg', 'image/png', 'image/webp']
 const TAMANHO_MAXIMO = 5 * 1024 * 1024
 
+// A loja mostra as fotos em 4:5 (RNF09): o Cloudinary guarda a original e entrega cortada (#18).
+// Até 1% de diferença já conta como 4:5 e vai direto, sem prévia.
+const PROPORCAO = 4 / 5
+const TOLERANCIA = 0.01
+// Altura máxima da prévia do corte, para foto muito alta não empurrar o formulário
+const ALTURA_PREVIA = 420
+
+const ENQUADRAMENTOS = [
+  {
+    valor: 'AUTOMATICO',
+    rotulo: 'Automático',
+    dica: 'O Cloudinary procura a parte principal da foto. A moldura mostra o corte pelo centro; o resultado pode variar um pouco.',
+  },
+  { valor: 'CENTRO', rotulo: 'Centro', dica: 'Corta por igual dos dois lados.' },
+  { valor: 'TOPO', rotulo: 'Topo', dica: 'Guarda a parte de cima e corta só embaixo: bom para foto de corpo inteiro.' },
+]
+
+const SELOS = { medindo: 'Preparando…', fila: 'Na fila', enviando: 'Enviando…', erro: 'Não enviada' }
+
 let proximaChave = 0
 const novaChave = () => `foto-${++proximaChave}`
 
@@ -20,6 +39,39 @@ function problemaNoArquivo(arquivo) {
   return null
 }
 
+// Dimensões reais da foto escolhida; null se o navegador não conseguir abrir (o servidor decide)
+function medir(url) {
+  return new Promise((resolver) => {
+    const imagem = new Image()
+    imagem.onload = () => resolver({ largura: imagem.naturalWidth, altura: imagem.naturalHeight })
+    imagem.onerror = () => resolver(null)
+    imagem.src = url
+  })
+}
+
+function foraDe4por5(medida) {
+  if (!medida?.largura || !medida?.altura) return false
+  return Math.abs(medida.largura / medida.altura / PROPORCAO - 1) > TOLERANCIA
+}
+
+function maisLarga(foto) {
+  return foto.largura / foto.altura > PROPORCAO
+}
+
+// Parte da foto que fica no corte 4:5, em % da foto inteira, como o c_fill do Cloudinary:
+// foto mais larga perde os lados (sempre pelo centro); mais alta perde em cima e embaixo, ou só
+// embaixo no TOPO. O AUTOMATICO não dá para prever aqui e aparece como o centro.
+function areaDoCorte(foto) {
+  const proporcao = foto.largura / foto.altura
+  if (proporcao > PROPORCAO) {
+    const largura = (PROPORCAO / proporcao) * 100
+    return { top: 0, left: `${(100 - largura) / 2}%`, width: `${largura}%`, height: '100%' }
+  }
+  const altura = (proporcao / PROPORCAO) * 100
+  const topo = foto.enquadramento === 'TOPO' ? 0 : (100 - altura) / 2
+  return { top: `${topo}%`, left: 0, width: '100%', height: `${altura}%` }
+}
+
 function mensagemDeErro(erro, padrao) {
   if (erro instanceof ApiError && erro.codigo === 'SEM_CONEXAO') {
     return 'Sem conexão com a loja. Confira a internet e tente de novo.'
@@ -29,6 +81,7 @@ function mensagemDeErro(erro, padrao) {
 
 // Galeria de fotos do formulário de produto (Figma: "Admin — Cadastro de Produto", coluna da esquerda).
 // As fotos são salvas na hora, uma de cada vez e na ordem escolhida; a primeira é a principal.
+// Foto fora de 4:5 espera: mostra a moldura do corte e o enquadramento antes de enviar (#18).
 // produtoId null = produto ainda não salvo: o upload só é liberado depois do primeiro "Salvar".
 export default function AdminProdutoFotos({ produtoId, imagensIniciais = [] }) {
   const [fotos, setFotos] = useState(() => imagensIniciais.map(daApi))
@@ -48,7 +101,7 @@ export default function AdminProdutoFotos({ produtoId, imagensIniciais = [] }) {
 
   const prontas = fotos.filter((foto) => foto.estado === 'pronta')
   const pendentes = fotos.filter((foto) => foto.estado !== 'pronta')
-  const enviando = pendentes.some((foto) => foto.estado === 'fila' || foto.estado === 'enviando')
+  const enviando = pendentes.some((foto) => ['medindo', 'fila', 'enviando'].includes(foto.estado))
   // Reordenar com upload em andamento mandaria uma lista sem a foto nova (a API recusa)
   const ordemBloqueada = enviando || reordenando || removendo !== null
 
@@ -62,11 +115,11 @@ export default function AdminProdutoFotos({ produtoId, imagensIniciais = [] }) {
     previas.current.delete(foto.previa)
   }
 
-  function enfileirar(chave, arquivo) {
+  function enfileirar(chave, arquivo, enquadramento) {
     fila.current = fila.current.then(async () => {
       alterarFoto(chave, { estado: 'enviando', erro: null })
       try {
-        const imagem = await enviarImagemProduto(produtoId, arquivo)
+        const imagem = await enviarImagemProduto(produtoId, arquivo, enquadramento)
         setFotos((atuais) =>
           atuais.map((foto) => {
             if (foto.chave !== chave) return foto
@@ -80,7 +133,7 @@ export default function AdminProdutoFotos({ produtoId, imagensIniciais = [] }) {
     })
   }
 
-  function adicionar(evento) {
+  async function adicionar(evento) {
     const arquivos = Array.from(evento.target.files ?? [])
     evento.target.value = ''
     setErro(null)
@@ -91,17 +144,31 @@ export default function AdminProdutoFotos({ produtoId, imagensIniciais = [] }) {
 
       const previa = URL.createObjectURL(arquivo)
       previas.current.add(previa)
-      return { chave: novaChave(), previa, nome: arquivo.name, arquivo, estado: 'fila' }
+      return { chave: novaChave(), previa, nome: arquivo.name, arquivo, estado: 'medindo' }
     })
     setFotos((atuais) => [...atuais, ...novas])
-    for (const foto of novas) {
-      if (foto.estado === 'fila') enfileirar(foto.chave, foto.arquivo)
-    }
+
+    // Mede todas antes de enfileirar, para as que já estão em 4:5 subirem na ordem escolhida
+    const medidas = await Promise.all(novas.map((foto) => (foto.estado === 'medindo' ? medir(foto.previa) : null)))
+    novas.forEach((foto, indice) => {
+      if (foto.estado !== 'medindo') return
+      if (foraDe4por5(medidas[indice])) {
+        alterarFoto(foto.chave, { estado: 'recorte', ...medidas[indice], enquadramento: 'AUTOMATICO' })
+      } else {
+        alterarFoto(foto.chave, { estado: 'fila' })
+        enfileirar(foto.chave, foto.arquivo, null)
+      }
+    })
+  }
+
+  function enviarComCorte(foto) {
+    alterarFoto(foto.chave, { estado: 'fila' })
+    enfileirar(foto.chave, foto.arquivo, foto.enquadramento)
   }
 
   function tentarDeNovo(foto) {
     alterarFoto(foto.chave, { estado: 'fila', erro: null })
-    enfileirar(foto.chave, foto.arquivo)
+    enfileirar(foto.chave, foto.arquivo, foto.enquadramento)
   }
 
   function descartar(foto) {
@@ -224,38 +291,87 @@ export default function AdminProdutoFotos({ produtoId, imagensIniciais = [] }) {
             </li>
           ))}
 
-          {pendentes.map((foto) => (
-            <li key={foto.chave} className="produto-fotos__item">
-              <div className="produto-fotos__moldura produto-fotos__moldura--pendente">
-                {/* Arquivo recusado aqui (ex.: GIF, PDF) pode nem ser imagem: mostra só o nome */}
-                {foto.arquivo ? (
-                  <img src={foto.previa} alt="" onError={(e) => (e.currentTarget.hidden = true)} />
-                ) : (
-                  <span className="produto-fotos__nome">{foto.nome}</span>
-                )}
-                <span className="rotulo produto-fotos__selo">
-                  {foto.estado === 'erro' ? 'Não enviada' : foto.estado === 'enviando' ? 'Enviando…' : 'Na fila'}
-                </span>
-              </div>
-              {foto.estado === 'erro' && (
-                <>
-                  <p className="produto-form__erro" role="alert">
-                    {foto.erro}
-                  </p>
-                  <div className="produto-fotos__acoes">
-                    {foto.podeTentar && (
-                      <button type="button" className="produto-fotos__acao" onClick={() => tentarDeNovo(foto)}>
-                        Tentar de novo
+          {pendentes.map((foto) =>
+            foto.estado === 'recorte' ? (
+              <li key={foto.chave} className="produto-fotos__item produto-fotos__item--recorte">
+                <div
+                  className="produto-fotos__recorte"
+                  style={{
+                    aspectRatio: `${foto.largura} / ${foto.altura}`,
+                    width: `min(100%, ${Math.round((ALTURA_PREVIA * foto.largura) / foto.altura)}px)`,
+                  }}
+                >
+                  <img src={foto.previa} alt={`Prévia do corte 4:5 de ${foto.nome}`} />
+                  <span className="produto-fotos__corte" style={areaDoCorte(foto)} aria-hidden="true" />
+                </div>
+                <p className="produto-fotos__aviso">
+                  Esta foto tem {foto.largura} x {foto.altura} px, fora da proporção 4:5, e vai ser cortada: na loja
+                  aparece só a parte dentro da moldura.
+                </p>
+                <fieldset className="produto-fotos__enquadramento">
+                  <legend className="rotulo">Enquadramento</legend>
+                  {/* Em foto mais larga que 4:5 o corte é sempre nos lados: topo daria o mesmo que centro */}
+                  {ENQUADRAMENTOS.filter((opcao) => opcao.valor !== 'TOPO' || !maisLarga(foto)).map((opcao) => (
+                    <label key={opcao.valor} className="produto-fotos__opcao">
+                      <input
+                        type="radio"
+                        name={`enquadramento-${foto.chave}`}
+                        value={opcao.valor}
+                        checked={foto.enquadramento === opcao.valor}
+                        onChange={() => alterarFoto(foto.chave, { enquadramento: opcao.valor })}
+                      />
+                      {opcao.rotulo}
+                    </label>
+                  ))}
+                </fieldset>
+                <p className="produto-form__dica">
+                  {ENQUADRAMENTOS.find((opcao) => opcao.valor === foto.enquadramento)?.dica}
+                </p>
+                <div className="produto-fotos__acoes">
+                  <button type="button" className="produto-fotos__acao" onClick={() => enviarComCorte(foto)}>
+                    Enviar com este corte
+                  </button>
+                  <button type="button" className="produto-fotos__acao" onClick={() => descartar(foto)}>
+                    Descartar
+                  </button>
+                </div>
+              </li>
+            ) : (
+              <li key={foto.chave} className="produto-fotos__item">
+                <div className="produto-fotos__moldura produto-fotos__moldura--pendente">
+                  {/* Arquivo recusado aqui (ex.: GIF, PDF) pode nem ser imagem: mostra só o nome */}
+                  {foto.arquivo ? (
+                    <img
+                      src={foto.previa}
+                      alt=""
+                      style={foto.enquadramento === 'TOPO' ? { objectPosition: 'top' } : undefined}
+                      onError={(e) => (e.currentTarget.hidden = true)}
+                    />
+                  ) : (
+                    <span className="produto-fotos__nome">{foto.nome}</span>
+                  )}
+                  <span className="rotulo produto-fotos__selo">{SELOS[foto.estado]}</span>
+                </div>
+                {foto.estado === 'erro' && (
+                  <>
+                    <p className="produto-form__erro" role="alert">
+                      {foto.erro}
+                    </p>
+                    <div className="produto-fotos__acoes">
+                      {foto.podeTentar && (
+                        <button type="button" className="produto-fotos__acao" onClick={() => tentarDeNovo(foto)}>
+                          Tentar de novo
+                        </button>
+                      )}
+                      <button type="button" className="produto-fotos__acao" onClick={() => descartar(foto)}>
+                        Descartar
                       </button>
-                    )}
-                    <button type="button" className="produto-fotos__acao" onClick={() => descartar(foto)}>
-                      Descartar
-                    </button>
-                  </div>
-                </>
-              )}
-            </li>
-          ))}
+                    </div>
+                  </>
+                )}
+              </li>
+            ),
+          )}
 
           <li className="produto-fotos__item">{botaoAdicionar('produto-fotos__adicionar')}</li>
         </ul>
@@ -280,6 +396,7 @@ export default function AdminProdutoFotos({ produtoId, imagensIniciais = [] }) {
 
       <p className="produto-form__dica">
         Recomendado: fotos na proporção 4:5 (retrato) — ex: 1000 x 1250px. Mesmo formato do Instagram em retrato.
+        Fotos em outra proporção são cortadas em 4:5, e você vê o corte antes de enviar.
       </p>
       {produtoId !== null && (
         <p className="produto-form__dica">JPG, PNG ou WEBP até 5 MB. As fotos são salvas na hora; a primeira é a principal.</p>
