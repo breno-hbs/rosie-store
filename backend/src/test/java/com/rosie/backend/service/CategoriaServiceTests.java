@@ -92,7 +92,7 @@ class CategoriaServiceTests {
         assertThatThrownBy(() -> categoriaService.remover(categoria.getId()))
                 .isInstanceOf(ConflitoException.class)
                 .hasMessage("Não dá para remover \"Em uso " + sufixo
-                        + "\": a categoria tem 1 produto. Mova ou exclua os produtos antes.")
+                        + "\": a categoria tem 1 produto. Mova os produtos para outra categoria antes.")
                 .extracting("codigo").isEqualTo("CATEGORIA_EM_USO");
         assertThat(categoriaRepository.findById(categoria.getId())).isPresent();
     }

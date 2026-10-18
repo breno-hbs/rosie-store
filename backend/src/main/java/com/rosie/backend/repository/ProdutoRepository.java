@@ -4,6 +4,7 @@ import com.rosie.backend.model.Produto;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -22,6 +23,10 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 
     // GET /produtos/{id} — produto inativo responde 404, assim como some da listagem (RF03)
     Optional<Produto> findByIdAndAtivoTrue(Long id);
+
+    // GET /admin/produtos — todos, inclusive os inativos, mais recentes primeiro (RF14)
+    @EntityGraph(attributePaths = "categoria")
+    List<Produto> findAllByOrderByIdDesc();
 
     // DELETE /admin/categorias/{id} — categoria com produto (ativo ou inativo) não pode sair (RF17)
     long countByCategoriaId(Long categoriaId);

@@ -65,7 +65,7 @@ public class CategoriaService {
         if (produtos > 0) {
             String quantidade = produtos == 1 ? "1 produto" : produtos + " produtos";
             throw new ConflitoException(
-                    "Não dá para remover \"%s\": a categoria tem %s. Mova ou exclua os produtos antes."
+                    "Não dá para remover \"%s\": a categoria tem %s. Mova os produtos para outra categoria antes."
                             .formatted(categoria.getNome(), quantidade),
                     "CATEGORIA_EM_USO");
         }

@@ -41,6 +41,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ErroResponseDTO(mensagem, "DADOS_INVALIDOS"));
     }
 
+    // Regra de negócio fora do Bean Validation (ex.: categoria inexistente no cadastro de produto)
+    @ExceptionHandler(DadosInvalidosException.class)
+    public ResponseEntity<ErroResponseDTO> handleRegraInvalida(DadosInvalidosException ex) {
+        return ResponseEntity.badRequest().body(new ErroResponseDTO(ex.getMessage(), "DADOS_INVALIDOS"));
+    }
+
     // JSON malformado ou corpo ausente
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErroResponseDTO> handleCorpoInvalido(HttpMessageNotReadableException ex) {

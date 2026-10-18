@@ -100,15 +100,6 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
   return conteudo
 }
 
-// Chamadas do painel (/admin/**): sempre com o token. Resposta sem corpo (204) volta como null.
-// Erros chegam como ApiError com o `codigo` do contrato (ex.: 409 CATEGORIA_DUPLICADA).
-export const apiAdmin = {
-  get: (caminho, opcoes) => requisicao(caminho, { ...opcoes, autenticado: true }),
-  post: (caminho, corpo, opcoes) => requisicao(caminho, { ...opcoes, metodo: 'POST', corpo, autenticado: true }),
-  put: (caminho, corpo, opcoes) => requisicao(caminho, { ...opcoes, metodo: 'PUT', corpo, autenticado: true }),
-  delete: (caminho, opcoes) => requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: true }),
-}
-
 // GET /categorias → [{ id, nome }]
 export function listarCategorias(opcoes) {
   return requisicao('/categorias', opcoes)
@@ -148,29 +139,73 @@ export function buscarUsuarioAdmin(opcoes) {
   return requisicao('/admin/auth/me', { ...opcoes, autenticado: true })
 }
 
+// Sem logout no servidor (JWT sem estado): basta esquecer o token
+export function sairDoPainel() {
+  voltarParaLogin()
+}
+
+// Helpers genéricos das rotas /admin/** (sempre com token). Erro vira ApiError; 401 volta ao login.
+export function getAdmin(caminho, opcoes) {
+  return requisicao(caminho, { ...opcoes, autenticado: true })
+}
+
+export function postAdmin(caminho, corpo, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'POST', corpo, autenticado: true })
+}
+
+export function putAdmin(caminho, corpo, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'PUT', corpo, autenticado: true })
+}
+
+// Respostas 204 (sem corpo) resolvem com null
+export function deleteAdmin(caminho, opcoes) {
+  return requisicao(caminho, { ...opcoes, metodo: 'DELETE', autenticado: true })
+}
+
+// GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, ativo, destaque }], inclusive inativos
+export function listarProdutosAdmin(opcoes) {
+  return getAdmin('/admin/produtos', opcoes)
+}
+
+// GET /admin/produtos/{id} → detalhe do produto + { ativo, destaque }
+export function buscarProdutoAdmin(id, opcoes) {
+  return getAdmin(`/admin/produtos/${id}`, opcoes)
+}
+
+// POST /admin/produtos; body: { nome, descricao, preco, categoriaId, destaque, estoque: [{ tamanho, quantidade }] }
+// Campo inválido: ApiError com codigo DADOS_INVALIDOS (status 400) e a mensagem do campo
+export function criarProduto(dados, opcoes) {
+  return postAdmin('/admin/produtos', dados, opcoes)
+}
+
+// PUT /admin/produtos/{id}; mesmo body do POST, mais `ativo` opcional (true reativa)
+export function atualizarProduto(id, dados, opcoes) {
+  return putAdmin(`/admin/produtos/${id}`, dados, opcoes)
+}
+
+// DELETE /admin/produtos/{id}: desativa (some da loja), não apaga
+export function desativarProduto(id, opcoes) {
+  return deleteAdmin(`/admin/produtos/${id}`, opcoes)
+}
+
 // GET /admin/categorias → [{ id, nome, quantidadeProdutos }], ordenado por nome
 export function listarCategoriasAdmin(opcoes) {
-  return apiAdmin.get('/admin/categorias', opcoes)
+  return getAdmin('/admin/categorias', opcoes)
 }
 
 // POST /admin/categorias → { id, nome, quantidadeProdutos }
 // Nome repetido (sem diferenciar maiúsculas): ApiError com codigo CATEGORIA_DUPLICADA (409)
 export function criarCategoria(nome, opcoes) {
-  return apiAdmin.post('/admin/categorias', { nome }, opcoes)
+  return postAdmin('/admin/categorias', { nome }, opcoes)
 }
 
 // PUT /admin/categorias/{id} → { id, nome, quantidadeProdutos }
 export function renomearCategoria(id, nome, opcoes) {
-  return apiAdmin.put(`/admin/categorias/${id}`, { nome }, opcoes)
+  return putAdmin(`/admin/categorias/${id}`, { nome }, opcoes)
 }
 
 // DELETE /admin/categorias/{id} → null
 // Categoria com produtos (ativos ou não): ApiError com codigo CATEGORIA_EM_USO (409)
 export function removerCategoria(id, opcoes) {
-  return apiAdmin.delete(`/admin/categorias/${id}`, opcoes)
-}
-
-// Sem logout no servidor (JWT sem estado): basta esquecer o token
-export function sairDoPainel() {
-  voltarParaLogin()
+  return deleteAdmin(`/admin/categorias/${id}`, opcoes)
 }

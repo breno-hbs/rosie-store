@@ -14,10 +14,15 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
+| `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
+| `GET /admin/produtos/{id}` | Implementado (exige token `ADMIN`; inclui inativos) | `ProdutoAdminDTO` |
+| `POST /admin/produtos` | Implementado (exige token `ADMIN`; 201) | `ProdutoAdminDTO` |
+| `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa) | `ProdutoAdminDTO` |
+| `DELETE /admin/produtos/{id}` | Implementado (exige token `ADMIN`; 204, só desativa) | — |
 | `GET /admin/categorias` | Implementado (exige token `ADMIN`) | lista de `CategoriaAdminDTO` |
-| `POST /admin/categorias` | Implementado (201; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
-| `PUT /admin/categorias/{id}` | Implementado (404; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
-| `DELETE /admin/categorias/{id}` | Implementado (204; 404; 409 com `CATEGORIA_EM_USO`) | — |
+| `POST /admin/categorias` | Implementado (exige token `ADMIN`; 201; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
+| `PUT /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 404; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
+| `DELETE /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 204; 404; 409 com `CATEGORIA_EM_USO`) | — |
 | Demais endpoints | Não implementados | — |
 
 ---
@@ -43,7 +48,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | Código | HTTP | Quando |
 |---|---|---|
 | `RECURSO_NAO_ENCONTRADO` | 404 | Recurso buscado por id não existe (ex.: `GET /produtos/{id}`) |
-| `DADOS_INVALIDOS` | 400 | Corpo ausente, JSON malformado ou campo inválido (ex.: e-mail vazio no login); `erro` traz a mensagem do primeiro campo |
+| `DADOS_INVALIDOS` | 400 | Corpo ausente, JSON malformado ou campo inválido (ex.: e-mail vazio no login, preço zero, categoria inexistente ou tamanho repetido no cadastro de produto); `erro` traz a mensagem do primeiro campo |
 | `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada ou usuário sem permissão (mesma resposta nos três casos) |
 | `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado ou expirado |
 | `ACESSO_NEGADO` | 403 | Token válido, mas sem a role exigida (ex.: token de cliente em `/admin/**`) |
@@ -178,7 +183,7 @@ Pública (sem token). Lista os produtos ativos marcados com `destaque = true`, d
 
 Parâmetro opcional: `limite` (padrão `12`, máximo `50`). Valores fora de `1..50` são ajustados para o mais próximo, sem erro. Não é paginado: a Roseane marca poucos produtos.
 
-A marcação é manual: o campo `destaque` do produto (padrão `false`) é editado pelo painel admin (#14); até lá, direto no banco. Sem nenhum destaque marcado, a resposta é `[]` e a Home cai na listagem comum de `GET /produtos`.
+A marcação é manual: o campo `destaque` do produto (padrão `false`) é o checkbox "Destaque" do cadastro no painel admin (`POST`/`PUT /admin/produtos`). Sem nenhum destaque marcado, a resposta é `[]` e a Home cai na listagem comum de `GET /produtos`.
 
 Cada item tem o mesmo formato de um item de `conteudo` em `GET /produtos` (`ProdutoResumoDTO`).
 
@@ -313,6 +318,48 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
 
 ## Painel admin — Produtos (RF14–RF16) — requer autenticação ADMIN
 
+Todas as rotas exigem `Authorization: Bearer {token}` de `ADMIN` (401 `NAO_AUTENTICADO` sem token, 403 `ACESSO_NEGADO` com token de cliente). Diferente do catálogo, o painel enxerga os produtos inativos. Id de produto que não existe responde 404 `RECURSO_NAO_ENCONTRADO`.
+
+### Listar produtos do painel
+`GET /admin/produtos`
+
+Todos os produtos, ativos e inativos, do mais recente para o mais antigo. Sem paginação (o catálogo é pequeno). `estoqueTotal` é a soma das quantidades de todos os tamanhos.
+
+```json
+// Response 200 — lista de ProdutoAdminResumoDTO
+[
+  {
+    "id": 10,
+    "nome": "Conjunto Serpente",
+    "preco": 189.00,
+    "categoria": { "id": 1, "nome": "Vestido" },
+    "estoqueTotal": 12,
+    "ativo": true,
+    "destaque": false
+  }
+]
+```
+
+### Detalhe de um produto no painel
+`GET /admin/produtos/{id}`
+
+Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também responde para produto inativo.
+
+```json
+// Response 200 — ProdutoAdminDTO
+{
+  "id": 10,
+  "nome": "Conjunto Serpente",
+  "descricao": "...",
+  "preco": 189.00,
+  "categoria": { "id": 1, "nome": "Vestido" },
+  "imagens": ["https://.../1.jpg"],
+  "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ],
+  "ativo": true,
+  "destaque": false
+}
+```
+
 ### Criar produto
 `POST /admin/produtos`
 
@@ -326,12 +373,36 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
   "destaque": false,
   "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ]
 }
-// Response 201 (retorna o produto criado, mesmo formato do GET /produtos/{id})
+// Response 201 — ProdutoAdminDTO (o produto criado, no formato do GET /admin/produtos/{id})
+// Response 400
+{ "erro": "O preço deve ser maior que zero", "codigo": "DADOS_INVALIDOS" }
 ```
 
-### Editar / Remover produto
-- `PUT /admin/produtos/{id}` — mesmo body do POST
-- `DELETE /admin/produtos/{id}`
+Campos:
+
+| Campo | Regra |
+|---|---|
+| `nome` | Obrigatório, até 150 caracteres (espaços nas pontas são removidos) |
+| `descricao` | Opcional; vazio vira `null` |
+| `preco` | Obrigatório, maior que zero, até 2 casas decimais |
+| `categoriaId` | Obrigatório. Categoria que não existe responde **400** `DADOS_INVALIDOS` ("Categoria não encontrada"), não 404: o erro está no corpo, não no recurso da URL |
+| `destaque` | Opcional (padrão `false`). Marca o produto para o carrossel e o Best Sellers da Home (`GET /produtos/destaques`) |
+| `ativo` | Opcional (padrão `true`) |
+| `estoque` | Opcional. Só os tamanhos que o produto tem: cada `tamanho` é `P`, `M`, `G` ou `GG`, sem repetir, e `quantidade` é inteiro `>= 0` (`0` = esgotado). Tamanho fora da lista não é vendido |
+
+Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O preço deve ser maior que zero", "Selecione a categoria", "Categoria não encontrada", "Tamanho inválido: use P, M, G ou GG", "Tamanho P repetido no estoque", "A quantidade não pode ser negativa".
+
+### Editar produto
+`PUT /admin/produtos/{id}`
+
+Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` atualizado. O `estoque` enviado **substitui** o atual: tamanho que ficar de fora deixa de ser vendido. `destaque` e `ativo` ausentes (ou `null`) mantêm o valor atual.
+
+**Reativar:** um produto removido volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia o body completo). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
+
+### Remover produto
+`DELETE /admin/produtos/{id}` → **204** sem corpo.
+
+**Decisão (#14): remover desativa, não apaga.** O produto fica com `ativo = false`: some de `GET /produtos`, `GET /produtos/destaques` e `GET /produtos/{id}` (404), mas continua no banco e no painel, porque pedidos e carrinhos antigos apontam para ele (`pedido_item.produto_id`). Remover um produto já inativo também responde 204.
 
 ### Upload de imagem
 `POST /admin/produtos/{id}/imagens` — multipart/form-data, campo `arquivo`
@@ -394,14 +465,14 @@ Todas as categorias, ordenadas por nome, com a quantidade de produtos ligados a 
 ### Remover categoria
 `DELETE /admin/categorias/{id}`
 
-Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porque continua ligado à categoria.
+Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porque continua ligado à categoria (o `DELETE /admin/produtos/{id}` só desativa): para liberar a categoria, mude os produtos de categoria.
 
 ```json
 // Response 204 — sem corpo
 // Response 404
 { "erro": "Categoria não encontrada", "codigo": "RECURSO_NAO_ENCONTRADO" }
 // Response 409
-{ "erro": "Não dá para remover \"Vestido\": a categoria tem 4 produtos. Mova ou exclua os produtos antes.", "codigo": "CATEGORIA_EM_USO" }
+{ "erro": "Não dá para remover \"Vestido\": a categoria tem 4 produtos. Mova os produtos para outra categoria antes.", "codigo": "CATEGORIA_EM_USO" }
 ```
 
 ---

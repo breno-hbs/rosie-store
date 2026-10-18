@@ -159,7 +159,7 @@ class AdminCategoriaControllerTest {
         mockMvc.perform(comoAdmin(delete("/admin/categorias/" + categoria.getId())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.erro").value("Não dá para remover \"Em uso " + sufixo
-                        + "\": a categoria tem 2 produtos. Mova ou exclua os produtos antes."))
+                        + "\": a categoria tem 2 produtos. Mova os produtos para outra categoria antes."))
                 .andExpect(jsonPath("$.codigo").value("CATEGORIA_EM_USO"));
     }
 
