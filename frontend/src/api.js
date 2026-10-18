@@ -330,6 +330,55 @@ export function esquecerFrete() {
   }
 }
 
+// Endereços de entrega (#24): { id, cep (só dígitos), logradouro, numero, complemento, bairro, cidade, estado (UF) }
+// GET /enderecos → lista, na ordem de cadastro
+export function listarEnderecos(opcoes) {
+  return getCliente('/enderecos', opcoes)
+}
+
+// POST /enderecos; dados: { cep, logradouro, numero, complemento, bairro, cidade, estado } → o endereço salvo.
+// Campo inválido: ApiError com codigo DADOS_INVALIDOS (400) e a mensagem do campo
+export function criarEndereco(dados, opcoes) {
+  return postCliente('/enderecos', dados, opcoes)
+}
+
+// Rua, bairro, cidade e UF do CEP pelo ViaCEP (serviço público, sem token), para preencher o formulário.
+// → { logradouro, bairro, cidade, estado }, ou null se o CEP não existe. A API confere tudo de novo.
+export async function buscarEnderecoPorCep(cep, { signal } = {}) {
+  let resposta
+  try {
+    resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal })
+  } catch (e) {
+    if (e.name === 'AbortError') throw e
+    throw new ApiError('Não foi possível buscar o CEP', 'SEM_CONEXAO', 0)
+  }
+  const dados = await resposta.json().catch(() => null)
+  if (!resposta.ok || !dados || dados.erro) return null
+  return { logradouro: dados.logradouro, bairro: dados.bairro, cidade: dados.localidade, estado: dados.uf }
+}
+
+// Checkout (#24). POST /pedidos fecha a sacola inteira: { enderecoId, servicoFreteId (id da opção de
+// frete), formaPagamento: 'CARTAO' | 'PIX' } → { id, status, subtotal, valorFrete, valorTotal, urlPagamento }.
+// O servidor cota o frete de novo e confere o estoque. Erros: ESTOQUE_INSUFICIENTE, PRODUTO_INDISPONIVEL,
+// CARRINHO_VAZIO e FRETE_ALTERADO (409, mensagem pronta); FRETE_*/PAGAMENTO_FALHOU (502) e *_INDISPONIVEL (503)
+export function criarPedido(dados, opcoes) {
+  return postCliente('/pedidos', dados, opcoes)
+}
+
+// GET /pedidos/{id} → { id, status, formaPagamento, subtotal, valorFrete, valorTotal, transportadora,
+// servicoFrete, prazoFreteDias, codigoRastreio, urlPagamento, createdAt, endereco, itens: [{ produtoId,
+// nome, imagemPrincipal, tamanho, quantidade, precoUnitario, subtotal }] }. Pedido de outra cliente: 404.
+// status: AGUARDANDO_PAGAMENTO, PAGAMENTO_RECUSADO, PAGO, PAGO_COM_PENDENCIA, ENVIADO, ENTREGUE, CANCELADO
+export function buscarPedido(id, opcoes) {
+  return getCliente(`/pedidos/${id}`, opcoes)
+}
+
+// Só com PAGAMENTO_SIMULADO=true no back-end (desenvolvimento): status APROVADO, PENDENTE, RECUSADO
+// ou CANCELADO → o pedido atualizado. Fora do modo simulado: 404.
+export function simularPagamento(id, status, opcoes) {
+  return postCliente(`/pedidos/${id}/pagamento-simulado`, { status }, opcoes)
+}
+
 // GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, estoque: [{ tamanho, quantidade }], ativo, destaque }],
 // inclusive inativos
 export function listarProdutosAdmin(opcoes) {

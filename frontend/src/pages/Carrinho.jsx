@@ -152,11 +152,19 @@ function ConteudoCarrinho({ carrinho, onAtualizar, onRecarregar }) {
         {carrinho.temIndisponiveis && (
           <p className="carrinho__nota">Peças indisponíveis não entram no total.</p>
         )}
-        {/* O checkout com pagamento é a #24 */}
-        <button type="button" className="botao botao--primario carrinho__finalizar" disabled>
-          Finalizar compra
-        </button>
-        <p className="carrinho__nota">O pagamento pelo site chega em breve. Por enquanto, a compra é pelo WhatsApp.</p>
+        {/* O checkout (#24) fecha a sacola inteira: com peça indisponível, a cliente ajusta antes */}
+        {carrinho.temIndisponiveis ? (
+          <>
+            <button type="button" className="botao botao--primario carrinho__finalizar" disabled>
+              Finalizar compra
+            </button>
+            <p className="carrinho__nota">Remova ou ajuste as peças indisponíveis para finalizar.</p>
+          </>
+        ) : (
+          <a className="botao botao--primario carrinho__finalizar" href="/checkout">
+            Finalizar compra
+          </a>
+        )}
       </aside>
     </div>
   )

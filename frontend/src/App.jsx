@@ -3,8 +3,11 @@ import Admin from './pages/Admin.jsx'
 import AdminLogin from './pages/AdminLogin.jsx'
 import Cadastro from './pages/Cadastro.jsx'
 import Carrinho from './pages/Carrinho.jsx'
+import Checkout from './pages/Checkout.jsx'
 import Entrar from './pages/Entrar.jsx'
 import Home from './pages/Home.jsx'
+import PagamentoSimulado from './pages/PagamentoSimulado.jsx'
+import PedidoRetorno from './pages/PedidoRetorno.jsx'
 import Produto from './pages/Produto.jsx'
 
 // Rotas pelo caminho da URL; os links recarregam a página, sem roteador por enquanto.
@@ -16,6 +19,14 @@ function rotaAtual() {
   if (/^\/entrar\/?$/.test(caminho)) return { pagina: 'entrar' }
   if (/^\/cadastro\/?$/.test(caminho)) return { pagina: 'cadastro' }
   if (/^\/carrinho\/?$/.test(caminho)) return { pagina: 'carrinho' }
+  if (/^\/checkout\/?$/.test(caminho)) return { pagina: 'checkout' }
+  // Volta do Mercado Pago (#24) e pagamento simulado de desenvolvimento
+  const pedido = caminho.match(/^\/pedido\/(\d+)\/(sucesso|pendente|falha|pagamento-simulado)\/?$/)
+  if (pedido) {
+    const id = Number(pedido[1])
+    if (pedido[2] === 'pagamento-simulado') return { pagina: 'pagamento-simulado', id }
+    return { pagina: 'pedido', id, etapa: pedido[2] }
+  }
   if (/^\/admin\/login\/?$/.test(caminho)) return { pagina: 'admin-login' }
   const produtoAdmin = caminho.match(/^\/admin\/produtos\/(novo|\d+)\/?$/)
   if (produtoAdmin) {
@@ -51,14 +62,18 @@ export default function App() {
     return null
   }
 
-  // Carrinho só com cliente logado: sem sessão, entra e volta para cá
-  if (rota.pagina === 'carrinho' && lerSessaoCliente() === null) {
-    window.location.replace(rotaLoginCliente({ voltar: '/carrinho' }))
+  // Carrinho, checkout e pedido só com cliente logado: sem sessão, entra e volta para a mesma página
+  const daCliente = ['carrinho', 'checkout', 'pedido', 'pagamento-simulado']
+  if (daCliente.includes(rota.pagina) && lerSessaoCliente() === null) {
+    window.location.replace(rotaLoginCliente({ voltar: window.location.pathname }))
     return null
   }
 
   if (rota.pagina === 'produto') return <Produto id={rota.id} />
   if (rota.pagina === 'carrinho') return <Carrinho />
+  if (rota.pagina === 'checkout') return <Checkout />
+  if (rota.pagina === 'pedido') return <PedidoRetorno id={rota.id} etapa={rota.etapa} />
+  if (rota.pagina === 'pagamento-simulado') return <PagamentoSimulado id={rota.id} />
   if (rota.pagina === 'entrar') return <Entrar />
   if (rota.pagina === 'cadastro') return <Cadastro />
   if (rota.pagina === 'admin-login') return <AdminLogin />

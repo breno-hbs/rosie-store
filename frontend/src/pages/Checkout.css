@@ -1,0 +1,248 @@
+/* Tela "Checkout" do Figma. Mobile-first: etapas em cima, resumo embaixo; lado a lado no desktop
+   (700 + 360 no Figma). As opções de frete usam os estilos de CalculoFrete.css. */
+
+.checkout {
+  display: flex;
+  flex-direction: column;
+  padding: 40px var(--margem) 60px;
+}
+
+.checkout__oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Carregando, erro, sacola vazia e peças indisponíveis */
+.checkout__aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.checkout__conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.checkout__etapas {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  min-width: 0;
+}
+
+.checkout__secao {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Endereços salvos: cartões de borda fina, como as opções de frete */
+.checkout__enderecos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.checkout__cartao {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--linha);
+  cursor: pointer;
+}
+
+.checkout__cartao:has(input:checked) {
+  border-color: var(--tinta);
+}
+
+.checkout__cartao:has(input:focus-visible) {
+  outline: 1px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.checkout__cartao input {
+  flex: none;
+  margin: 4px 0 0;
+  accent-color: var(--tinta);
+}
+
+.checkout__endereco-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.checkout__endereco-rua {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.checkout__endereco-cidade {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+/* Formulário do Figma em três fileiras: CEP (160) e Rua; Número (140) e Complemento; Bairro, Cidade
+   e UF (80). No celular, a Rua e o Bairro descem para uma linha própria. */
+.checkout__novo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.checkout__fileira {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.checkout__campo--cep { flex: 0 0 160px; }
+.checkout__campo--rua { flex: 1 1 200px; }
+.checkout__campo--numero { flex: 0 0 140px; }
+.checkout__campo--complemento { flex: 1 1 160px; }
+.checkout__campo--bairro,
+.checkout__campo--cidade { flex: 1 1 180px; }
+.checkout__campo--uf { flex: 0 0 80px; }
+
+.checkout__campo--uf .campo__caixa {
+  text-transform: uppercase;
+}
+
+.checkout__campo--aviso:empty {
+  display: none;
+}
+
+/* Cartão de crédito / PIX: a escolhida em tinta, a outra com borda de linha (Figma) */
+.checkout__formas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.checkout__forma {
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--acento);
+  border: 1px solid var(--linha);
+}
+
+.checkout__forma:hover {
+  border-color: var(--tinta);
+}
+
+.checkout__forma[aria-checked='true'] {
+  background: var(--tinta);
+  border-color: var(--tinta);
+  color: var(--papel);
+}
+
+.checkout__nota {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+/* Link de texto (Editar sacola, Tentar de novo) */
+.checkout__link {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.checkout__link:hover {
+  color: var(--tinta);
+}
+
+.checkout__erro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+/* Resumo do pedido do Figma */
+.checkout__resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid var(--linha);
+  background: var(--papel);
+}
+
+.checkout__valores {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+}
+
+.checkout__linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.checkout__linha dt {
+  color: var(--fumaca);
+}
+
+.checkout__linha dd {
+  margin: 0;
+  text-align: right;
+  color: var(--acento);
+}
+
+.checkout__linha--total {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.checkout__linha--total dt,
+.checkout__linha--total dd {
+  color: var(--tinta);
+}
+
+.checkout__finalizar {
+  width: 100%;
+  min-height: 60px;
+}
+
+@media (min-width: 1024px) {
+  .checkout__conteudo {
+    display: grid;
+    grid-template-columns: minmax(0, 700px) 360px;
+    justify-content: space-between;
+    align-items: start;
+    gap: 50px;
+  }
+}
