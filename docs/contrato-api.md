@@ -557,8 +557,9 @@ Exige token `CLIENTE`. Fecha o pedido com **o carrinho inteiro** da cliente do t
 | `AGUARDANDO_PAGAMENTO` | Pedido criado; a cliente ainda não pagou (PIX gerado e cartão em análise também ficam aqui) |
 | `PAGAMENTO_RECUSADO` | O Mercado Pago recusou o pagamento. A cliente pode tentar de novo pelo mesmo `urlPagamento` |
 | `PAGO` | Pagamento aprovado: o estoque já baixou e as peças saíram da sacola |
-| `PAGO_COM_PENDENCIA` | Pagamento aprovado, mas o pedido não fechou sozinho: faltou estoque (outra cliente pagou antes a última peça) ou o valor pago não bate com o total. **O estoque não baixa** (nunca fica negativo), as peças saem da sacola e o motivo fica gravado em `pedido.pendencia` para a Roseane resolver (enviar quando repor, combinar troca ou devolver o dinheiro pelo Mercado Pago). Fica sem tela até o painel de pedidos |
-| `ENVIADO`, `ENTREGUE` | Etiqueta e rastreio (#25) |
+| `PAGO_COM_PENDENCIA` | Pagamento aprovado, mas o pedido não fechou sozinho: faltou estoque (outra cliente pagou antes a última peça) ou o valor pago não bate com o total. **O estoque não baixa** (nunca fica negativo), as peças saem da sacola e o motivo fica gravado em `pedido.pendencia` para a Roseane resolver (enviar quando repor, combinar troca ou devolver o dinheiro pelo Mercado Pago). O painel de pedidos (#25) mostra o motivo no detalhe do pedido; resolver a pendência pelo painel ainda não existe |
+| `ENVIADO` | A Roseane gerou a etiqueta no painel (ver "Painel admin — Pedidos e etiqueta"): a etiqueta foi comprada e gerada no Melhor Envio e o pedido tem `codigoRastreio` (assim que o Melhor Envio devolver). A peça pode ainda não ter sido postada |
+| `ENTREGUE` | Reservado: nada marca ainda (fica para quando o rastreio for acompanhado) |
 | `CANCELADO` | Pagamento cancelado ou expirado no Mercado Pago (ex.: PIX não pago no prazo). Se mesmo assim chegar um pagamento aprovado depois, ele é processado como qualquer aprovação |
 
 Na tabela `pedido` a coluna `status` é `VARCHAR(30)`. **Banco criado antes da #24** (o `ddl-auto=update` não muda o tipo de coluna que já existe, e a coluna era `ENUM` sem os status novos): rode uma vez `ALTER TABLE pedido MODIFY status VARCHAR(30) NOT NULL;`.
@@ -615,7 +616,7 @@ Exige token `CLIENTE`. Pedido de outra cliente responde **404** `RECURSO_NAO_ENC
 }
 ```
 
-`urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra.
+`urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra. `codigoRastreio` fica `null` até a Roseane gerar a etiqueta (#25); depois traz o código da transportadora ou, enquanto ela não devolve, o do Melhor Envio (os dois rastreáveis no [Melhor Rastreio](https://www.melhorrastreio.com.br)). O link da etiqueta não vem aqui: é só do painel.
 
 ### Listar meus pedidos
 `GET /pedidos`
@@ -947,6 +948,112 @@ Uma tabela por categoria, que a Roseane preenche no painel (`/admin/categorias/{
 // Response 204 — sem corpo
 // Response 404 — RECURSO_NAO_ENCONTRADO
 ```
+
+---
+
+## Painel admin — Pedidos e etiqueta (RF12) — requer autenticação ADMIN
+
+Todas as rotas exigem token de `ADMIN` (401 `NAO_AUTENTICADO` sem token, 403 `ACESSO_NEGADO` com token de cliente). O painel vê os pedidos de todas as clientes, em qualquer status. Pedido que não existe: 404 `RECURSO_NAO_ENCONTRADO`.
+
+### Listar pedidos
+`GET /admin/pedidos`
+
+Todos os pedidos, do mais recente para o mais antigo, sem paginação (o volume é pequeno). `quantidadePecas` soma as quantidades de todas as linhas.
+
+```json
+// Response 200 — lista de PedidoAdminResumoDTO
+[
+  {
+    "id": 100,
+    "status": "PAGO",
+    "cliente": { "id": 7, "nome": "Maria Silva", "email": "maria@exemplo.com", "telefone": "11988887777" },
+    "quantidadePecas": 2,
+    "valorTotal": 211.90,
+    "codigoRastreio": null,
+    "createdAt": "2026-10-18T14:30:00"
+  }
+]
+```
+
+### Detalhe do pedido
+`GET /admin/pedidos/{id}`
+
+Os campos do `GET /pedidos/{id}` da cliente (menos `urlPagamento`), mais quem comprou, o pagamento e a etiqueta.
+
+```json
+// Response 200 — PedidoAdminDTO
+{
+  "id": 100,
+  "status": "ENVIADO",
+  "cliente": { "id": 7, "nome": "Maria Silva", "email": "maria@exemplo.com", "telefone": "11988887777" },
+  "formaPagamento": "PIX",
+  "pagamentoId": "1234567890",
+  "pagoEm": "2026-10-18T14:35:00",
+  "pendencia": null,
+  "subtotal": 189.00,
+  "valorFrete": 22.90,
+  "valorTotal": 211.90,
+  "transportadora": "Correios",
+  "servicoFrete": "PAC",
+  "prazoFreteDias": 7,
+  "envioId": "9b0a3c1e-1d2f-4a5b-8c7d-6e5f4a3b2c1d",
+  "urlEtiqueta": "https://melhorenvio.com.br/imprimir/ixQLaqqjmb2E",
+  "etiquetaGeradaEm": "2026-10-18T16:02:00",
+  "codigoRastreio": "AA123456789BR",
+  "createdAt": "2026-10-18T14:30:00",
+  "endereco": { "id": 5, "cep": "03925050", "logradouro": "Rua das Flores", "numero": "120", "complemento": null,
+                "bairro": "Jardim Iva", "cidade": "São Paulo", "estado": "SP" },
+  "itens": [
+    { "produtoId": 1, "nome": "Conjunto Serpente", "imagemPrincipal": "https://res.cloudinary.com/...",
+      "tamanho": "M", "quantidade": 1, "precoUnitario": 189.00, "subtotal": 189.00 }
+  ]
+}
+```
+
+| Campo | Regra |
+|---|---|
+| `pendencia` | Por que o pedido ficou `PAGO_COM_PENDENCIA` (ver "Status do pedido"); `null` nos outros |
+| `envioId` | Id do envio no Melhor Envio, gravado assim que ele entra no carrinho de lá; `null` antes de gerar |
+| `urlEtiqueta` | Link para abrir e imprimir a etiqueta (link **privado** do Melhor Envio: abre com a conta da loja logada lá). `null` até a etiqueta ficar pronta |
+| `etiquetaGeradaEm` | Quando a etiqueta ficou pronta |
+| `codigoRastreio` | Código da transportadora; enquanto ela não devolve, o do Melhor Envio. Pode ficar `null` logo depois de gerar (ver abaixo) |
+
+### Gerar etiqueta
+`POST /admin/pedidos/{id}/etiqueta` (sem corpo)
+
+Compra e gera a etiqueta de envio no Melhor Envio para um pedido `PAGO` e devolve o `PedidoAdminDTO` atualizado: `status` `ENVIADO`, `urlEtiqueta`, `etiquetaGeradaEm` e `codigoRastreio`. A cliente passa a ver o `codigoRastreio` no `GET /pedidos/{id}`.
+
+```json
+// Response 200 — PedidoAdminDTO (como no detalhe)
+// Response 409
+{ "erro": "Só pedido pago tem etiqueta: este está AGUARDANDO_PAGAMENTO.", "codigo": "PEDIDO_NAO_PAGO" }
+{ "erro": "Este pedido está com pendência: .... Resolva antes de gerar a etiqueta.", "codigo": "PEDIDO_COM_PENDENCIA" }
+{ "erro": "O envio deste pedido foi cancelado no Melhor Envio. Clique em \"Gerar etiqueta\" de novo para comprar outra.", "codigo": "ETIQUETA_CANCELADA" }
+{ "erro": "A etiqueta deste pedido já está sendo gerada. Aguarde e atualize a página.", "codigo": "ETIQUETA_EM_ANDAMENTO" }
+// Response 502
+{ "erro": "O Melhor Envio recusou a etiqueta: Saldo insuficiente para a compra.", "codigo": "ETIQUETA_FALHOU" }
+{ "erro": "Não foi possível falar com o Melhor Envio agora. Tente de novo em instantes.", "codigo": "ETIQUETA_FALHOU" }
+// Response 503
+{ "erro": "A etiqueta de envio não está configurada no servidor", "codigo": "ETIQUETA_INDISPONIVEL" }
+```
+
+**Decisão (#25): a etiqueta sai pelo botão da Roseane, não sozinha no pagamento.** Comprar a etiqueta debita o saldo da conta do Melhor Envio, e a Roseane confere o pedido (peças, endereço, alguma conversa com a cliente) antes. Também evita fazer chamadas lentas a um serviço externo dentro do webhook do Mercado Pago.
+
+**Passos no Melhor Envio**, cada um gravado no pedido assim que volta:
+
+1. `POST /api/v2/me/cart`: põe o envio no carrinho, com o serviço escolhido no checkout (`pedido.servicoFreteId`), o remetente (`ROSIE_REMETENTE_*` e `ROSIE_CEP_ORIGEM`), o destinatário (nome, telefone e e-mail da cliente e o endereço do pedido), a declaração de conteúdo (uma linha por peça, "Conjunto Serpente (M)", com quantidade e preço pago; `non_commercial: true`, sem nota fiscal), o valor declarado (soma das peças, sem o frete) e a tag "Pedido {id}" (para achar o envio no painel do Melhor Envio). **Volume:** um pacote só (Correios não aceita mais de um por envio), com o pacote padrão por peça do frete (`rosie.frete.peca.*`: 20 × 5 × 30 cm, 0,3 kg) empilhado: altura e peso multiplicados pelo número de peças. Vale até o produto ter peso e medidas (#56). O `id` devolvido vira `envioId`.
+2. `POST /api/v2/me/shipment/checkout`: compra com o saldo da conta.
+3. `POST /api/v2/me/shipment/generate`: gera a etiqueta.
+4. `POST /api/v2/me/shipment/print` (`mode: private`): link de impressão, que vira `urlEtiqueta`.
+5. `POST /api/v2/me/shipment/tracking`: código de rastreio (`tracking`, ou `melhorenvio_tracking` enquanto o da transportadora não sai).
+
+**Idempotente, sem comprar duas vezes.** Com `urlEtiqueta` e `codigoRastreio` já no pedido, responde 200 com o pedido como está, sem chamar o Melhor Envio. Se algo falhou no meio (saldo insuficiente, Melhor Envio fora do ar), o pedido continua `PAGO` com o `envioId` gravado, e o próximo clique **retoma de onde parou**: consulta a situação do envio no Melhor Envio (`pending` → compra e gera; `released` → só gera; `generated`/`posted`/`delivered` → só busca link e rastreio), então uma compra que deu certo lá, mas cuja resposta se perdeu, não é paga de novo. Envio `canceled` ou `expired` lá (cancelado pela Roseane no painel do Melhor Envio) → 409 `ETIQUETA_CANCELADA`, e o pedido esquece o envio: o clique seguinte compra uma etiqueta nova. Etiqueta pronta mas sem rastreio ainda (o Melhor Envio às vezes demora a devolver): o pedido fica `ENVIADO` com `codigoRastreio: null`, e repetir o POST só consulta o rastreio. Dois cliques ao mesmo tempo: o segundo espera o primeiro (até 90 s; passou disso, 409 `ETIQUETA_EM_ANDAMENTO`) e devolve a mesma etiqueta. A trava fica na memória da API (o Railway roda uma instância só).
+
+**Pode gerar:** só `PAGO`. `PAGO_COM_PENDENCIA` → 409 `PEDIDO_COM_PENDENCIA` (o estoque não baixou; a Roseane resolve antes). `AGUARDANDO_PAGAMENTO`, `PAGAMENTO_RECUSADO` e `CANCELADO` → 409 `PEDIDO_NAO_PAGO`. `ENVIADO`/`ENTREGUE` só devolvem o pedido (ou buscam o rastreio que faltava).
+
+**Erros do Melhor Envio:** recusa com mensagem (4xx, ex.: saldo insuficiente, campo inválido) → 502 `ETIQUETA_FALHOU` com "O Melhor Envio recusou a etiqueta: " + a primeira mensagem de lá; queda, 5xx, timeout (`ETIQUETA_TIMEOUT`, 20 s por chamada) ou resposta fora do formato → 502 `ETIQUETA_FALHOU` genérico. Servidor sem `MELHOR_ENVIO_TOKEN`, `ROSIE_CEP_ORIGEM` ou os dados obrigatórios do remetente, ou token recusado (401/403) → 503 `ETIQUETA_INDISPONIVEL`. O token precisa dos escopos `cart-read`, `cart-write`, `shipping-checkout`, `shipping-generate`, `shipping-print` e `shipping-tracking`.
+
+**Modo de desenvolvimento:** com `FRETE_SIMULADO=true` a etiqueta também é de mentira: nada é cobrado, o rastreio sai no formato `SIM00000000BR` e o link abre `/etiqueta-simulada.html` da loja. Nunca ligar em produção.
 
 ---
 
