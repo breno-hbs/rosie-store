@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,8 +31,9 @@ public class ProdutoImagemAdminController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public ProdutoImagemDTO enviar(@PathVariable Long produtoId, @RequestPart("arquivo") MultipartFile arquivo) {
-        return produtoImagemService.enviar(produtoId, arquivo);
+    public ProdutoImagemDTO enviar(@PathVariable Long produtoId, @RequestPart("arquivo") MultipartFile arquivo,
+                                   @RequestParam(value = "enquadramento", required = false) String enquadramento) {
+        return produtoImagemService.enviar(produtoId, arquivo, enquadramento);
     }
 
     @PutMapping("/ordem")

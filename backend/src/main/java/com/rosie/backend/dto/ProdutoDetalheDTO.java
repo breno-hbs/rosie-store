@@ -3,6 +3,7 @@ package com.rosie.backend.dto;
 import com.rosie.backend.model.Produto;
 import com.rosie.backend.model.ProdutoEstoque;
 import com.rosie.backend.model.ProdutoImagem;
+import com.rosie.backend.service.UrlEntregaImagem;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -22,7 +23,7 @@ public record ProdutoDetalheDTO(
     public static ProdutoDetalheDTO from(Produto produto) {
         List<String> urls = produto.getImagens().stream()
                 .sorted(Comparator.comparing(ProdutoImagem::getOrdem))
-                .map(ProdutoImagem::getUrl)
+                .map(UrlEntregaImagem::de)
                 .toList();
 
         // Na ordem do enum Tamanho (P, M, G, GG), a mesma dos botões na Página de Produto

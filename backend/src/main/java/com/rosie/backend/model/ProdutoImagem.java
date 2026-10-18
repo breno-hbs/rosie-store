@@ -32,6 +32,12 @@ public class ProdutoImagem {
     @Column(name = "public_id")
     private String publicId;
 
+    // Parte da foto que fica no corte 4:5 da entrega (#18). Nulo nas fotos enviadas antes, que
+    // ficam no automático.
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Enquadramento enquadramento;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer ordem = 0;
