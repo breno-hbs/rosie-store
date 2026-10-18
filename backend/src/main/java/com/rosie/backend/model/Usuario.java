@@ -40,6 +40,14 @@ public class Usuario {
     @Builder.Default
     private Role role = Role.CLIENTE;
 
+    // Consentimento da LGPD dado no cadastro de cliente (RNF06): quando e em qual versão da
+    // política de privacidade. Nulo no admin, que não se cadastra pela loja.
+    @Column(name = "privacidade_aceita_em")
+    private LocalDateTime privacidadeAceitaEm;
+
+    @Column(name = "privacidade_versao", length = 20)
+    private String privacidadeVersao;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -1,0 +1,77 @@
+/* Login e cadastro do cliente (Figma: frames "Login" e "Cadastro"). Coluna centralizada de até 480px. */
+
+.acesso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 80px 0;
+}
+
+.acesso__titulo {
+  margin-top: 40px;
+  text-align: center;
+}
+
+.acesso__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 480px;
+  margin-top: 24px;
+  padding: 0 var(--margem);
+}
+
+@media (min-width: 480px) {
+  .acesso__form {
+    padding: 0 60px;
+  }
+}
+
+/* Aceite da política de privacidade (fora do Figma): caixa nativa na cor da tinta */
+.acesso__aceite {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--acento);
+  cursor: pointer;
+}
+
+.acesso__aceite input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: var(--tinta);
+  cursor: pointer;
+}
+
+.acesso__aceite a,
+.acesso__alternativa a:hover {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.acesso__aviso {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+/* Espaço extra de 8px acima do botão, como no Figma */
+.acesso__enviar {
+  min-height: 60px;
+  margin-top: 8px;
+}
+
+.acesso__alternativa {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--acento);
+}

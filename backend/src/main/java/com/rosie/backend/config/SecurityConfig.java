@@ -52,6 +52,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/admin/auth/login").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        // Conta do cliente (RF08): cadastro e login abertos, o resto só com token de cliente
+                        .requestMatchers(HttpMethod.POST, "/auth/registrar", "/auth/login").permitAll()
+                        .requestMatchers("/auth/**").hasRole("CLIENTE")
+                        // Rotas da compra (#22, #24, #27): token de admin recebe 403, como token de cliente em /admin/**
+                        .requestMatchers("/carrinho/**", "/pedidos/**", "/trocas/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
                         // Tabela de medidas da categoria, na Página de Produto (#20)
                         .requestMatchers(HttpMethod.GET, "/categorias/*/medidas").permitAll()
