@@ -85,12 +85,11 @@ class ProdutoAdminControllerTest {
     @Test
     void fluxoCompletoEditaDesativaEReativa() throws Exception {
         String criado = mockMvc.perform(comAdmin(post("/admin/produtos"))
-                        .content(corpo("Original", "100.00", categoria.getId(), "[]", false)))
+                        .content(corpo("Original", "100.00", categoria.getId(), "[{\"tamanho\":\"GG\",\"quantidade\":2}]", false)))
                 .andReturn().getResponse().getContentAsString();
         Integer id = JsonPath.read(criado, "$.id");
 
-        mockMvc.perform(comAdmin(put("/admin/produtos/" + id))
-                        .content(corpo("Editado", "120.00", categoria.getId(), "[{\"tamanho\":\"GG\",\"quantidade\":2}]", true)))
+        mockMvc.perform(comAdmin(put("/admin/produtos/" + id)).content(corpoEdicao("Editado", true)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Editado"))
                 .andExpect(jsonPath("$.destaque").value(true))
@@ -112,8 +111,7 @@ class ProdutoAdminControllerTest {
                 .andExpect(jsonPath("$[?(@.id == " + id + ")].categoria.nome").value(categoria.getNome()));
 
         mockMvc.perform(comAdmin(put("/admin/produtos/" + id)).content("""
-                        {"nome":"Editado","preco":120.00,"categoriaId":%d,"ativo":true,
-                         "estoque":[{"tamanho":"GG","quantidade":2}]}
+                        {"nome":"Editado","preco":120.00,"categoriaId":%d,"ativo":true}
                         """.formatted(categoria.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(true))
@@ -122,6 +120,35 @@ class ProdutoAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").doesNotExist())
                 .andExpect(jsonPath("$.destaque").doesNotExist());
+    }
+
+    // #47: um formulário aberto antes de mexer no estoque reenviava o estoque antigo
+    @Test
+    void editarComEstoqueNoCorpoNaoAlteraOEstoque() throws Exception {
+        String criado = mockMvc.perform(comAdmin(post("/admin/produtos")).content(corpo("Original", "100.00",
+                        categoria.getId(), "[{\"tamanho\":\"P\",\"quantidade\":3},{\"tamanho\":\"GG\",\"quantidade\":0}]", false)))
+                .andReturn().getResponse().getContentAsString();
+        Integer id = JsonPath.read(criado, "$.id");
+
+        mockMvc.perform(comAdmin(put("/admin/produtos/" + id + "/estoque"))
+                        .content("{\"estoque\":[{\"tamanho\":\"P\",\"quantidade\":0},{\"tamanho\":\"GG\",\"quantidade\":2}]}"))
+                .andExpect(status().isOk());
+
+        // corpo antigo, com o estoque de quando a edição abriu e um tamanho a mais
+        mockMvc.perform(comAdmin(put("/admin/produtos/" + id)).content(corpo("Editado", "100.00", categoria.getId(),
+                        "[{\"tamanho\":\"P\",\"quantidade\":3},{\"tamanho\":\"M\",\"quantidade\":9}]", false)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Editado"))
+                .andExpect(jsonPath("$.estoque.length()").value(2))
+                .andExpect(jsonPath("$.estoque[0].tamanho").value("P"))
+                .andExpect(jsonPath("$.estoque[0].quantidade").value(0))
+                .andExpect(jsonPath("$.estoque[1].tamanho").value("GG"))
+                .andExpect(jsonPath("$.estoque[1].quantidade").value(2));
+
+        mockMvc.perform(comAdmin(get("/admin/produtos/" + id)))
+                .andExpect(jsonPath("$.estoque.length()").value(2))
+                .andExpect(jsonPath("$.estoque[0].quantidade").value(0))
+                .andExpect(jsonPath("$.estoque[1].quantidade").value(2));
     }
 
     @Test
@@ -202,5 +229,11 @@ class ProdutoAdminControllerTest {
         return """
                 {"nome":"%s","descricao":"Tecido leve","preco":%s,"categoriaId":%d,"destaque":%b,"estoque":%s}
                 """.formatted(nome, preco, categoriaId, destaque, estoque);
+    }
+
+    private String corpoEdicao(String nome, boolean destaque) {
+        return """
+                {"nome":"%s","descricao":"Tecido leve","preco":120.00,"categoriaId":%d,"destaque":%b}
+                """.formatted(nome, categoria.getId(), destaque);
     }
 }

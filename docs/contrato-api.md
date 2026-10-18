@@ -17,7 +17,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
 | `GET /admin/produtos/{id}` | Implementado (exige token `ADMIN`; inclui inativos) | `ProdutoAdminDTO` |
 | `POST /admin/produtos` | Implementado (exige token `ADMIN`; 201) | `ProdutoAdminDTO` |
-| `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa) | `ProdutoAdminDTO` |
+| `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa; não altera o estoque) | `ProdutoAdminDTO` |
+| `PUT /admin/produtos/{id}/estoque` | Implementado (exige token `ADMIN`; só os tamanhos enviados) | `EstoqueProdutoDTO` |
 | `DELETE /admin/produtos/{id}` | Implementado (exige token `ADMIN`; 204, só desativa) | — |
 | `GET /admin/categorias` | Implementado (exige token `ADMIN`) | lista de `CategoriaAdminDTO` |
 | `POST /admin/categorias` | Implementado (exige token `ADMIN`; 201; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
@@ -397,16 +398,32 @@ Campos:
 | `categoriaId` | Obrigatório. Categoria que não existe responde **400** `DADOS_INVALIDOS` ("Categoria não encontrada"), não 404: o erro está no corpo, não no recurso da URL |
 | `destaque` | Opcional (padrão `false`). Marca o produto para o carrossel e o Best Sellers da Home (`GET /produtos/destaques`) |
 | `ativo` | Opcional (padrão `true`) |
-| `estoque` | Opcional. Só os tamanhos que o produto tem: cada `tamanho` é `P`, `M`, `G` ou `GG`, sem repetir, e `quantidade` é inteiro `>= 0` (`0` = esgotado). Tamanho fora da lista não é vendido |
+| `estoque` | Opcional, **só no POST** (estoque inicial). Só os tamanhos que o produto tem: cada `tamanho` é `P`, `M`, `G` ou `GG`, sem repetir, e `quantidade` é inteiro `>= 0` (`0` = esgotado). Tamanho fora da lista não é vendido. Depois do cadastro, o estoque muda só por `PUT /admin/produtos/{id}/estoque` |
 
 Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O preço deve ser maior que zero", "Selecione a categoria", "Categoria não encontrada", "Tamanho inválido: use P, M, G ou GG", "Tamanho P repetido no estoque", "A quantidade não pode ser negativa".
 
 ### Editar produto
 `PUT /admin/produtos/{id}`
 
-Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` atualizado. O `estoque` enviado **substitui** o atual: tamanho que ficar de fora deixa de ser vendido. `destaque` e `ativo` ausentes (ou `null`) mantêm o valor atual.
+```json
+// Request — ProdutoEdicaoDTO (sem estoque)
+{
+  "nome": "Conjunto Serpente",
+  "descricao": "...",
+  "composicao": "100% linho\nLavar à mão em água fria",
+  "preco": 189.00,
+  "categoriaId": 1,
+  "destaque": false,
+  "ativo": true
+}
+// Response 200 — ProdutoAdminDTO atualizado (com o estoque atual, que não muda)
+```
 
-**Reativar:** um produto removido volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia o body completo). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
+Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque` e `ativo` ausentes (ou `null`) mantêm o valor atual.
+
+**Decisão (#47): a edição não mexe no estoque, e um `estoque` no corpo é ignorado** (não dá 400). O estoque muda só por `PUT /admin/produtos/{id}/estoque` (tela "Gestão de Estoque"). Antes, o PUT substituía o estoque inteiro, e um formulário de edição aberto antes de uma mudança de estoque (pela tela de estoque ou, mais adiante, por uma venda) desfazia essa mudança ao salvar. Ignorar em vez de rejeitar é o que o back já faz com qualquer campo que o DTO não tem, e não quebra um cliente antigo que ainda mande o campo; o que importa é que ele não tem efeito.
+
+**Reativar:** um produto removido volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia os outros campos). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
 
 ### Remover produto
 `DELETE /admin/produtos/{id}` → **204** sem corpo.
@@ -440,7 +457,7 @@ Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` a
 { "erro": "A quantidade não pode ser negativa", "codigo": "DADOS_INVALIDOS" }
 ```
 
-**Regra (#16): atualiza só os tamanhos enviados.** Tamanho que o produto já tem recebe a nova quantidade; tamanho que ele ainda não tem é cadastrado; tamanho que ficou de fora do body **continua como está** (diferente do `PUT /admin/produtos/{id}`, que substitui o estoque inteiro). Para esgotar um tamanho, envie `quantidade: 0`; não há como descadastrar um tamanho por aqui (use a edição do produto). Também funciona para produto inativo.
+**Regra (#16): atualiza só os tamanhos enviados.** Tamanho que o produto já tem recebe a nova quantidade; tamanho que ele ainda não tem é cadastrado; tamanho que ficou de fora do body **continua como está**. É a única rota que muda o estoque de um produto já cadastrado (#47: o `PUT /admin/produtos/{id}` não mexe nele). Para esgotar um tamanho, envie `quantidade: 0`; por enquanto não há como descadastrar um tamanho (ele fica como esgotado). Também funciona para produto inativo.
 
 | Campo | Regra |
 |---|---|
