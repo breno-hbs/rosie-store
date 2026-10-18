@@ -57,6 +57,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").hasRole("CLIENTE")
                         // Rotas da compra (#22, #24, #27): token de admin recebe 403, como token de cliente em /admin/**
                         .requestMatchers("/carrinho/**", "/pedidos/**", "/trocas/**").hasRole("CLIENTE")
+                        // Frete do carrinho (#23)
+                        .requestMatchers("/frete/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
                         // Tabela de medidas da categoria, na Página de Produto (#20)
                         .requestMatchers(HttpMethod.GET, "/categorias/*/medidas").permitAll()

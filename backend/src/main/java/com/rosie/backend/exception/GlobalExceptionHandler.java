@@ -88,4 +88,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new ErroResponseDTO(ex.getMessage(), "ARMAZENAMENTO_INDISPONIVEL"));
     }
+
+    // Sem MELHOR_ENVIO_TOKEN / ROSIE_CEP_ORIGEM, ou token recusado pelo Melhor Envio
+    @ExceptionHandler(FreteIndisponivelException.class)
+    public ResponseEntity<ErroResponseDTO> handleFreteIndisponivel(FreteIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErroResponseDTO(ex.getMessage(), "FRETE_INDISPONIVEL"));
+    }
+
+    // Melhor Envio fora do ar, lento demais ou com resposta inesperada
+    @ExceptionHandler(FreteFalhouException.class)
+    public ResponseEntity<ErroResponseDTO> handleFreteFalhou(FreteFalhouException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ErroResponseDTO(ex.getMessage(), "FRETE_FALHOU"));
+    }
 }
