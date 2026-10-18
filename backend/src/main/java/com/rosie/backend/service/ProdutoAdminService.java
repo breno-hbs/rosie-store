@@ -4,6 +4,7 @@ import com.rosie.backend.dto.EstoqueDTO;
 import com.rosie.backend.dto.EstoqueProdutoDTO;
 import com.rosie.backend.dto.ProdutoAdminDTO;
 import com.rosie.backend.dto.ProdutoAdminResumoDTO;
+import com.rosie.backend.dto.ProdutoEdicaoDTO;
 import com.rosie.backend.dto.ProdutoRequestDTO;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
@@ -48,14 +49,16 @@ public class ProdutoAdminService {
                 .destaque(Boolean.TRUE.equals(dados.destaque()))
                 .ativo(!Boolean.FALSE.equals(dados.ativo()))
                 .build();
-        preencher(produto, dados);
+        preencher(produto, dados.dadosDoProduto());
+        aplicarQuantidades(produto, quantidadesPorTamanho(dados.estoque()));
 
         return ProdutoAdminDTO.from(produtoRepository.save(produto));
     }
 
-    // Mesmo body do POST; destaque e ativo ausentes mantêm o valor atual. ativo = true reativa.
+    // Não mexe no estoque (#47): ele só muda por atualizarEstoque, senão um formulário aberto antes
+    // desfaria a mudança. destaque e ativo ausentes mantêm o valor atual; ativo = true reativa.
     @Transactional
-    public ProdutoAdminDTO atualizar(Long id, ProdutoRequestDTO dados) {
+    public ProdutoAdminDTO atualizar(Long id, ProdutoEdicaoDTO dados) {
         Produto produto = buscar(id);
         if (dados.destaque() != null) produto.setDestaque(dados.destaque());
         if (dados.ativo() != null) produto.setAtivo(dados.ativo());
@@ -71,7 +74,8 @@ public class ProdutoAdminService {
         produto.setAtivo(false);
     }
 
-    // Diferente do PUT do produto, só mexe nos tamanhos enviados: os outros continuam como estão
+    // Único caminho que muda o estoque de um produto já cadastrado. Só mexe nos tamanhos enviados:
+    // os outros continuam como estão
     @Transactional
     public EstoqueProdutoDTO atualizarEstoque(Long id, List<EstoqueDTO> estoque) {
         Produto produto = buscar(id);
@@ -86,7 +90,7 @@ public class ProdutoAdminService {
                         "Produto com id " + id + " não encontrado"));
     }
 
-    private void preencher(Produto produto, ProdutoRequestDTO dados) {
+    private void preencher(Produto produto, ProdutoEdicaoDTO dados) {
         Categoria categoria = categoriaRepository.findById(dados.categoriaId())
                 .orElseThrow(() -> new DadosInvalidosException("Categoria não encontrada"));
 
@@ -96,7 +100,6 @@ public class ProdutoAdminService {
         if (dados.composicao() != null) produto.setComposicao(textoOpcional(dados.composicao()));
         produto.setPreco(dados.preco());
         produto.setCategoria(categoria);
-        substituirEstoque(produto, quantidadesPorTamanho(dados.estoque()));
     }
 
     // Texto vazio ou só com espaços vira null, e a Página de Produto esconde o item
@@ -116,13 +119,6 @@ public class ProdutoAdminService {
             }
         }
         return quantidades;
-    }
-
-    // Atualiza as linhas existentes em vez de apagar e recriar: o Hibernate faz os INSERTs
-    // antes dos DELETEs, o que bateria na unique (produto_id, tamanho)
-    private void substituirEstoque(Produto produto, Map<Tamanho, Integer> quantidades) {
-        produto.getEstoque().removeIf(linha -> !quantidades.containsKey(linha.getTamanho()));
-        aplicarQuantidades(produto, quantidades);
     }
 
     // Atualiza a quantidade dos tamanhos que o produto já tem e cria os que faltam

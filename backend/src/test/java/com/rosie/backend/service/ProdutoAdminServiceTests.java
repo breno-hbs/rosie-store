@@ -3,6 +3,7 @@ package com.rosie.backend.service;
 import com.rosie.backend.dto.EstoqueDTO;
 import com.rosie.backend.dto.ProdutoAdminDTO;
 import com.rosie.backend.dto.ProdutoAdminResumoDTO;
+import com.rosie.backend.dto.ProdutoEdicaoDTO;
 import com.rosie.backend.dto.ProdutoRequestDTO;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
@@ -99,16 +100,15 @@ class ProdutoAdminServiceTests {
     }
 
     @Test
-    void atualizarTrocaDadosEEstoque() {
+    void atualizarTrocaDadosSemMexerNoEstoque() {
         ProdutoAdminDTO criado = produtoAdminService.criar(request("Original", vestido, true, null,
                 List.of(new EstoqueDTO("P", 3), new EstoqueDTO("M", 5))));
         // a edição chega em outra requisição, com o produto carregado do banco
         entityManager.flush();
         entityManager.clear();
 
-        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoRequestDTO(
-                "Editado", "  ", null, new BigDecimal("150.50"), calca.getId(), null, null,
-                List.of(new EstoqueDTO("M", 0), new EstoqueDTO("GG", 7))));
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoEdicaoDTO(
+                "Editado", "  ", null, new BigDecimal("150.50"), calca.getId(), null, null));
 
         assertThat(editado.nome()).isEqualTo("Editado");
         assertThat(editado.descricao()).isNull();
@@ -116,26 +116,47 @@ class ProdutoAdminServiceTests {
         assertThat(editado.categoria().id()).isEqualTo(calca.getId());
         // destaque ausente no PUT mantém o valor atual
         assertThat(editado.destaque()).isTrue();
-        // P saiu, M foi atualizado e GG entrou
-        assertThat(editado.estoque()).containsExactly(new EstoqueDTO("M", 0), new EstoqueDTO("GG", 7));
+        assertThat(editado.estoque()).containsExactly(new EstoqueDTO("P", 3), new EstoqueDTO("M", 5));
 
+        entityManager.flush();
         entityManager.clear();
         assertThat(produtoAdminService.buscarPorId(criado.id()).estoque())
-                .containsExactly(new EstoqueDTO("M", 0), new EstoqueDTO("GG", 7));
+                .containsExactly(new EstoqueDTO("P", 3), new EstoqueDTO("M", 5));
+    }
+
+    @Test
+    void atualizarNaoDesfazEstoqueAlteradoDepoisDeAbrirAEdicao() {
+        ProdutoAdminDTO criado = produtoAdminService.criar(request("Produto", vestido, false, null,
+                List.of(new EstoqueDTO("P", 3), new EstoqueDTO("GG", 0))));
+        entityManager.flush();
+        entityManager.clear();
+
+        // com a edição aberta, a tela de estoque esgota o P e repõe o GG
+        produtoAdminService.atualizarEstoque(criado.id(), List.of(new EstoqueDTO("P", 0), new EstoqueDTO("GG", 2)));
+        entityManager.flush();
+        entityManager.clear();
+
+        // a edição, aberta antes, salva os outros campos
+        produtoAdminService.atualizar(criado.id(), edicao(vestido, false, null));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(produtoAdminService.buscarPorId(criado.id()).estoque())
+                .containsExactly(new EstoqueDTO("P", 0), new EstoqueDTO("GG", 2));
     }
 
     @Test
     void atualizarDesmarcaDestaque() {
         ProdutoAdminDTO criado = produtoAdminService.criar(request("Produto", vestido, true, null, null));
 
-        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), request("Produto", vestido, false, null, null));
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), edicao(vestido, false, null));
 
         assertThat(editado.destaque()).isFalse();
     }
 
     @Test
     void atualizarProdutoInexistenteFalha() {
-        assertThatThrownBy(() -> produtoAdminService.atualizar(-1L, request("Produto", vestido, false, null, null)))
+        assertThatThrownBy(() -> produtoAdminService.atualizar(-1L, edicao(vestido, false, null)))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
     }
 
@@ -167,7 +188,7 @@ class ProdutoAdminServiceTests {
         ProdutoAdminDTO criado = produtoAdminService.criar(request("Produto", vestido, false, null, null));
         produtoAdminService.desativar(criado.id());
 
-        ProdutoAdminDTO reativado = produtoAdminService.atualizar(criado.id(), request("Produto", vestido, null, true, null));
+        ProdutoAdminDTO reativado = produtoAdminService.atualizar(criado.id(), edicao(vestido, null, true));
 
         assertThat(reativado.ativo()).isTrue();
         assertThat(produtoService.buscarPorId(criado.id()).id()).isEqualTo(criado.id());
@@ -223,7 +244,7 @@ class ProdutoAdminServiceTests {
         entityManager.flush();
         entityManager.clear();
 
-        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), requestComComposicao(""));
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), requestComComposicao("").dadosDoProduto());
 
         assertThat(editado.composicao()).isNull();
     }
@@ -235,8 +256,8 @@ class ProdutoAdminServiceTests {
         entityManager.clear();
 
         // o mesmo que a reativação mandava antes do #50: sem composicao
-        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoRequestDTO(
-                "Vestido Linho", null, null, new BigDecimal("189.00"), vestido.getId(), null, true, null));
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoEdicaoDTO(
+                "Vestido Linho", null, null, new BigDecimal("189.00"), vestido.getId(), null, true));
 
         assertThat(editado.descricao()).isEqualTo("Descrição de teste");
         assertThat(editado.composicao()).isEqualTo("Viscose");
@@ -256,6 +277,11 @@ class ProdutoAdminServiceTests {
     private ProdutoRequestDTO request(String nome, Categoria categoria, Boolean destaque, Boolean ativo, List<EstoqueDTO> estoque) {
         return new ProdutoRequestDTO(nome, "Descrição de teste", null, new BigDecimal("189.00"), categoria.getId(),
                 destaque, ativo, estoque);
+    }
+
+    private ProdutoEdicaoDTO edicao(Categoria categoria, Boolean destaque, Boolean ativo) {
+        return new ProdutoEdicaoDTO("Produto", "Descrição de teste", null, new BigDecimal("189.00"), categoria.getId(),
+                destaque, ativo);
     }
 
     private ProdutoRequestDTO requestComComposicao(String composicao) {

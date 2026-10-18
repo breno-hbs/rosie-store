@@ -66,7 +66,8 @@ export default function AdminProdutos() {
     }
   }
 
-  // O PUT pede o produto inteiro: busca o detalhe e manda de volta com ativo = true
+  // O PUT pede os dados do produto: busca o detalhe e manda de volta com ativo = true (sem o
+  // estoque, que o PUT não altera)
   async function reativar(produto) {
     setOcupado(produto.id)
     setAviso(null)
@@ -80,7 +81,6 @@ export default function AdminProdutos() {
         categoriaId: atual.categoria.id,
         destaque: atual.destaque,
         ativo: true,
-        estoque: atual.estoque,
       })
       trocarAtivo(produto.id, true)
       setAviso(`${produto.nome} voltou para a loja.`)

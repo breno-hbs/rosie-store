@@ -17,8 +17,12 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
 | `GET /admin/produtos/{id}` | Implementado (exige token `ADMIN`; inclui inativos) | `ProdutoAdminDTO` |
 | `POST /admin/produtos` | Implementado (exige token `ADMIN`; 201) | `ProdutoAdminDTO` |
-| `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa) | `ProdutoAdminDTO` |
+| `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa; não altera o estoque) | `ProdutoAdminDTO` |
+| `PUT /admin/produtos/{id}/estoque` | Implementado (exige token `ADMIN`; só os tamanhos enviados) | `EstoqueProdutoDTO` |
 | `DELETE /admin/produtos/{id}` | Implementado (exige token `ADMIN`; 204, só desativa) | — |
+| `POST /admin/produtos/{id}/imagens` | Implementado (exige token `ADMIN`; multipart; 201; 400 com `FORMATO_NAO_SUPORTADO`/`ARQUIVO_MUITO_GRANDE`; 503 com `ARMAZENAMENTO_INDISPONIVEL`) | `ProdutoImagemDTO` |
+| `PUT /admin/produtos/{id}/imagens/ordem` | Implementado (exige token `ADMIN`; 400 se faltar ou repetir foto) | lista de `ProdutoImagemDTO` |
+| `DELETE /admin/produtos/{id}/imagens/{imagemId}` | Implementado (exige token `ADMIN`; 204; 404) | — |
 | `GET /admin/categorias` | Implementado (exige token `ADMIN`) | lista de `CategoriaAdminDTO` |
 | `POST /admin/categorias` | Implementado (exige token `ADMIN`; 201; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
 | `PUT /admin/categorias/{id}` | Implementado (exige token `ADMIN`; 404; 409 com `CATEGORIA_DUPLICADA`) | `CategoriaAdminDTO` |
@@ -30,11 +34,11 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 ## Convenções gerais
 
 - **Base URL (dev):** `http://localhost:8080`
-- **Formato:** JSON em todas as requisições e respostas
+- **Formato:** JSON em todas as requisições e respostas (exceção: o upload de foto do produto é `multipart/form-data`)
 - **Autenticação:** JWT via header `Authorization: Bearer {token}` — obtido no login
 - **Tamanhos:** sempre um dos valores `P`, `M`, `G`, `GG`
 - **Datas:** formato ISO 8601 (`2026-08-25T14:30:00`)
-- **Erros:** sempre nesse formato (`ErroResponseDTO`), com o HTTP status code correspondente (400, 401, 403, 404, 409, 500)
+- **Erros:** sempre nesse formato (`ErroResponseDTO`), com o HTTP status code correspondente (400, 401, 403, 404, 409, 500, 503)
 
 ```json
 {
@@ -52,6 +56,9 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada ou usuário sem permissão (mesma resposta nos três casos) |
 | `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado ou expirado |
 | `ACESSO_NEGADO` | 403 | Token válido, mas sem a role exigida (ex.: token de cliente em `/admin/**`) |
+| `FORMATO_NAO_SUPORTADO` | 400 | Upload de foto que não é JPG, PNG nem WEBP (conferido pelo conteúdo do arquivo, não pela extensão) |
+| `ARQUIVO_MUITO_GRANDE` | 400 | Upload de foto acima de 5 MB |
+| `ARMAZENAMENTO_INDISPONIVEL` | 503 | Upload de foto sem `CLOUDINARY_URL` configurada no servidor, ou com o Cloudinary fora do ar |
 | `CATEGORIA_DUPLICADA` | 409 | Criar ou renomear categoria com um nome que já existe (sem diferenciar maiúsculas) |
 | `CATEGORIA_EM_USO` | 409 | Remover categoria que ainda tem produtos (ativos ou inativos); `erro` diz quantos |
 
@@ -129,6 +136,7 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `ROSIE_ADMIN_EMAIL` | Na primeira subida | E-mail do admin inicial |
 | `ROSIE_ADMIN_SENHA` | Na primeira subida | Senha do admin inicial (mínimo 8 caracteres), guardada só como hash BCrypt |
 | `ROSIE_ADMIN_NOME` | Não (padrão `Roseane`) | Nome do admin inicial |
+| `CLOUDINARY_URL` | Não (sem ela, o upload de fotos responde 503) | Credencial do Cloudinary, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`; ver "Upload de imagem" |
 
 O admin inicial é criado na subida da API só enquanto não existir nenhum usuário `ADMIN`; depois as três variáveis `ROSIE_ADMIN_*` são ignoradas.
 
@@ -349,7 +357,7 @@ Serve às duas telas do painel: "Lista de Produtos" usa `estoqueTotal` e "Gestã
 ### Detalhe de um produto no painel
 `GET /admin/produtos/{id}`
 
-Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também responde para produto inativo.
+Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também responde para produto inativo. Diferente da loja, `imagens` traz cada foto com `id` e `ordem` (`ProdutoImagemDTO`), para o painel remover e reordenar; a de `ordem` 0 é a principal.
 
 ```json
 // Response 200 — ProdutoAdminDTO
@@ -360,7 +368,7 @@ Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também respon
   "composicao": "...",
   "preco": 189.00,
   "categoria": { "id": 1, "nome": "Vestido" },
-  "imagens": ["https://.../1.jpg"],
+  "imagens": [ { "id": 3, "url": "https://res.cloudinary.com/.../1.jpg", "ordem": 0 } ],
   "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ],
   "ativo": true,
   "destaque": false
@@ -397,16 +405,32 @@ Campos:
 | `categoriaId` | Obrigatório. Categoria que não existe responde **400** `DADOS_INVALIDOS` ("Categoria não encontrada"), não 404: o erro está no corpo, não no recurso da URL |
 | `destaque` | Opcional (padrão `false`). Marca o produto para o carrossel e o Best Sellers da Home (`GET /produtos/destaques`) |
 | `ativo` | Opcional (padrão `true`) |
-| `estoque` | Opcional. Só os tamanhos que o produto tem: cada `tamanho` é `P`, `M`, `G` ou `GG`, sem repetir, e `quantidade` é inteiro `>= 0` (`0` = esgotado). Tamanho fora da lista não é vendido |
+| `estoque` | Opcional, **só no POST** (estoque inicial). Só os tamanhos que o produto tem: cada `tamanho` é `P`, `M`, `G` ou `GG`, sem repetir, e `quantidade` é inteiro `>= 0` (`0` = esgotado). Tamanho fora da lista não é vendido. Depois do cadastro, o estoque muda só por `PUT /admin/produtos/{id}/estoque` |
 
 Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O preço deve ser maior que zero", "Selecione a categoria", "Categoria não encontrada", "Tamanho inválido: use P, M, G ou GG", "Tamanho P repetido no estoque", "A quantidade não pode ser negativa".
 
 ### Editar produto
 `PUT /admin/produtos/{id}`
 
-Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` atualizado. O `estoque` enviado **substitui** o atual: tamanho que ficar de fora deixa de ser vendido. `destaque`, `ativo`, `descricao` e `composicao` ausentes (ou `null`) mantêm o valor atual; `descricao` e `composicao` vazias limpam o campo.
+```json
+// Request — ProdutoEdicaoDTO (sem estoque)
+{
+  "nome": "Conjunto Serpente",
+  "descricao": "...",
+  "composicao": "100% linho\nLavar à mão em água fria",
+  "preco": 189.00,
+  "categoriaId": 1,
+  "destaque": false,
+  "ativo": true
+}
+// Response 200 — ProdutoAdminDTO atualizado (com o estoque atual, que não muda)
+```
 
-**Reativar:** um produto removido volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia o body completo). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
+Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque`, `ativo`, `descricao` e `composicao` ausentes (ou `null`) mantêm o valor atual; `descricao` e `composicao` vazias limpam o campo.
+
+**Decisão (#47): a edição não mexe no estoque, e um `estoque` no corpo é ignorado** (não dá 400). O estoque muda só por `PUT /admin/produtos/{id}/estoque` (tela "Gestão de Estoque"). Antes, o PUT substituía o estoque inteiro, e um formulário de edição aberto antes de uma mudança de estoque (pela tela de estoque ou, mais adiante, por uma venda) desfazia essa mudança ao salvar. Ignorar em vez de rejeitar é o que o back já faz com qualquer campo que o DTO não tem, e não quebra um cliente antigo que ainda mande o campo; o que importa é que ele não tem efeito.
+
+**Reativar:** um produto removido volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia os outros campos). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
 
 ### Remover produto
 `DELETE /admin/produtos/{id}` → **204** sem corpo.
@@ -417,9 +441,50 @@ Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` a
 `POST /admin/produtos/{id}/imagens` — multipart/form-data, campo `arquivo`
 
 ```json
-// Response 201
-{ "id": 3, "url": "https://.../nova-imagem.jpg", "ordem": 2 }
+// Response 201 — ProdutoImagemDTO: a foto nova, sempre no fim da galeria
+{ "id": 3, "url": "https://res.cloudinary.com/<cloud>/image/upload/v1/rosie/produtos/abc123.jpg", "ordem": 2 }
+// Response 400
+{ "erro": "Formato não aceito: envie a foto em JPG, PNG ou WEBP", "codigo": "FORMATO_NAO_SUPORTADO" }
+{ "erro": "A foto passa de 5 MB: diminua o arquivo e tente de novo", "codigo": "ARQUIVO_MUITO_GRANDE" }
+{ "erro": "Envie a foto no campo arquivo", "codigo": "DADOS_INVALIDOS" }
+// Response 503 (sem CLOUDINARY_URL no servidor, ou Cloudinary fora do ar)
+{ "erro": "O envio de fotos não está configurado no servidor (falta CLOUDINARY_URL)", "codigo": "ARMAZENAMENTO_INDISPONIVEL" }
 ```
+
+| Regra | |
+|---|---|
+| Formatos | JPG, PNG ou WEBP, reconhecidos pelo conteúdo do arquivo (a extensão e o `Content-Type` enviados não contam) |
+| Tamanho | Até 5 MB por foto (`rosie.imagens.tamanho-maximo`); uma foto por requisição |
+| Proporção | 4:5 em retrato, ex.: 1000 x 1250 px (RNF09). É só orientação na tela: a API não recusa outras proporções; o corte fica com a #18 |
+| Ordem | A foto de `ordem` 0 é a principal (`imagemPrincipal` em `GET /produtos` e a primeira de `imagens` em `GET /produtos/{id}`). A ordem é sempre 0, 1, 2... sem buracos |
+| Produto | Precisa já existir (404 `RECURSO_NAO_ENCONTRADO`): no cadastro novo, o painel salva o produto antes de liberar as fotos. Funciona também para produto inativo |
+
+O `id` do produto é conferido antes do arquivo: produto inexistente responde 404 mesmo com arquivo inválido. Arquivo acima do limite é recusado pelo servidor antes disso (400 `ARQUIVO_MUITO_GRANDE`).
+
+**Decisão (#15): fotos no Cloudinary.** O disco do Railway é efêmero, então as fotos ficam num storage externo. A API recebe o multipart, envia para o Cloudinary (pasta `rosie/produtos`) e guarda em `produto_imagem` a `url` segura (https) e o `public_id`, usado para apagar a foto de lá quando ela sai do produto. A credencial fica só na variável `CLOUDINARY_URL` (local: `rosie.cloudinary.url` no `application-local.properties`; produção: variável do Railway), nunca no repositório. Sem ela, a API sobe normalmente e só o upload responde 503. As imagens cadastradas antes desta mudança ficam com `public_id` nulo e continuam funcionando. Os testes automatizados usam um armazenamento falso no lugar do Cloudinary, e o CI não precisa das chaves.
+
+### Reordenar imagens
+`PUT /admin/produtos/{id}/imagens/ordem`
+
+```json
+// Request: os ids de TODAS as fotos do produto, na nova ordem; o primeiro vira a principal
+{ "imagens": [5, 3, 4] }
+// Response 200 — lista de ProdutoImagemDTO na nova ordem
+[
+  { "id": 5, "url": "https://.../c.jpg", "ordem": 0 },
+  { "id": 3, "url": "https://.../a.jpg", "ordem": 1 },
+  { "id": 4, "url": "https://.../b.jpg", "ordem": 2 }
+]
+// Response 400
+{ "erro": "Envie todas as fotos do produto, cada uma uma vez", "codigo": "DADOS_INVALIDOS" }
+```
+
+Lista vazia responde 400 "Informe a ordem das fotos". Foto faltando, repetida ou de outro produto responde 400 "Envie todas as fotos do produto, cada uma uma vez" (assim uma tela desatualizada não bagunça a galeria).
+
+### Remover imagem
+`DELETE /admin/produtos/{id}/imagens/{imagemId}` → **204** sem corpo.
+
+Tira a foto do produto, renumera as que ficaram (a seguinte vira a principal, se a removida era a primeira) e apaga o arquivo do Cloudinary. Se o Cloudinary falhar nessa hora, a foto sai do produto mesmo assim (o arquivo órfão fica registrado no log). Foto que não existe ou é de outro produto: 404 `RECURSO_NAO_ENCONTRADO`.
 
 ### Atualizar estoque
 `PUT /admin/produtos/{id}/estoque`
@@ -440,7 +505,7 @@ Mesmo body e mesmas validações do POST; responde 200 com o `ProdutoAdminDTO` a
 { "erro": "A quantidade não pode ser negativa", "codigo": "DADOS_INVALIDOS" }
 ```
 
-**Regra (#16): atualiza só os tamanhos enviados.** Tamanho que o produto já tem recebe a nova quantidade; tamanho que ele ainda não tem é cadastrado; tamanho que ficou de fora do body **continua como está** (diferente do `PUT /admin/produtos/{id}`, que substitui o estoque inteiro). Para esgotar um tamanho, envie `quantidade: 0`; não há como descadastrar um tamanho por aqui (use a edição do produto). Também funciona para produto inativo.
+**Regra (#16): atualiza só os tamanhos enviados.** Tamanho que o produto já tem recebe a nova quantidade; tamanho que ele ainda não tem é cadastrado; tamanho que ficou de fora do body **continua como está**. É a única rota que muda o estoque de um produto já cadastrado (#47: o `PUT /admin/produtos/{id}` não mexe nele). Para esgotar um tamanho, envie `quantidade: 0`; por enquanto não há como descadastrar um tamanho (ele fica como esgotado). Também funciona para produto inativo.
 
 | Campo | Regra |
 |---|---|

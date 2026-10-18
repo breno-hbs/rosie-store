@@ -27,6 +27,11 @@ public class ProdutoImagem {
     @Column(nullable = false, length = 500)
     private String url;
 
+    // Id da foto no Cloudinary, para apagá-la de lá quando sair do produto. Nulo nas imagens
+    // cadastradas antes do upload (#15), que não estão no Cloudinary.
+    @Column(name = "public_id")
+    private String publicId;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer ordem = 0;
