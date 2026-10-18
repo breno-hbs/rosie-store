@@ -65,6 +65,7 @@
 }
 
 .nav__conta:hover,
+.nav__sacola:hover,
 .nav__sair:hover {
   text-decoration: underline;
   text-underline-offset: 6px;

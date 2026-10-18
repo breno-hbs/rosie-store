@@ -190,6 +190,20 @@
   min-height: 60px;
 }
 
+/* Confirmação ou erro de "Adicionar à sacola", entre os dois botões */
+.produto__retorno {
+  padding: 12px 0 14px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.produto__retorno a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 /* Acordeão: <details> nativo, "+" fechado e "—" aberto */
 .produto__acordeao {
   margin-top: 14px;
