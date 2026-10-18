@@ -63,8 +63,10 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
     }
   }
 
+  // FormData (upload de foto) vai como está: o navegador monta o Content-Type com o boundary
+  const multipart = corpo instanceof FormData
   const headers = { Accept: 'application/json' }
-  if (corpo !== undefined) headers['Content-Type'] = 'application/json'
+  if (corpo !== undefined && !multipart) headers['Content-Type'] = 'application/json'
   if (autenticado) {
     const sessao = lerSessaoAdmin()
     if (!sessao) {
@@ -79,7 +81,7 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
     resposta = await fetch(url, {
       method: metodo,
       headers,
-      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+      body: corpo === undefined || multipart ? corpo : JSON.stringify(corpo),
       signal,
     })
   } catch (e) {
@@ -168,9 +170,28 @@ export function listarProdutosAdmin(opcoes) {
   return getAdmin('/admin/produtos', opcoes)
 }
 
-// GET /admin/produtos/{id} → detalhe do produto + { ativo, destaque }
+// GET /admin/produtos/{id} → detalhe do produto + { ativo, destaque }; aqui imagens é [{ id, url, ordem }]
 export function buscarProdutoAdmin(id, opcoes) {
   return getAdmin(`/admin/produtos/${id}`, opcoes)
+}
+
+// POST /admin/produtos/{id}/imagens (multipart, campo "arquivo") → { id, url, ordem }, no fim da galeria.
+// Recusa: ApiError com codigo FORMATO_NAO_SUPORTADO ou ARQUIVO_MUITO_GRANDE (400);
+// ARMAZENAMENTO_INDISPONIVEL (503) quando o servidor está sem Cloudinary
+export function enviarImagemProduto(id, arquivo, opcoes) {
+  const corpo = new FormData()
+  corpo.append('arquivo', arquivo)
+  return postAdmin(`/admin/produtos/${id}/imagens`, corpo, opcoes)
+}
+
+// PUT /admin/produtos/{id}/imagens/ordem; body: ids de todas as fotos, a principal primeiro → [{ id, url, ordem }]
+export function reordenarImagensProduto(id, idsImagens, opcoes) {
+  return putAdmin(`/admin/produtos/${id}/imagens/ordem`, { imagens: idsImagens }, opcoes)
+}
+
+// DELETE /admin/produtos/{id}/imagens/{imagemId} → null; a foto também sai do Cloudinary
+export function removerImagemProduto(id, imagemId, opcoes) {
+  return deleteAdmin(`/admin/produtos/${id}/imagens/${imagemId}`, opcoes)
 }
 
 // POST /admin/produtos; body: { nome, descricao, preco, categoriaId, destaque, estoque: [{ tamanho, quantidade }] }
