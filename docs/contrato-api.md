@@ -20,6 +20,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /carrinho/itens` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
 | `PUT /carrinho/itens/{itemId}` | Implementado (exige token `CLIENTE`; 400; 404; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
 | `DELETE /carrinho/itens/{itemId}` | Implementado (exige token `CLIENTE`; 200 com o carrinho; 404) | `CarrinhoDTO` |
+| `POST /frete/calcular` | Implementado (exige token `CLIENTE`; cota o carrinho no Melhor Envio; 400 `DADOS_INVALIDOS`; 409 `CARRINHO_VAZIO`; 502 `FRETE_FALHOU`; 503 `FRETE_INDISPONIVEL`) | `FreteResponseDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
@@ -49,7 +50,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 - **Autenticação:** JWT via header `Authorization: Bearer {token}` — obtido no login
 - **Tamanhos:** sempre um dos valores `P`, `M`, `G`, `GG`
 - **Datas:** formato ISO 8601 (`2026-08-25T14:30:00`)
-- **Erros:** sempre nesse formato (`ErroResponseDTO`), com o HTTP status code correspondente (400, 401, 403, 404, 409, 500, 503)
+- **Erros:** sempre nesse formato (`ErroResponseDTO`), com o HTTP status code correspondente (400, 401, 403, 404, 409, 500, 502, 503)
 
 ```json
 {
@@ -75,6 +76,9 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
 | `ESTOQUE_INSUFICIENTE` | 409 | Carrinho: a quantidade pedida (somada à que já está na sacola, no POST) passa do estoque do tamanho, ou o tamanho está esgotado; `erro` traz a mensagem pronta ("Só temos 3 no tamanho P") |
 | `PRODUTO_INDISPONIVEL` | 409 | Carrinho: adicionar ou mudar a quantidade de um produto desativado pela Roseane |
+| `CARRINHO_VAZIO` | 409 | Frete: o carrinho não tem nenhuma peça disponível para cotar |
+| `FRETE_FALHOU` | 502 | Frete: o Melhor Envio não respondeu a tempo, caiu ou devolveu algo inesperado. A cliente pode tentar de novo |
+| `FRETE_INDISPONIVEL` | 503 | Frete: servidor sem `MELHOR_ENVIO_TOKEN` ou `ROSIE_CEP_ORIGEM`, ou token recusado pelo Melhor Envio |
 
 ---
 
@@ -85,11 +89,11 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 | Rotas | Quem acessa |
 |---|---|
 | `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias` | Público |
-| `/auth/**` (ex.: `GET /auth/me`), `/carrinho/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
+| `/auth/**` (ex.: `GET /auth/me`), `/carrinho/**`, `/frete/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
 | Qualquer outra | Qualquer token válido |
 
-As rotas da compra (#22, #24, #27) já estão no `SecurityConfig` exigindo `CLIENTE`: os controllers novos não precisam mexer nele. Quem criar uma rota de cliente fora desses prefixos (ex.: `/enderecos`, `/frete`) acrescenta o prefixo lá.
+As rotas da compra (#22, #23, #24, #27) já estão no `SecurityConfig` exigindo `CLIENTE`: os controllers novos não precisam mexer nele. Quem criar uma rota de cliente fora desses prefixos (ex.: `/enderecos`) acrescenta o prefixo lá.
 
 ### Cadastro de cliente
 `POST /auth/registrar`
@@ -414,12 +418,50 @@ Nos dois, `itemId` que não existe **ou é de outra cliente** responde **404** `
 ### Calcular frete
 `POST /frete/calcular`
 
+Exige token `CLIENTE` (401 sem token, 403 com token de admin). Cota **as peças disponíveis do carrinho da cliente do token** (as mesmas que entram no `subtotal` do `CarrinhoDTO`) na API do Melhor Envio (`POST /api/v2/me/shipment/calculate`), do CEP da loja (`ROSIE_CEP_ORIGEM`) até o CEP informado. Não muda nada no carrinho: com o frete fora do ar, a sacola continua funcionando.
+
 ```json
-// Request
+// Request — FreteRequestDTO
 { "cep": "03925-050" }
-// Response 200 (via API Melhor Envio)
-{ "opcoes": [ { "transportadora": "PAC", "preco": 22.90, "prazoDias": 7 }, { "transportadora": "SEDEX", "preco": 38.50, "prazoDias": 3 } ] }
+// Response 200 — FreteResponseDTO
+{
+  "cep": "03925050",
+  "opcoes": [
+    { "id": 1, "transportadora": "Correios", "servico": "PAC", "preco": 22.90, "prazoDias": 7 },
+    { "id": 2, "transportadora": "Correios", "servico": "SEDEX", "preco": 38.50, "prazoDias": 3 }
+  ]
+}
+// Response 200 — nenhuma transportadora atende o CEP
+{ "cep": "69980000", "opcoes": [] }
+// Response 400 — formato
+{ "erro": "CEP inválido: use os 8 números, ex.: 03925-050", "codigo": "DADOS_INVALIDOS" }
+// Response 400 — 8 dígitos, mas o Melhor Envio não reconhece o CEP
+{ "erro": "CEP não encontrado. Confira os números.", "codigo": "DADOS_INVALIDOS" }
+// Response 409
+{ "erro": "Sua sacola não tem peças disponíveis para calcular o frete", "codigo": "CARRINHO_VAZIO" }
+// Response 502
+{ "erro": "Não foi possível calcular o frete agora. Tente de novo em instantes.", "codigo": "FRETE_FALHOU" }
+// Response 503
+{ "erro": "O cálculo de frete não está configurado no servidor", "codigo": "FRETE_INDISPONIVEL" }
 ```
+
+| Campo | Regra |
+|---|---|
+| `cep` (request) | Obrigatório, 8 dígitos com ou sem hífen (`03925-050` ou `03925050`). Outro formato responde 400 sem chamar o Melhor Envio |
+| `cep` (response) | O CEP de destino só com os dígitos |
+| `opcoes` | Do mais barato para o mais caro (empate: o mais rápido primeiro). Serviços que o Melhor Envio devolve com erro (ex.: "Serviço indisponível para o trecho") ficam de fora; sem nenhum, a lista vem vazia |
+| `id` | Id do serviço no Melhor Envio (ex.: 1 = PAC, 2 = SEDEX). **O checkout (#24) recebe esse id e cota de novo no servidor**: o preço que o front mostrou nunca é usado direto |
+| `transportadora` / `servico` | Nome da empresa (`company.name`) e do serviço (`name`) no Melhor Envio |
+| `preco` | `custom_price` do Melhor Envio (já com as taxas e descontos da conta), em reais |
+| `prazoDias` | `custom_delivery_time` do Melhor Envio, em dias úteis depois da postagem |
+
+**Carrinho vazio é 409 (`CARRINHO_VAZIO`), não 400:** o corpo está certo, o que impede a cotação é o estado do carrinho, como em `ESTOQUE_INSUFICIENTE`. Carrinho só com peças indisponíveis conta como vazio.
+
+**Falha do Melhor Envio:** timeout (5 s, `FRETE_TIMEOUT`), queda, erro 5xx ou resposta fora do formato → 502 `FRETE_FALHOU`. Servidor sem `MELHOR_ENVIO_TOKEN`/`ROSIE_CEP_ORIGEM`, ou token recusado (401/403 do Melhor Envio) → 503 `FRETE_INDISPONIVEL`. Um 422 do Melhor Envio apontando o CEP de destino vira 400 `DADOS_INVALIDOS`.
+
+**Pacote cotado (limitação até o produto ter peso e medidas):** cada linha do carrinho vai como um produto do Melhor Envio com a quantidade da linha, valor declarado (seguro) igual ao preço atual da peça e um pacote padrão por peça, configurável em `rosie.frete.peca.*`: **0,3 kg, 20 × 5 × 30 cm** (largura × altura × comprimento). O Melhor Envio junta as peças nos pacotes. Sem aviso de recebimento nem mão própria.
+
+**Modo de desenvolvimento:** com `FRETE_SIMULADO=true` a API não chama o Melhor Envio e devolve opções fixas (PAC, SEDEX e Jadlog .Package, com preço subindo por peça extra); o CEP `99999-999` responde `opcoes: []`. Nunca ligar em produção.
 
 ### Finalizar pedido
 `POST /pedidos`

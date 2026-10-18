@@ -135,6 +135,12 @@ O `application.properties` importa esse arquivo automaticamente quando ele exist
 | `ROSIE_ADMIN_SENHA` | (vazio) | Senha desse admin, com pelo menos 8 caracteres (guardada só como hash BCrypt) |
 | `ROSIE_ADMIN_NOME` | `Roseane` | Nome desse admin |
 | `CLOUDINARY_URL` | (vazio) | Credencial do Cloudinary para as fotos dos produtos, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`. Opcional: sem ela a API sobe e só o upload de fotos responde 503 |
+| `MELHOR_ENVIO_TOKEN` | (vazio) | Token do Melhor Envio para o cálculo de frete (escopo `shipping-calculate`). Opcional: sem ele a API sobe e só o frete responde 503 |
+| `MELHOR_ENVIO_URL` | `https://sandbox.melhorenvio.com.br` | API do Melhor Envio. Em produção: `https://melhorenvio.com.br` (o token da sandbox só vale na sandbox, e o de produção só em produção) |
+| `MELHOR_ENVIO_USER_AGENT` | `Rosie (rosiestore.com.br)` | `User-Agent` exigido pelo Melhor Envio: nome da aplicação e e-mail de contato técnico, ex.: `Rosie (contato@exemplo.com)` |
+| `ROSIE_CEP_ORIGEM` | (vazio) | CEP de onde a Rosie despacha (8 dígitos, com ou sem hífen). Sem ele o frete responde 503 |
+| `FRETE_TIMEOUT` | `5s` | Tempo máximo de espera pelo Melhor Envio (passou disso, 502 `FRETE_FALHOU`) |
+| `FRETE_SIMULADO` | `false` | Só desenvolvimento: `true` devolve opções de frete fixas sem chamar o Melhor Envio. Nunca em produção |
 
 Windows (PowerShell, vale só para o terminal aberto):
 
@@ -153,6 +159,8 @@ export DB_PASSWORD=sua_senha
 O admin inicial é criado uma vez só: na primeira subida sem nenhum usuário `ADMIN` no banco. Depois disso `ROSIE_ADMIN_EMAIL` e `ROSIE_ADMIN_SENHA` são ignoradas (trocar a senha não altera o admin já criado). Em produção, gere um `JWT_SECRET` próprio (ex.: `openssl rand -base64 48`); trocar o segredo derruba todas as sessões abertas do painel.
 
 **Fotos dos produtos (Cloudinary).** O upload de fotos do painel guarda os arquivos no Cloudinary (o disco do Railway é apagado a cada deploy). Para testar o upload localmente, crie uma conta gratuita, copie a "API environment variable" em Settings > API Keys e coloque em `rosie.cloudinary.url` no `application-local.properties` (ou na variável `CLOUDINARY_URL`). Sem isso, todo o resto funciona e o envio de foto mostra o erro `ARMAZENAMENTO_INDISPONIVEL`. Em produção, defina `CLOUDINARY_URL` nas variáveis do serviço da API no Railway. Os testes (`./mvnw test`) não usam o Cloudinary.
+
+**Frete (Melhor Envio).** O carrinho cota o frete na API do Melhor Envio. Para testar com a API de verdade, crie uma conta na [sandbox](https://sandbox.melhorenvio.com.br), gere um token em Integrações > Permissões de acesso (escopo `shipping-calculate`) e preencha `rosie.frete.melhor-envio.*` e `rosie.frete.cep-origem` no `application-local.properties` (ou as variáveis `MELHOR_ENVIO_TOKEN`, `MELHOR_ENVIO_USER_AGENT` e `ROSIE_CEP_ORIGEM`). Sem token, dá para testar a tela com opções fixas ligando o modo simulado: `rosie.frete.simulado=true` no `application-local.properties` (ou `FRETE_SIMULADO=true`); nele, o CEP `99999-999` responde sem opções. Em produção, defina `MELHOR_ENVIO_TOKEN` (da conta real), `MELHOR_ENVIO_URL=https://melhorenvio.com.br`, `MELHOR_ENVIO_USER_AGENT` e `ROSIE_CEP_ORIGEM` no Railway. Os testes (`./mvnw test`) não chamam o Melhor Envio.
 
 > Nunca commitar `application-local.properties`, `.env.local` nem qualquer arquivo com credenciais reais. Os dois já estão no `.gitignore`.
 
