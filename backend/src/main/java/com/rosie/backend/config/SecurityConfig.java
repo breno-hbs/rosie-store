@@ -59,6 +59,8 @@ public class SecurityConfig {
                         .requestMatchers("/carrinho/**", "/pedidos/**", "/trocas/**").hasRole("CLIENTE")
                         // Frete do carrinho (#23)
                         .requestMatchers("/frete/**").hasRole("CLIENTE")
+                        // Webhook do Mercado Pago (#24): sem token, protegido pela assinatura x-signature
+                        .requestMatchers(HttpMethod.POST, "/pagamentos/webhook").permitAll()
                         // Endereços de entrega (#24)
                         .requestMatchers("/enderecos/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()

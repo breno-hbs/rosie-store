@@ -25,6 +25,10 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /enderecos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`) | `EnderecoDTO` |
 | `PUT /enderecos/{id}` | Implementado (exige token `CLIENTE`; 400; 404; endereço já usado em pedido volta com id novo) | `EnderecoDTO` |
 | `DELETE /enderecos/{id}` | Implementado (exige token `CLIENTE`; 204; 404; endereço já usado em pedido só é arquivado) | — |
+| `POST /pedidos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 `CARRINHO_VAZIO`/`ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`/`FRETE_ALTERADO`; 502 `FRETE_FALHOU`/`PAGAMENTO_FALHOU`; 503 `FRETE_INDISPONIVEL`/`PAGAMENTO_INDISPONIVEL`) | `PedidoCriadoDTO` |
+| `GET /pedidos/{id}` | Implementado (exige token `CLIENTE`; 404 também para pedido de outra cliente) | `PedidoDTO` |
+| `POST /pagamentos/webhook` | Implementado (público, assinado pelo Mercado Pago; 200; 401 `ASSINATURA_INVALIDA`; 502/503 para o Mercado Pago tentar de novo) | — |
+| `POST /pedidos/{id}/pagamento-simulado` | Só desenvolvimento, com `PAGAMENTO_SIMULADO=true` (404 fora dele) | `PedidoDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
@@ -80,7 +84,11 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
 | `ESTOQUE_INSUFICIENTE` | 409 | Carrinho: a quantidade pedida (somada à que já está na sacola, no POST) passa do estoque do tamanho, ou o tamanho está esgotado; `erro` traz a mensagem pronta ("Só temos 3 no tamanho P") |
 | `PRODUTO_INDISPONIVEL` | 409 | Carrinho: adicionar ou mudar a quantidade de um produto desativado pela Roseane |
-| `CARRINHO_VAZIO` | 409 | Frete: o carrinho não tem nenhuma peça disponível para cotar |
+| `CARRINHO_VAZIO` | 409 | Frete: o carrinho não tem nenhuma peça disponível para cotar. Checkout: a sacola está vazia |
+| `FRETE_ALTERADO` | 409 | Checkout: a forma de entrega escolhida (`servicoFreteId`) não voltou na cotação refeita no servidor para o CEP do endereço |
+| `PAGAMENTO_FALHOU` | 502 | Checkout: o Mercado Pago não respondeu a tempo, caiu ou devolveu algo inesperado. A cliente pode tentar de novo (nenhum pedido fica gravado) |
+| `PAGAMENTO_INDISPONIVEL` | 503 | Checkout: servidor sem `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET` ou `ROSIE_API_URL` (https), ou access token recusado pelo Mercado Pago |
+| `ASSINATURA_INVALIDA` | 401 | Webhook do Mercado Pago sem `x-signature`, com assinatura malformada ou que não confere com o segredo |
 | `FRETE_FALHOU` | 502 | Frete: o Melhor Envio não respondeu a tempo, caiu ou devolveu algo inesperado. A cliente pode tentar de novo |
 | `FRETE_INDISPONIVEL` | 503 | Frete: servidor sem `MELHOR_ENVIO_TOKEN` ou `ROSIE_CEP_ORIGEM`, ou token recusado pelo Melhor Envio |
 
@@ -93,6 +101,7 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 | Rotas | Quem acessa |
 |---|---|
 | `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias` | Público |
+| `POST /pagamentos/webhook` | Público, mas só processa aviso com a assinatura `x-signature` do Mercado Pago |
 | `/auth/**` (ex.: `GET /auth/me`), `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
 | Qualquer outra | Qualquer token válido |
@@ -206,6 +215,8 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `ROSIE_ADMIN_SENHA` | Na primeira subida | Senha do admin inicial (mínimo 8 caracteres), guardada só como hash BCrypt |
 | `ROSIE_ADMIN_NOME` | Não (padrão `Roseane`) | Nome do admin inicial |
 | `CLOUDINARY_URL` | Não (sem ela, o upload de fotos responde 503) | Credencial do Cloudinary, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`; ver "Upload de imagem" |
+| `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `ROSIE_API_URL` | Não (faltando qualquer uma, o checkout responde 503) | Pagamento pelo Mercado Pago; ver "Finalizar pedido" |
+| `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago |
 
 O admin inicial é criado na subida da API só enquanto não existir nenhum usuário `ADMIN`; depois as três variáveis `ROSIE_ADMIN_*` são ignoradas.
 
@@ -504,16 +515,107 @@ Exige token `CLIENTE` (401 sem token, 403 com token de admin). Cota **as peças 
 ### Finalizar pedido
 `POST /pedidos`
 
+Exige token `CLIENTE`. Fecha o pedido com **o carrinho inteiro** da cliente do token e devolve o link de pagamento do Mercado Pago (Checkout Pro), para onde a loja manda a cliente. Os dados do cartão nunca passam pela API.
+
 ```json
-// Request
+// Request — PedidoRequestDTO
+{ "enderecoId": 5, "servicoFreteId": 1, "formaPagamento": "CARTAO" }
+// Response 201 — PedidoCriadoDTO
 {
-  "enderecoId": 5,
-  "transportadora": "PAC",
-  "formaPagamento": "CARTAO"
+  "id": 100,
+  "status": "AGUARDANDO_PAGAMENTO",
+  "subtotal": 189.00,
+  "valorFrete": 22.90,
+  "valorTotal": 211.90,
+  "urlPagamento": "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=..."
 }
-// Response 201
-{ "id": 100, "status": "AGUARDANDO_PAGAMENTO", "valorTotal": 211.90, "codigoRastreio": null }
+// Response 409
+{ "erro": "Só temos 1 de Conjunto Serpente (M). Ajuste a quantidade na sacola.", "codigo": "ESTOQUE_INSUFICIENTE" }
+{ "erro": "Essa forma de entrega não está mais disponível para o endereço. Escolha outra.", "codigo": "FRETE_ALTERADO" }
+// Response 503
+{ "erro": "O pagamento não está configurado no servidor", "codigo": "PAGAMENTO_INDISPONIVEL" }
 ```
+
+| Campo | Regra |
+|---|---|
+| `enderecoId` | Obrigatório. Endereço salvo (não arquivado) da cliente do token; de outra cliente ou inexistente → 400 "Endereço de entrega não encontrado" |
+| `servicoFreteId` | Obrigatório. O `id` de uma opção do `POST /frete/calcular` |
+| `formaPagamento` | Obrigatório: `CARTAO` (cartão de crédito, com parcelas) ou `PIX`. A página do Mercado Pago só mostra os meios dessa forma (boleto e lotérica nunca) |
+
+**O servidor refaz tudo; do front só vêm escolhas.** Itens, quantidades e preços saem do carrinho (o preço é o atual do produto e fica guardado em `pedido_item.preco_unitario`: mudar o preço depois não altera o pedido). Toda peça precisa estar disponível agora: produto desativado → 409 `PRODUTO_INDISPONIVEL`; tamanho esgotado ou estoque menor que a quantidade → 409 `ESTOQUE_INSUFICIENTE` (a cliente ajusta na sacola). O frete é **cotado de novo** no Melhor Envio para o CEP do endereço escolhido, e o preço e o prazo usados são os dessa cotação (nunca os que a tela mostrou); se o `servicoFreteId` não voltar nela → 409 `FRETE_ALTERADO`. Erros do frete são os do `POST /frete/calcular` (502 `FRETE_FALHOU`, 503 `FRETE_INDISPONIVEL`).
+
+**O estoque não baixa aqui** e a sacola fica como está: os dois só mudam quando o Mercado Pago confirmar o pagamento (ver "Webhook do Mercado Pago"). Se o Mercado Pago falhar (502 `PAGAMENTO_FALHOU`, 503 `PAGAMENTO_INDISPONIVEL`), nenhum pedido fica gravado.
+
+**Preferência criada no Mercado Pago** (`POST https://api.mercadopago.com/checkout/preferences`): uma linha por peça ("Conjunto Serpente (tamanho M)", preço unitário, quantidade, foto) e uma do frete ("Frete Correios PAC"), somando o `valorTotal`; `payer` com nome e e-mail da cliente; `external_reference` = id do pedido; `notification_url` = `ROSIE_API_URL` + `/pagamentos/webhook`; `back_urls` = `ROSIE_LOJA_URL` + `/pedido/{id}/sucesso`, `/pendente` e `/falha`, com `auto_return: approved` só quando a loja é https (o Mercado Pago não aceita retorno automático para localhost); `statement_descriptor` `ROSIE`; `payment_methods.excluded_payment_types` conforme a forma. `urlPagamento` é o `init_point` da preferência.
+
+**Modo de desenvolvimento:** com `PAGAMENTO_SIMULADO=true` a API não chama o Mercado Pago e `urlPagamento` aponta para a página da loja `/pedido/{id}/pagamento-simulado`, que chama `POST /pedidos/{id}/pagamento-simulado` com `{ "status": "APROVADO" }` (ou `PENDENTE`, `RECUSADO`, `CANCELADO`) e recebe o `PedidoDTO` atualizado. O pagamento simulado, com o valor do pedido, passa pelo mesmo processamento do webhook. Sem o modo simulado a rota responde 404. Nunca ligar em produção.
+
+### Status do pedido
+
+| Status | Quando |
+|---|---|
+| `AGUARDANDO_PAGAMENTO` | Pedido criado; a cliente ainda não pagou (PIX gerado e cartão em análise também ficam aqui) |
+| `PAGAMENTO_RECUSADO` | O Mercado Pago recusou o pagamento. A cliente pode tentar de novo pelo mesmo `urlPagamento` |
+| `PAGO` | Pagamento aprovado: o estoque já baixou e as peças saíram da sacola |
+| `PAGO_COM_PENDENCIA` | Pagamento aprovado, mas o pedido não fechou sozinho: faltou estoque (outra cliente pagou antes a última peça) ou o valor pago não bate com o total. **O estoque não baixa** (nunca fica negativo), as peças saem da sacola e o motivo fica gravado em `pedido.pendencia` para a Roseane resolver (enviar quando repor, combinar troca ou devolver o dinheiro pelo Mercado Pago). Fica sem tela até o painel de pedidos |
+| `ENVIADO`, `ENTREGUE` | Etiqueta e rastreio (#25) |
+| `CANCELADO` | Pagamento cancelado ou expirado no Mercado Pago (ex.: PIX não pago no prazo). Se mesmo assim chegar um pagamento aprovado depois, ele é processado como qualquer aprovação |
+
+Na tabela `pedido` a coluna `status` é `VARCHAR(30)`. **Banco criado antes da #24** (o `ddl-auto=update` não muda o tipo de coluna que já existe, e a coluna era `ENUM` sem os status novos): rode uma vez `ALTER TABLE pedido MODIFY status VARCHAR(30) NOT NULL;`.
+
+### Webhook do Mercado Pago
+`POST /pagamentos/webhook?data.id={id do pagamento}&type=payment`
+
+Público (sem token), chamado pelo Mercado Pago a cada mudança de um pagamento. A API:
+
+1. Confere a assinatura do cabeçalho `x-signature` (`ts=...,v1=...`): `v1` deve ser o HMAC-SHA256, em hexadecimal, com `MERCADO_PAGO_WEBHOOK_SECRET` como chave, do manifesto `id:{data.id};request-id:{x-request-id};ts:{ts};` (o par cujo valor não veio sai do manifesto). Não confere → **401** `ASSINATURA_INVALIDA`, sem consultar nada.
+2. Consulta o pagamento no Mercado Pago (`GET /v1/payments/{id}`): **o status nunca vem do corpo do aviso nem do retorno do navegador**. O pedido é o `external_reference`.
+3. Atualiza o pedido e responde **200** (sem corpo). Mercado Pago fora do ar na consulta → 502 `PAGAMENTO_FALHOU`; servidor sem configuração → 503 `PAGAMENTO_INDISPONIVEL`. Nos dois casos o Mercado Pago tenta de novo mais tarde.
+
+| Pagamento no Mercado Pago | Pedido |
+|---|---|
+| `approved` | `PAGO`: baixa o estoque de todas as peças e tira da sacola as quantidades compradas (o que a cliente pôs depois do checkout fica), tudo na mesma transação. Falta de estoque ou valor diferente → `PAGO_COM_PENDENCIA`, sem baixar nada |
+| `rejected` | `PAGAMENTO_RECUSADO` |
+| `cancelled` | `CANCELADO` |
+| `pending`, `in_process`, `authorized`, `in_mediation` | Continua como está |
+| `refunded`, `charged_back` | Não muda (só registra no log): devolução e contestação ficam com a Roseane no painel do Mercado Pago |
+
+Recusa e cancelamento só mudam pedido que ainda espera pagamento (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`): um aviso atrasado de uma tentativa recusada não desfaz um pedido já pago.
+
+**Idempotente:** o Mercado Pago repete avisos (e pode mandar dois ao mesmo tempo). A linha do pedido fica travada (`SELECT ... FOR UPDATE`) durante o processamento, e um pedido que já está `PAGO` ou além ignora novas aprovações: o mesmo pagamento aprovado baixa o estoque **uma vez só**. As linhas de estoque também são travadas, para dois pedidos diferentes aprovados juntos não venderem a mesma última peça.
+
+Avisos de outros tópicos (`merchant_order`...) e do formato antigo (IPN, `?topic=payment&id=...`, que não vem assinado) só recebem 200, sem processar: o mesmo pagamento chega também como webhook assinado. Pagamento cujo `external_reference` não é um pedido da loja é ignorado (200).
+
+### Consultar pedido
+`GET /pedidos/{id}`
+
+Exige token `CLIENTE`. Pedido de outra cliente responde **404** `RECURSO_NAO_ENCONTRADO`, como um que não existe. As páginas de retorno do Mercado Pago (`/pedido/{id}/sucesso`, `/pendente`, `/falha`) mostram o status daqui, não dos parâmetros da URL.
+
+```json
+// Response 200 — PedidoDTO
+{
+  "id": 100,
+  "status": "AGUARDANDO_PAGAMENTO",
+  "formaPagamento": "PIX",
+  "subtotal": 189.00,
+  "valorFrete": 22.90,
+  "valorTotal": 211.90,
+  "transportadora": "Correios",
+  "servicoFrete": "PAC",
+  "prazoFreteDias": 7,
+  "codigoRastreio": null,
+  "urlPagamento": "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=...",
+  "createdAt": "2026-10-18T14:30:00",
+  "endereco": { "id": 5, "cep": "03925050", "logradouro": "Rua das Flores", "numero": "120", "complemento": null,
+                "bairro": "Jardim Iva", "cidade": "São Paulo", "estado": "SP" },
+  "itens": [
+    { "produtoId": 1, "nome": "Conjunto Serpente", "imagemPrincipal": "https://res.cloudinary.com/...",
+      "tamanho": "M", "quantidade": 1, "precoUnitario": 189.00, "subtotal": 189.00 }
+  ]
+}
+```
+
+`urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra.
 
 ### Listar meus pedidos
 `GET /pedidos`
@@ -525,9 +627,6 @@ Exige token `CLIENTE` (401 sem token, 403 com token de admin). Cota **as peças 
   { "id": 98, "status": "ENVIADO", "valorTotal": 189.00, "createdAt": "2026-08-12T10:15:00" }
 ]
 ```
-
-### Consultar pedido
-`GET /pedidos/{id}`
 
 ---
 
