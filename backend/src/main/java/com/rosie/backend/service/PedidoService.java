@@ -6,6 +6,7 @@ import com.rosie.backend.dto.OpcaoFreteDTO;
 import com.rosie.backend.dto.PedidoCriadoDTO;
 import com.rosie.backend.dto.PedidoDTO;
 import com.rosie.backend.dto.PedidoRequestDTO;
+import com.rosie.backend.dto.PedidoResumoDTO;
 import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
@@ -100,6 +101,14 @@ public class PedidoService {
         pedido.setUrlPagamento(preferencia.urlPagamento());
 
         return PedidoCriadoDTO.from(pedido);
+    }
+
+    // Meus Pedidos (#26): todos os pedidos da cliente, inclusive os não pagos e os cancelados
+    @Transactional(readOnly = true)
+    public List<PedidoResumoDTO> listar(Long clienteId) {
+        return pedidoRepository.findByUsuarioIdOrderByCreatedAtDescIdDesc(clienteId).stream()
+                .map(PedidoResumoDTO::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)

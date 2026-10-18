@@ -5,14 +5,18 @@ import com.rosie.backend.exception.PagamentoIndisponivelException;
 import com.rosie.backend.model.CarrinhoItem;
 import com.rosie.backend.model.Categoria;
 import com.rosie.backend.model.Endereco;
+import com.rosie.backend.model.FormaPagamento;
+import com.rosie.backend.model.Pedido;
 import com.rosie.backend.model.Produto;
 import com.rosie.backend.model.ProdutoEstoque;
 import com.rosie.backend.model.Role;
+import com.rosie.backend.model.StatusPedido;
 import com.rosie.backend.model.Tamanho;
 import com.rosie.backend.model.Usuario;
 import com.rosie.backend.repository.CarrinhoItemRepository;
 import com.rosie.backend.repository.CategoriaRepository;
 import com.rosie.backend.repository.EnderecoRepository;
+import com.rosie.backend.repository.PedidoRepository;
 import com.rosie.backend.repository.ProdutoRepository;
 import com.rosie.backend.repository.UsuarioRepository;
 import com.rosie.backend.service.CalculadoraFrete.OpcaoFrete;
@@ -43,7 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// POST /pedidos e GET /pedidos/{id} contra o MySQL, com token de cliente, frete e Mercado Pago falsos
+// POST /pedidos, GET /pedidos e GET /pedidos/{id} contra o MySQL, com token de cliente, frete e Mercado Pago falsos
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -73,6 +77,9 @@ class PedidoControllerTest {
 
     @Autowired
     private CarrinhoItemRepository carrinhoItemRepository;
+
+    @Autowired
+    private PedidoRepository pedidoRepository;
 
     @Autowired
     private TokenService tokenService;
@@ -202,6 +209,62 @@ class PedidoControllerTest {
         mockMvc.perform(criar(corpo(endereco.getId(), 1, "PIX"), tokenAdmin))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.codigo").value("ACESSO_NEGADO"));
+    }
+
+    @Test
+    void listaOsPedidosDaClienteDoMaisRecenteParaOMaisAntigo() throws Exception {
+        Pedido primeiro = salvarPedido(StatusPedido.ENTREGUE, "211.90");
+        Pedido segundo = salvarPedido(StatusPedido.ENVIADO, "189.00");
+        segundo.setCodigoRastreio("AA123456789BR");
+        entityManager.flush();
+
+        // Criados em sequência: o mais novo vem primeiro (no mesmo segundo, o id desempata)
+        mockMvc.perform(get("/pedidos").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(segundo.getId()))
+                .andExpect(jsonPath("$[0].status").value("ENVIADO"))
+                .andExpect(jsonPath("$[0].valorTotal").value(189.00))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty())
+                .andExpect(jsonPath("$[1].id").value(primeiro.getId()))
+                .andExpect(jsonPath("$[1].status").value("ENTREGUE"));
+
+        mockMvc.perform(get("/pedidos/" + segundo.getId()).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigoRastreio").value("AA123456789BR"))
+                .andExpect(jsonPath("$.urlPagamento").doesNotExist());
+
+        // A outra cliente não vê nenhum, nem pelo id
+        mockMvc.perform(get("/pedidos").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOutraCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/pedidos/" + segundo.getId()).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOutraCliente))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
+    }
+
+    @Test
+    void listaSemTokenDa401EComTokenDeAdminDa403() throws Exception {
+        mockMvc.perform(get("/pedidos"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo").value("NAO_AUTENTICADO"));
+        mockMvc.perform(get("/pedidos").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("ACESSO_NEGADO"));
+    }
+
+    private Pedido salvarPedido(StatusPedido status, String total) {
+        return pedidoRepository.saveAndFlush(Pedido.builder()
+                .usuario(cliente)
+                .endereco(endereco)
+                .status(status)
+                .formaPagamento(FormaPagamento.CARTAO)
+                .transportadora("Correios")
+                .servicoFrete("PAC")
+                .prazoFreteDias(7)
+                .valorFrete(new BigDecimal("22.90"))
+                .valorTotal(new BigDecimal(total))
+                .build());
     }
 
     private void adicionarAoCarrinho(int quantidade) {
