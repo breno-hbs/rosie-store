@@ -15,6 +15,12 @@ export function mascararTelefone(valor) {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
 
+// Máscara do CEP enquanto a pessoa digita: 03925-050. A API aceita com ou sem hífen.
+export function mascararCep(valor) {
+  const d = somenteDigitos(valor).slice(0, 8)
+  return d.length <= 5 ? d : `${d.slice(0, 5)}-${d.slice(5)}`
+}
+
 export function somenteDigitos(valor) {
   return valor.replace(/\D/g, '')
 }

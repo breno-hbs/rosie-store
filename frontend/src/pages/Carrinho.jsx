@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
-import { alterarQuantidadeCarrinho, buscarCarrinho, listarCategorias, removerDoCarrinho } from '../api.js'
+import {
+  alterarQuantidadeCarrinho,
+  buscarCarrinho,
+  guardarFrete,
+  lerFrete,
+  listarCategorias,
+  removerDoCarrinho,
+} from '../api.js'
 import Nav from '../components/Nav.jsx'
 import Footer from '../components/Footer.jsx'
+import CalculoFrete from '../components/CalculoFrete.jsx'
 import { formatarPreco } from '../formato.js'
 import './Carrinho.css'
 
@@ -27,7 +35,7 @@ export default function Carrinho() {
   useEffect(() => {
     const controle = new AbortController()
     buscarCarrinho({ signal: controle.signal })
-      .then((carrinho) => setResultado({ chave: tentativa, carrinho, erro: null }))
+      .then((carrinho) => setResultado({ chave: tentativa, carrinho: semFreteSeVazio(carrinho), erro: null }))
       .catch((erro) => {
         if (erro.name !== 'AbortError') setResultado({ chave: tentativa, carrinho: null, erro })
       })
@@ -65,7 +73,9 @@ export default function Carrinho() {
         ) : (
           <ConteudoCarrinho
             carrinho={resultado.carrinho}
-            onAtualizar={(carrinho) => setResultado({ chave: tentativa, carrinho, erro: null })}
+            onAtualizar={(carrinho) =>
+              setResultado({ chave: tentativa, carrinho: semFreteSeVazio(carrinho), erro: null })
+            }
             onRecarregar={() => setTentativa((t) => t + 1)}
           />
         )}
@@ -76,10 +86,20 @@ export default function Carrinho() {
   )
 }
 
+// Sacola vazia: a opção de frete guardada para o checkout deixa de valer (o CEP fica para a próxima)
+function semFreteSeVazio(carrinho) {
+  const frete = lerFrete()
+  if (carrinho.itens.length === 0 && frete?.opcao) guardarFrete(frete.cep, null)
+  return carrinho
+}
+
 function ConteudoCarrinho({ carrinho, onAtualizar, onRecarregar }) {
   // Item com uma mudança a caminho (controles travados) e erro da última mudança, por item
   const [pendente, setPendente] = useState(null)
   const [erros, setErros] = useState({})
+  // Opção de frete escolhida em CalculoFrete (começa pela guardada nesta aba)
+  const [frete, setFrete] = useState(() => lerFrete()?.opcao ?? null)
+  const total = Number(carrinho.subtotal) + (frete ? Number(frete.preco) : 0)
 
   function mudar(itemId, chamada) {
     setPendente(itemId)
@@ -113,18 +133,20 @@ function ConteudoCarrinho({ carrinho, onAtualizar, onRecarregar }) {
         <h2 className="titulo-3" id="titulo-resumo">
           Resumo do pedido
         </h2>
+        <CalculoFrete carrinho={carrinho} opcao={frete} onEscolher={setFrete} />
         <dl className="carrinho__valores">
           <div className="carrinho__linha">
             <dt>Subtotal</dt>
             <dd>{formatarPreco(carrinho.subtotal)}</dd>
           </div>
+          {/* Como no resumo do Checkout no Figma: "Frete (PAC)  R$ 22,90" */}
           <div className="carrinho__linha">
-            <dt>Frete</dt>
-            <dd>Calculado no checkout</dd>
+            <dt>{frete ? `Frete (${frete.servico})` : 'Frete'}</dt>
+            <dd>{frete ? formatarPreco(frete.preco) : 'Informe o CEP'}</dd>
           </div>
           <div className="carrinho__linha carrinho__linha--total">
             <dt>Total</dt>
-            <dd>{formatarPreco(carrinho.subtotal)}</dd>
+            <dd>{formatarPreco(total)}</dd>
           </div>
         </dl>
         {carrinho.temIndisponiveis && (

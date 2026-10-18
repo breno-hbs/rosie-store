@@ -1,0 +1,130 @@
+/* Cálculo de frete no resumo do carrinho (#23). Mesmo campo (TextInput) e botão de contorno do resto da loja. */
+
+.frete {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--linha);
+}
+
+.frete__form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.frete__linha {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.frete__linha .campo__caixa {
+  flex: 1;
+  min-width: 0;
+}
+
+.frete__calcular {
+  flex: none;
+  min-height: 48px;
+  padding: 14px 18px;
+}
+
+.frete__mensagem {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+/* Link de texto, como "Remover" no item: o padding dá área de toque sem mexer na linha */
+.frete__link {
+  margin: -8px 0;
+  padding: 8px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.frete__link:hover {
+  color: var(--tinta);
+}
+
+.frete__erro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.frete__opcoes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.frete__legenda {
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+/* Cada opção é um cartão de borda fina; a escolhida ganha a borda escura */
+.frete__opcao {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'radio servico preco'
+    'radio prazo prazo';
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--linha);
+  cursor: pointer;
+}
+
+.frete__opcao:has(input:checked) {
+  border-color: var(--tinta);
+}
+
+.frete__opcao:has(input:focus-visible) {
+  outline: 1px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.frete__opcao input {
+  grid-area: radio;
+  margin: 0;
+  accent-color: var(--tinta);
+}
+
+.frete__servico {
+  grid-area: servico;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.frete__preco {
+  grid-area: preco;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: right;
+  color: var(--tinta);
+}
+
+.frete__prazo {
+  grid-area: prazo;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}

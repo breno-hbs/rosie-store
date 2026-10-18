@@ -236,6 +236,7 @@ export function buscarCliente(opcoes) {
 // Sem logout no servidor: esquece o token e continua na página
 export function sairDaLoja() {
   limparSessao('cliente')
+  esquecerFrete()
 }
 
 // Helpers das rotas de cliente (conta, carrinho, pedidos, trocas), sempre com o token de cliente.
@@ -288,6 +289,45 @@ export function alterarQuantidadeCarrinho(itemId, quantidade, opcoes) {
 // DELETE /carrinho/itens/{itemId}
 export function removerDoCarrinho(itemId, opcoes) {
   return deleteCliente(`/carrinho/itens/${itemId}`, opcoes).then(avisarCarrinho)
+}
+
+// Frete (#23). POST /frete/calcular cota as peças disponíveis do carrinho no Melhor Envio:
+// { cep: '03925050', opcoes: [{ id, transportadora, servico, preco, prazoDias }] }, do mais barato
+// ao mais caro (lista vazia: nenhuma transportadora atende o CEP). Erros: DADOS_INVALIDOS (400, CEP),
+// CARRINHO_VAZIO (409), FRETE_FALHOU (502, Melhor Envio fora do ar) e FRETE_INDISPONIVEL (503).
+export function calcularFrete(cep, opcoes) {
+  return postCliente('/frete/calcular', { cep }, opcoes)
+}
+
+// CEP e opção escolhidos no carrinho, para o checkout (#24) começar com eles:
+// { cep: '03925050', opcao: { id, transportadora, servico, preco, prazoDias } | null }.
+// sessionStorage: vale para a aba. O checkout cota de novo pelo opcao.id; o preço guardado é só da tela.
+const CHAVE_FRETE = 'rosie.frete'
+
+export function lerFrete() {
+  try {
+    const frete = JSON.parse(sessionStorage.getItem(CHAVE_FRETE))
+    if (typeof frete?.cep === 'string') return { cep: frete.cep, opcao: frete.opcao ?? null }
+  } catch {
+    // Armazenamento indisponível ou valor corrompido: começa sem frete
+  }
+  return null
+}
+
+export function guardarFrete(cep, opcao) {
+  try {
+    sessionStorage.setItem(CHAVE_FRETE, JSON.stringify({ cep, opcao }))
+  } catch {
+    // Sem armazenamento a escolha vale só nesta tela
+  }
+}
+
+export function esquecerFrete() {
+  try {
+    sessionStorage.removeItem(CHAVE_FRETE)
+  } catch {
+    // nada a limpar
+  }
 }
 
 // GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, estoque: [{ tamanho, quantidade }], ativo, destaque }],
