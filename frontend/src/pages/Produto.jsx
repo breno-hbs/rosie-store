@@ -236,6 +236,12 @@ function DetalheProduto({ produto }) {
               <p className="produto__texto">{produto.descricao}</p>
             </details>
           )}
+          {produto.composicao && (
+            <details>
+              <summary>Composição e cuidados</summary>
+              <p className="produto__texto">{produto.composicao}</p>
+            </details>
+          )}
           <details>
             <summary>Envio e trocas</summary>
             <p className="produto__texto">{POLITICA_TROCA}</p>

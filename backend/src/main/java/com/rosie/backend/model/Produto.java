@@ -37,6 +37,10 @@ public class Produto {
     @Column(columnDefinition = "TEXT")
     private String descricao;
 
+    // "Composição e cuidados" da Página de Produto; opcional, nula nos produtos que já existiam
+    @Column(columnDefinition = "TEXT")
+    private String composicao;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal preco;
 
