@@ -134,6 +134,7 @@ O `application.properties` importa esse arquivo automaticamente quando ele exist
 | `ROSIE_ADMIN_EMAIL` | (vazio) | E-mail do admin criado na subida, se ainda não houver nenhum admin |
 | `ROSIE_ADMIN_SENHA` | (vazio) | Senha desse admin, com pelo menos 8 caracteres (guardada só como hash BCrypt) |
 | `ROSIE_ADMIN_NOME` | `Roseane` | Nome desse admin |
+| `CLOUDINARY_URL` | (vazio) | Credencial do Cloudinary para as fotos dos produtos, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`. Opcional: sem ela a API sobe e só o upload de fotos responde 503 |
 
 Windows (PowerShell, vale só para o terminal aberto):
 
@@ -150,6 +151,8 @@ export DB_PASSWORD=sua_senha
 `CORS_ORIGENS` só precisa ser definida se o front rodar em outro endereço que não `http://localhost:5173` (em produção, inclui `https://rosiestore.com.br`).
 
 O admin inicial é criado uma vez só: na primeira subida sem nenhum usuário `ADMIN` no banco. Depois disso `ROSIE_ADMIN_EMAIL` e `ROSIE_ADMIN_SENHA` são ignoradas (trocar a senha não altera o admin já criado). Em produção, gere um `JWT_SECRET` próprio (ex.: `openssl rand -base64 48`); trocar o segredo derruba todas as sessões abertas do painel.
+
+**Fotos dos produtos (Cloudinary).** O upload de fotos do painel guarda os arquivos no Cloudinary (o disco do Railway é apagado a cada deploy). Para testar o upload localmente, crie uma conta gratuita, copie a "API environment variable" em Settings > API Keys e coloque em `rosie.cloudinary.url` no `application-local.properties` (ou na variável `CLOUDINARY_URL`). Sem isso, todo o resto funciona e o envio de foto mostra o erro `ARMAZENAMENTO_INDISPONIVEL`. Em produção, defina `CLOUDINARY_URL` nas variáveis do serviço da API no Railway. Os testes (`./mvnw test`) não usam o Cloudinary.
 
 > Nunca commitar `application-local.properties`, `.env.local` nem qualquer arquivo com credenciais reais. Os dois já estão no `.gitignore`.
 
