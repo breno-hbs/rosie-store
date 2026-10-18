@@ -12,6 +12,9 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /produtos/destaques` | Implementado (público, só ativos com `destaque = true`) | lista de `ProdutoResumoDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
+| `POST /auth/registrar` | Implementado (público; 201; 400 `DADOS_INVALIDOS`; 409 com `EMAIL_JA_CADASTRADO`) | `LoginResponseDTO` |
+| `POST /auth/login` | Implementado (público; só `CLIENTE`; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
+| `GET /auth/me` | Implementado (exige token `CLIENTE`) | `UsuarioResumoDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
 | `GET /admin/auth/me` | Implementado (exige token `ADMIN`) | `UsuarioResumoDTO` |
 | `GET /admin/produtos` | Implementado (exige token `ADMIN`; inclui inativos) | lista de `ProdutoAdminResumoDTO` |
@@ -61,39 +64,87 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `ARMAZENAMENTO_INDISPONIVEL` | 503 | Upload de foto sem `CLOUDINARY_URL` configurada no servidor, ou com o Cloudinary fora do ar |
 | `CATEGORIA_DUPLICADA` | 409 | Criar ou renomear categoria com um nome que já existe (sem diferenciar maiúsculas) |
 | `CATEGORIA_EM_USO` | 409 | Remover categoria que ainda tem produtos (ativos ou inativos); `erro` diz quantos |
+| `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
 
 ---
 
 ## Autenticação (RF08, RF13)
 
+Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mesmo token (ver "Login admin"). **Cada um entra pelo seu login:** `POST /auth/login` só aceita `CLIENTE` e `POST /admin/auth/login` só aceita `ADMIN`; a conta da outra role recebe o mesmo 401 de senha errada. Assim o token de cada área sai do formulário daquela área, e a sessão da loja e a do painel ficam separadas no navegador.
+
+| Rotas | Quem acessa |
+|---|---|
+| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias` | Público |
+| `/auth/**` (ex.: `GET /auth/me`), `/carrinho/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
+| `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
+| Qualquer outra | Qualquer token válido |
+
+As rotas da compra (#22, #24, #27) já estão no `SecurityConfig` exigindo `CLIENTE`: os controllers novos não precisam mexer nele. Quem criar uma rota de cliente fora desses prefixos (ex.: `/enderecos`, `/frete`) acrescenta o prefixo lá.
+
 ### Cadastro de cliente
 `POST /auth/registrar`
 
+Público. Cria a conta com role `CLIENTE` e já devolve o token, no mesmo formato do login: quem se cadastra sai logado. O e-mail é guardado sem espaços nas pontas e em minúsculas.
+
 ```json
-// Request
+// Request — RegistroRequestDTO
 {
   "nome": "Roseane Silva",
   "email": "roseane@email.com",
   "senha": "senha123",
-  "telefone": "11987654321"
+  "telefone": "11987654321",
+  "aceitePrivacidade": true
 }
-// Response 201
-{
-  "id": 1,
-  "nome": "Roseane Silva",
-  "email": "roseane@email.com",
-  "token": "eyJhbGc..."
-}
+// Response 201 — LoginResponseDTO
+{ "token": "eyJhbGc...", "usuario": { "id": 7, "nome": "Roseane Silva", "role": "CLIENTE" } }
+// Response 400
+{ "erro": "Aceite a política de privacidade para criar a conta", "codigo": "DADOS_INVALIDOS" }
+// Response 409
+{ "erro": "Este e-mail já está cadastrado. Entre com ele ou use outro.", "codigo": "EMAIL_JA_CADASTRADO" }
 ```
+
+| Campo | Regra |
+|---|---|
+| `nome` | Obrigatório, até 150 caracteres (espaços nas pontas são removidos). A Nav mostra o primeiro nome |
+| `email` | Obrigatório, até 150 caracteres, com domínio que tenha ponto (`maria@email` é recusado). Comparado sem diferenciar maiúsculas: `Maria@Email.com` e `maria@email.com` são o mesmo e-mail (409) |
+| `senha` | Obrigatória, de 8 a 72 caracteres (o BCrypt ignora o que passa de 72 bytes; com acentos, o limite em bytes vale primeiro). Guardada só como hash BCrypt (RNF07) |
+| `telefone` | Obrigatório, só dígitos, com DDD: 10 ou 11 dígitos (`11987654321`). O front tira a máscara antes de enviar |
+| `aceitePrivacidade` | Obrigatório e `true` (LGPD, RNF06). Ausente ou `false` responde 400 |
+
+Mensagens de 400 (`DADOS_INVALIDOS`): "Informe o nome", "Informe o e-mail", "E-mail inválido", "Informe a senha", "A senha precisa ter de 8 a 72 caracteres", "Informe o telefone", "Telefone inválido: informe DDD e número, só com dígitos", "Aceite a política de privacidade para criar a conta".
+
+**Decisão (#21): o cadastro devolve `LoginResponseDTO`.** O rascunho deste contrato tinha `{ id, nome, email, token }`; trocamos pelo formato do login para o front guardar a sessão do mesmo jeito nos dois casos. O e-mail não volta na resposta (quem cadastrou já sabe qual é).
+
+**Consentimento (LGPD):** o cadastro grava em `usuario` a data e hora do aceite (`privacidade_aceita_em`) e a versão da política aceita (`privacidade_versao`, hoje `2026-10`, constante `PoliticaPrivacidade.VERSAO` no back-end). Quando o texto da política mudar (página da #31), suba a versão: os cadastros seguintes gravam a nova, e os antigos continuam mostrando qual versão aceitaram. Admin não tem aceite (nulo).
+
+O 409 diz que o e-mail já tem conta, o que revela que ele está cadastrado. É aceito de propósito: o cadastro precisa avisar a pessoa para entrar em vez de criar outra conta. O login, ao contrário, não diz se o e-mail existe.
 
 ### Login de cliente
 `POST /auth/login`
 
+Público. Mesmas regras do login admin (e-mail sem diferenciar maiúsculas, mesmo 401 para e-mail inexistente e senha errada, token de 2 horas), mas só entra `CLIENTE`: o e-mail da Roseane recebe 401 aqui.
+
 ```json
 // Request
 { "email": "roseane@email.com", "senha": "senha123" }
-// Response 200
-{ "token": "eyJhbGc...", "usuario": { "id": 1, "nome": "Roseane Silva", "role": "CLIENTE" } }
+// Response 200 — LoginResponseDTO
+{ "token": "eyJhbGc...", "usuario": { "id": 7, "nome": "Roseane Silva", "role": "CLIENTE" } }
+// Response 401
+{ "erro": "E-mail ou senha incorretos", "codigo": "CREDENCIAIS_INVALIDAS" }
+// Response 400 (e-mail ou senha vazios, e-mail mal formado)
+{ "erro": "Informe o e-mail", "codigo": "DADOS_INVALIDOS" }
+```
+
+### Cliente do token
+`GET /auth/me`
+
+Exige token `CLIENTE`. Devolve o dono do token; a loja usa para conferir se a sessão ainda vale.
+
+```json
+// Response 200 — UsuarioResumoDTO
+{ "id": 7, "nome": "Roseane Silva", "role": "CLIENTE" }
+// Response 401 (sem token, token inválido ou expirado) — NAO_AUTENTICADO
+// Response 403 (token de admin) — ACESSO_NEGADO
 ```
 
 ### Login admin
@@ -236,7 +287,7 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
 
 ---
 
-## Carrinho (RF09) — requer autenticação
+## Carrinho (RF09) — requer autenticação CLIENTE
 
 ### Ver carrinho
 `GET /carrinho`
@@ -600,6 +651,8 @@ Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porqu
 **Trade-off aceito:** JWT não tem "logout forte" fácil (sem lista negra de tokens). Solução simples adotada: token com validade curta (2 horas), sem controle de logout forçado por enquanto — suficiente pro escopo atual.
 
 **Implementação (#13):** suporte nativo do Spring Security (`spring-boot-starter-security-oauth2-resource-server`, `NimbusJwtEncoder`/`NimbusJwtDecoder`), sem biblioteca extra. A claim `role` vira a authority `ROLE_ADMIN`/`ROLE_CLIENTE`. No front, o token fica no `sessionStorage` e o `api.js` só o envia nas chamadas do painel: as rotas públicas do catálogo não recebem `Authorization`, porque um token vencido faria a API responder 401 mesmo nelas.
+
+**Cliente (#21):** mesmo token e mesma validade, com `role` `CLIENTE`. No front, a sessão do cliente fica no `localStorage` (`rosie.cliente.sessao`), separada da do painel (`rosie.admin.sessao`, no `sessionStorage`): o cliente continua logado entre abas e ao reabrir o navegador, até o token vencer em 2 horas. O `api.js` só manda o token de cliente nas rotas de cliente, e um 401 nelas limpa a sessão e leva a `/entrar?voltar=<página atual>`.
 
 ---
 
