@@ -70,6 +70,17 @@ public class Pedido {
     @Column(name = "prazo_frete_dias")
     private Integer prazoFreteDias;
 
+    // Etiqueta do Melhor Envio (#25): o id do envio lá (gravado assim que entra no carrinho, para nunca
+    // comprar duas vezes), o link para imprimir e quando a etiqueta ficou pronta
+    @Column(name = "melhor_envio_id", length = 50)
+    private String envioId;
+
+    @Column(name = "url_etiqueta", length = 500)
+    private String urlEtiqueta;
+
+    @Column(name = "etiqueta_gerada_em")
+    private LocalDateTime etiquetaGeradaEm;
+
     @Column(name = "codigo_rastreio", length = 50)
     private String codigoRastreio;
 

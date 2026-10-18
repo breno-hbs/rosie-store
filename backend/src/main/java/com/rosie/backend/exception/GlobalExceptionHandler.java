@@ -103,6 +103,20 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponseDTO(ex.getMessage(), "FRETE_FALHOU"));
     }
 
+    // Sem token, CEP de origem ou dados do remetente, ou token recusado pelo Melhor Envio (#25)
+    @ExceptionHandler(EtiquetaIndisponivelException.class)
+    public ResponseEntity<ErroResponseDTO> handleEtiquetaIndisponivel(EtiquetaIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErroResponseDTO(ex.getMessage(), "ETIQUETA_INDISPONIVEL"));
+    }
+
+    // Melhor Envio recusou a etiqueta, caiu ou demorou demais (#25)
+    @ExceptionHandler(EtiquetaFalhouException.class)
+    public ResponseEntity<ErroResponseDTO> handleEtiquetaFalhou(EtiquetaFalhouException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ErroResponseDTO(ex.getMessage(), "ETIQUETA_FALHOU"));
+    }
+
     // Sem as variáveis do Mercado Pago, ou access token recusado
     @ExceptionHandler(PagamentoIndisponivelException.class)
     public ResponseEntity<ErroResponseDTO> handlePagamentoIndisponivel(PagamentoIndisponivelException ex) {
