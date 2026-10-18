@@ -63,6 +63,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/pagamentos/webhook").permitAll()
                         // Endereços de entrega (#24)
                         .requestMatchers("/enderecos/**").hasRole("CLIENTE")
+                        // Dados pessoais da Minha Conta (#26)
+                        .requestMatchers("/conta", "/conta/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
                         // Tabela de medidas da categoria, na Página de Produto (#20)
                         .requestMatchers(HttpMethod.GET, "/categorias/*/medidas").permitAll()
