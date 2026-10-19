@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { buscarPedidoAdmin, gerarEtiqueta } from '../api.js'
-import { formatarPreco } from '../formato.js'
+import { formatarPreco, mascararTelefone } from '../formato.js'
 import { FORMA_PAGAMENTO, STATUS_PEDIDO, formatarDataHora, mensagemDeErro } from './pedidosAdmin.js'
 import './AdminPedidos.css'
 
@@ -127,7 +127,7 @@ export default function AdminPedidoDetalhe({ id }) {
                 {pedido.cliente.telefone && (
                   <>
                     <br />
-                    {pedido.cliente.telefone}
+                    {mascararTelefone(pedido.cliente.telefone)}
                   </>
                 )}
               </p>
