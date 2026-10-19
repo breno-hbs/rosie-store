@@ -48,10 +48,17 @@
   padding: 9px 0;
 }
 
-.footer__coluna a:hover {
+.footer__coluna a:hover,
+.footer__politica:hover {
   color: var(--tinta);
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+/* Política de privacidade (#31): mesma área de toque dos links das colunas */
+.footer__politica {
+  padding: 9px 0;
+  margin: -9px 0;
 }
 
 .footer__base {

@@ -9,8 +9,10 @@ import Home from './pages/Home.jsx'
 import MinhaConta from './pages/MinhaConta.jsx'
 import PagamentoSimulado from './pages/PagamentoSimulado.jsx'
 import PedidoRetorno from './pages/PedidoRetorno.jsx'
+import PoliticaPrivacidade from './pages/PoliticaPrivacidade.jsx'
 import Produto from './pages/Produto.jsx'
 import SolicitarTroca from './pages/SolicitarTroca.jsx'
+import { ROTA_POLITICA_PRIVACIDADE } from './privacidade.js'
 
 // Rotas pelo caminho da URL; os links recarregam a página, sem roteador por enquanto.
 // Em produção o Netlify serve o index.html para qualquer caminho (public/_redirects).
@@ -22,6 +24,8 @@ function rotaAtual() {
   if (/^\/cadastro\/?$/.test(caminho)) return { pagina: 'cadastro' }
   if (/^\/carrinho\/?$/.test(caminho)) return { pagina: 'carrinho' }
   if (/^\/checkout\/?$/.test(caminho)) return { pagina: 'checkout' }
+  // Política de privacidade (#31), pública
+  if (caminho.replace(/\/$/, '') === ROTA_POLITICA_PRIVACIDADE) return { pagina: 'privacidade' }
   // Solicitação de troca (#27): /trocas?pedido={id} já abre com o pedido escolhido
   if (/^\/trocas\/?$/.test(caminho)) return { pagina: 'trocas' }
   // Volta do Mercado Pago (#24) e pagamento simulado de desenvolvimento
@@ -89,6 +93,7 @@ export default function App() {
   if (rota.pagina === 'pagamento-simulado') return <PagamentoSimulado id={rota.id} />
   if (rota.pagina === 'trocas') return <SolicitarTroca />
   if (rota.pagina === 'minha-conta') return <MinhaConta aba={rota.aba} pedidoId={rota.pedidoId} />
+  if (rota.pagina === 'privacidade') return <PoliticaPrivacidade />
   if (rota.pagina === 'entrar') return <Entrar />
   if (rota.pagina === 'cadastro') return <Cadastro />
   if (rota.pagina === 'admin-login') return <AdminLogin />

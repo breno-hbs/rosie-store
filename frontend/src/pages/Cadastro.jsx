@@ -2,11 +2,8 @@ import { useState } from 'react'
 import { ApiError, cadastrarCliente, comVoltar, destinoSeguro } from '../api.js'
 import LogoBadge from '../components/LogoBadge.jsx'
 import { mascararTelefone, somenteDigitos } from '../formato.js'
+import { ROTA_POLITICA_PRIVACIDADE } from '../privacidade.js'
 import './AcessoCliente.css'
-
-// A página da política é da #31; até lá o link leva ao item do rodapé da Home, em outra aba
-// para não perder o que já foi digitado
-const LINK_POLITICA_PRIVACIDADE = '/#politica-privacidade'
 
 const CAMPOS_VAZIOS = { nome: '', email: '', telefone: '', senha: '', confirmacao: '' }
 
@@ -154,7 +151,8 @@ export default function Cadastro() {
           />
           <span>
             Li e aceito a{' '}
-            <a href={LINK_POLITICA_PRIVACIDADE} target="_blank" rel="noreferrer">
+            {/* Em outra aba, para não perder o que já foi digitado */}
+            <a href={ROTA_POLITICA_PRIVACIDADE} target="_blank" rel="noreferrer">
               Política de privacidade
             </a>
           </span>
