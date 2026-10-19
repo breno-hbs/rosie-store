@@ -35,6 +35,7 @@ public class TrocaService {
     private final TrocaRepository trocaRepository;
     private final PedidoRepository pedidoRepository;
     private final PrazoTroca prazoTroca;
+    private final EmailTroca emailTroca;
 
     public TrocaDTO solicitar(Long clienteId, TrocaRequestDTO requisicao) {
         // A trava na linha do pedido faz dois cliques seguidos virarem uma troca só (o segundo espera e
@@ -100,13 +101,15 @@ public class TrocaService {
     }
 
     // SOLICITADA → APROVADA ou RECUSADA; APROVADA → CONCLUIDA. Repetir o status atual só troca o recado.
+    // Quando o status muda, a cliente recebe um e-mail depois do commit (#65); repetir o status não reenvia.
     public TrocaAdminDTO atualizarStatus(Long trocaId, TrocaStatusRequestDTO requisicao) {
         Troca troca = trocaRepository.findById(trocaId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Troca " + trocaId + " não encontrada"));
 
+        StatusTroca anterior = troca.getStatus();
         StatusTroca destino = requisicao.status();
-        if (destino != troca.getStatus() && !troca.getStatus().podeIrPara(destino)) {
-            throw new ConflitoException("Uma troca " + nome(troca.getStatus()) + " não pode passar para "
+        if (destino != anterior && !anterior.podeIrPara(destino)) {
+            throw new ConflitoException("Uma troca " + nome(anterior) + " não pode passar para "
                     + nome(destino), "STATUS_TROCA_INVALIDO");
         }
         troca.setStatus(destino);
@@ -115,6 +118,9 @@ public class TrocaService {
             troca.setResposta(resposta);
         }
         trocaRepository.flush();
+        if (destino != anterior) {
+            emailTroca.avisarMudanca(troca, resposta);
+        }
         return TrocaAdminDTO.from(troca);
     }
 
