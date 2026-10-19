@@ -14,8 +14,17 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Set<String> REGRAS_DE_OBRIGATORIO = Set.of("NotBlank", "NotNull", "NotEmpty");
 
     @Value("${rosie.imagens.tamanho-maximo}")
     private DataSize tamanhoMaximoImagem;
@@ -39,14 +48,33 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
     }
 
-    // Bean Validation (@Valid): devolve a mensagem do primeiro campo inválido
+    // Bean Validation (@Valid): devolve a mensagem do primeiro campo inválido. O Hibernate Validator
+    // não garante a ordem das violações (#68), então a escolha é fixa: o campo que vem antes no DTO e,
+    // no mesmo campo, a regra de obrigatório ("Informe o telefone") antes da de formato.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErroResponseDTO> handleDadosInvalidos(MethodArgumentNotValidException ex) {
+        List<String> campos = camposNaOrdem(ex.getBindingResult().getTarget());
         String mensagem = ex.getBindingResult().getFieldErrors().stream()
-                .findFirst()
+                .min(Comparator.comparingInt((FieldError erro) -> posicao(campos, erro.getField()))
+                        .thenComparingInt(erro -> REGRAS_DE_OBRIGATORIO.contains(erro.getCode()) ? 0 : 1)
+                        .thenComparing(FieldError::getField)
+                        .thenComparing(erro -> Objects.toString(erro.getDefaultMessage(), "")))
                 .map(FieldError::getDefaultMessage)
                 .orElse("Dados inválidos");
         return ResponseEntity.badRequest().body(new ErroResponseDTO(mensagem, "DADOS_INVALIDOS"));
+    }
+
+    private static List<String> camposNaOrdem(Object dto) {
+        if (dto == null || !dto.getClass().isRecord()) {
+            return List.of();
+        }
+        return Arrays.stream(dto.getClass().getRecordComponents()).map(RecordComponent::getName).toList();
+    }
+
+    // Campo aninhado ("itens[0].tamanho") conta pela posição do campo de fora ("itens")
+    private static int posicao(List<String> campos, String campo) {
+        int indice = campos.indexOf(campo.split("[.\\[]", 2)[0]);
+        return indice < 0 ? Integer.MAX_VALUE : indice;
     }
 
     // Regra de negócio fora do Bean Validation (ex.: categoria inexistente no cadastro de produto)

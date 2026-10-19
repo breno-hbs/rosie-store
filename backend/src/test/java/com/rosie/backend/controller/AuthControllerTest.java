@@ -202,6 +202,39 @@ class AuthControllerTest {
         }
     }
 
+    // Vazio quebra também o formato (@Email, @Size, @Pattern); a mensagem de obrigatório tem que vencer (#68)
+    @Test
+    void cadastroComCampoVazioRetornaSempreAMensagemDeObrigatorio() throws Exception {
+        Map<String, String> casos = Map.of(
+                "email", "Informe o e-mail",
+                "senha", "Informe a senha",
+                "telefone", "Informe o telefone");
+
+        for (var caso : casos.entrySet()) {
+            for (String vazio : List.of("", "   ")) {
+                Map<String, Object> dados = cadastroValido();
+                dados.put(caso.getKey(), vazio);
+
+                mockMvc.perform(registrar(dados))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.erro").value(caso.getValue()))
+                        .andExpect(jsonPath("$.codigo").value("DADOS_INVALIDOS"));
+            }
+        }
+    }
+
+    @Test
+    void cadastroComVariosCamposInvalidosRetornaOPrimeiroNaOrdemDoFormulario() throws Exception {
+        Map<String, Object> dados = cadastroValido();
+        dados.put("email", "");
+        dados.put("senha", "");
+        dados.put("telefone", "");
+
+        mockMvc.perform(registrar(dados))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Informe o e-mail"));
+    }
+
     @Test
     void senhaAcimaDe72BytesRetorna400() throws Exception {
         Map<String, Object> dados = cadastroValido();
