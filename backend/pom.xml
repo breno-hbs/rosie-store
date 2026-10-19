@@ -98,6 +98,16 @@
 
 	<build>
 		<plugins>
+			<!-- Nos testes a rotina agendada do rastreio (#64) fica desligada: os testes chamam RastreioEntregas direto -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<rosie.rastreio.ativo>false</rosie.rastreio.ativo>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

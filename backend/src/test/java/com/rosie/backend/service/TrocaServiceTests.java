@@ -290,6 +290,7 @@ class TrocaServiceTests {
 
         assertThat(dto.status()).isEqualTo("ENTREGUE");
         assertThat(dto.dataEntrega()).isEqualTo(hoje());
+        assertThat(dto.origemEntrega()).isEqualTo("MANUAL");
         PedidoResumoDTO resumo = pedidoService.listar(cliente.getId()).get(0);
         assertThat(resumo.prazoTroca()).isEqualTo(hoje().plusDays(7));
         assertThat(pedidoService.buscar(cliente.getId(), pedido.getId()).prazoTroca()).isEqualTo(hoje().plusDays(7));

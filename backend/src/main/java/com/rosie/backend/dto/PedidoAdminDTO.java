@@ -1,5 +1,6 @@
 package com.rosie.backend.dto;
 
+import com.rosie.backend.model.OrigemEntrega;
 import com.rosie.backend.model.Pedido;
 
 import java.math.BigDecimal;
@@ -8,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 // Detalhe do pedido no painel (GET /admin/pedidos/{id}, #25): o que a cliente vê no PedidoDTO, mais quem
-// comprou, o pagamento, a etiqueta do Melhor Envio e o dia da entrega (#27)
+// comprou, o pagamento, a etiqueta do Melhor Envio e o dia da entrega (#27), com quem a confirmou (#64)
 public record PedidoAdminDTO(
         Long id,
         String status,
@@ -28,6 +29,7 @@ public record PedidoAdminDTO(
         LocalDateTime etiquetaGeradaEm,
         String codigoRastreio,
         LocalDate dataEntrega,
+        String origemEntrega,
         LocalDateTime createdAt,
         EnderecoDTO endereco,
         List<PedidoItemDTO> itens
@@ -53,9 +55,16 @@ public record PedidoAdminDTO(
                 pedido.getEtiquetaGeradaEm(),
                 pedido.getCodigoRastreio(),
                 pedido.getDataEntrega(),
+                origemEntrega(pedido),
                 pedido.getCreatedAt(),
                 EnderecoDTO.from(pedido.getEndereco()),
                 pedido.getItens().stream().map(PedidoItemDTO::from).toList()
         );
+    }
+
+    // MANUAL ou RASTREIO; null enquanto não foi entregue. Entregue antes da #64 (sem origem gravada) foi à mão.
+    private static String origemEntrega(Pedido pedido) {
+        if (pedido.getOrigemEntrega() != null) return pedido.getOrigemEntrega().name();
+        return pedido.getDataEntrega() == null ? null : OrigemEntrega.MANUAL.name();
     }
 }

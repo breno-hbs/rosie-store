@@ -20,6 +20,7 @@ import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.net.SocketTimeoutException;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -155,6 +156,45 @@ class MelhorEnvioEmissorTest {
         assertThat(situacao.etapa()).isEqualTo(Etapa.GERADO);
         // Sem o código da transportadora ainda, vale o do Melhor Envio (também rastreável)
         assertThat(situacao.codigoRastreio()).isEqualTo("ME2600ABC1BR");
+    }
+
+    @Test
+    void entregueVemComODiaDaEntrega() {
+        servidor.expect(requestTo(BASE + MelhorEnvioEmissor.RASTREIO))
+                .andRespond(withSuccess("""
+                        { "%s": { "id": "%s", "status": "delivered", "tracking": "AA123456789BR",
+                                  "posted_at": "2026-10-14 13:55:05", "delivered_at": "2026-10-17 14:46:00" } }
+                        """.formatted(ID, ID), MediaType.APPLICATION_JSON));
+
+        SituacaoEnvio situacao = emissor.consultar(ID);
+
+        assertThat(situacao.etapa()).isEqualTo(Etapa.GERADO);
+        assertThat(situacao.entregue()).isTrue();
+        assertThat(situacao.entregueEm()).isEqualTo(LocalDate.of(2026, 10, 17));
+    }
+
+    @Test
+    void emTransitoNaoEstaEntregue() {
+        servidor.expect(requestTo(BASE + MelhorEnvioEmissor.RASTREIO))
+                .andRespond(withSuccess("""
+                        { "%s": { "id": "%s", "status": "posted", "tracking": "AA123456789BR", "delivered_at": null } }
+                        """.formatted(ID, ID), MediaType.APPLICATION_JSON));
+
+        SituacaoEnvio situacao = emissor.consultar(ID);
+
+        assertThat(situacao.entregue()).isFalse();
+        assertThat(situacao.entregueEm()).isNull();
+    }
+
+    @Test
+    void diaDaEntregaEmSaoPaulo() {
+        // Sem fuso: já é o horário de Brasília
+        assertThat(MelhorEnvioEmissor.diaDaEntrega(ID, "2026-10-17 23:30:00")).isEqualTo(LocalDate.of(2026, 10, 17));
+        // Com fuso: 01:30 UTC do dia 18 ainda é 22:30 do dia 17 em São Paulo
+        assertThat(MelhorEnvioEmissor.diaDaEntrega(ID, "2026-10-18T01:30:00.000000Z"))
+                .isEqualTo(LocalDate.of(2026, 10, 17));
+        assertThat(MelhorEnvioEmissor.diaDaEntrega(ID, null)).isNull();
+        assertThat(MelhorEnvioEmissor.diaDaEntrega(ID, "ontem")).isNull();
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.rosie.backend.service;
 
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,6 +9,8 @@ import java.util.concurrent.ThreadLocalRandom;
 // Modo de desenvolvimento (liga junto com FRETE_SIMULADO=true): envios de mentira guardados na memória,
 // sem chamar o Melhor Envio nem gastar saldo. Nunca ligar em produção. O link de impressão abre uma página
 // estática da loja (frontend/public/etiqueta-simulada.html) e o rastreio sai no formato SIM00000000BR.
+// Etiqueta gerada já conta como entregue no dia, para a rotina do rastreio (#64) poder ser vista funcionando
+// (ROSIE_RASTREIO_ATIVO=false a desliga, para testar o botão "Marcar como entregue").
 public class EtiquetaSimulada implements EmissorEtiqueta {
 
     private final String urlLoja;
@@ -38,7 +41,7 @@ public class EtiquetaSimulada implements EmissorEtiqueta {
     @Override
     public void gerar(String envioId) {
         String rastreio = "SIM%08dBR".formatted(ThreadLocalRandom.current().nextInt(100_000_000));
-        envios.put(envioId, new SituacaoEnvio(Etapa.GERADO, rastreio));
+        envios.put(envioId, new SituacaoEnvio(Etapa.GERADO, rastreio, true, LocalDate.now(PrazoTroca.FUSO_LOJA)));
     }
 
     @Override
