@@ -5,6 +5,7 @@ import com.rosie.backend.model.StatusPedido;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -17,13 +18,15 @@ public class PrazoTroca {
     public static final ZoneId FUSO_LOJA = ZoneId.of("America/Sao_Paulo");
 
     private final int dias;
+    private final Clock relogio;
 
-    public PrazoTroca(@Value("${rosie.troca.prazo-dias:7}") int dias) {
+    public PrazoTroca(@Value("${rosie.troca.prazo-dias:7}") int dias, Clock relogio) {
         this.dias = dias;
+        this.relogio = relogio;
     }
 
     public LocalDate hoje() {
-        return LocalDate.now(FUSO_LOJA);
+        return LocalDate.now(relogio.withZone(FUSO_LOJA));
     }
 
     // Último dia para pedir troca, ou null enquanto o pedido não foi entregue

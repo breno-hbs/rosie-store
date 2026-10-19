@@ -13,6 +13,10 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -97,7 +101,9 @@ public class MelhorEnvioEmissor implements EmissorEtiqueta {
             throw new EtiquetaFalhouException("O envio está com a situação \"" + rastreio.status()
                     + "\" no Melhor Envio. Confira no painel do Melhor Envio.");
         }
-        return new SituacaoEnvio(etapa, rastreio.codigo());
+        boolean entregue = "delivered".equals(rastreio.status());
+        return new SituacaoEnvio(etapa, rastreio.codigo(), entregue,
+                entregue ? diaDaEntrega(envioId, rastreio.deliveredAt()) : null);
     }
 
     @Override
@@ -152,6 +158,24 @@ public class MelhorEnvioEmissor implements EmissorEtiqueta {
             case "canceled", "cancelled", "expired" -> Etapa.CANCELADO;
             default -> null;
         };
+    }
+
+    // delivered_at vem como "2026-10-17 14:46:00", no horário de Brasília (o da conta do Melhor Envio); se vier
+    // com fuso (ISO 8601, ex.: "2026-10-17T17:46:00.000000Z"), é convertido para São Paulo. Sem data ou num
+    // formato desconhecido: null, e a rotina usa o dia da consulta.
+    static LocalDate diaDaEntrega(String envioId, String deliveredAt) {
+        if (deliveredAt == null || deliveredAt.isBlank()) return null;
+        String valor = deliveredAt.trim();
+        try {
+            return OffsetDateTime.parse(valor).atZoneSameInstant(PrazoTroca.FUSO_LOJA).toLocalDate();
+        } catch (DateTimeParseException semFuso) {
+            try {
+                return LocalDateTime.parse(valor.replace(' ', 'T')).toLocalDate();
+            } catch (DateTimeParseException formatoDesconhecido) {
+                log.warn("Envio {} entregue com data num formato inesperado: {}", envioId, deliveredAt);
+                return null;
+            }
+        }
     }
 
     private <T> T chamar(Chamada<T> chamada) {
@@ -294,13 +318,15 @@ public class MelhorEnvioEmissor implements EmissorEtiqueta {
     record Impressao(String url) {
     }
 
-    // tracking é o código da transportadora; melhorenvio_tracking, o do Melhor Envio (também rastreável)
+    // tracking é o código da transportadora; melhorenvio_tracking, o do Melhor Envio (também rastreável).
+    // delivered_at fica null até a entrega.
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Rastreio(
             String id,
             String status,
             String tracking,
-            @JsonProperty("melhorenvio_tracking") String melhorEnvioTracking
+            @JsonProperty("melhorenvio_tracking") String melhorEnvioTracking,
+            @JsonProperty("delivered_at") String deliveredAt
     ) {
 
         String codigo() {

@@ -32,4 +32,9 @@ public class EtiquetaIndisponivel implements EmissorEtiqueta {
     public String linkImpressao(String envioId) {
         throw new EtiquetaIndisponivelException(MENSAGEM);
     }
+
+    @Override
+    public boolean disponivel() {
+        return false;
+    }
 }

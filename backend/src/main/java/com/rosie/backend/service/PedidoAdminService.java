@@ -5,6 +5,7 @@ import com.rosie.backend.dto.PedidoAdminResumoDTO;
 import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
+import com.rosie.backend.model.OrigemEntrega;
 import com.rosie.backend.model.Pedido;
 import com.rosie.backend.model.StatusPedido;
 import com.rosie.backend.repository.PedidoRepository;
@@ -35,18 +36,35 @@ public class PedidoAdminService {
     }
 
     // A peça chegou (#27): ENVIADO → ENTREGUE, com o dia da entrega (hoje, se não vier), de onde conta o prazo
-    // de troca. Repetir num pedido já entregue devolve o pedido sem mudar a data.
+    // de troca. Repetir num pedido já entregue (à mão ou pelo rastreio) devolve o pedido sem mudar a data.
     @Transactional
     public PedidoAdminDTO marcarEntregue(Long pedidoId, LocalDate dataEntrega) {
-        Pedido pedido = pedido(pedidoId);
+        Pedido pedido = pedidoParaAtualizar(pedidoId);
         if (pedido.getStatus() == StatusPedido.ENTREGUE) {
             return PedidoAdminDTO.from(pedido);
         }
+        entregar(pedido, dataEntrega == null ? prazoTroca.hoje() : dataEntrega, OrigemEntrega.MANUAL);
+        return PedidoAdminDTO.from(pedido);
+    }
+
+    // A transportadora informou a entrega (#64, rotina do rastreio): mesma regra do botão. Só ENVIADO avança;
+    // pedido já ENTREGUE (a Roseane marcou antes, ou outra rodada chegou primeiro) não muda. A linha fica
+    // travada até o fim da transação, então duas rodadas ao mesmo tempo, ou a rodada e o clique, não se
+    // atropelam: a segunda espera e já encontra o pedido entregue. Devolve true se o pedido mudou.
+    @Transactional
+    public boolean confirmarEntregaPeloRastreio(Long pedidoId, LocalDate dataEntrega) {
+        Pedido pedido = pedidoParaAtualizar(pedidoId);
+        if (pedido.getStatus() != StatusPedido.ENVIADO) {
+            return false;
+        }
+        entregar(pedido, dataEntrega, OrigemEntrega.RASTREIO);
+        return true;
+    }
+
+    private void entregar(Pedido pedido, LocalDate data, OrigemEntrega origem) {
         if (pedido.getStatus() != StatusPedido.ENVIADO) {
             throw new ConflitoException("Só pedido enviado pode ser marcado como entregue", "PEDIDO_NAO_ENVIADO");
         }
-
-        LocalDate data = dataEntrega == null ? prazoTroca.hoje() : dataEntrega;
         if (data.isAfter(prazoTroca.hoje())) {
             throw new DadosInvalidosException("A data da entrega não pode ser no futuro");
         }
@@ -56,7 +74,12 @@ public class PedidoAdminService {
 
         pedido.setStatus(StatusPedido.ENTREGUE);
         pedido.setDataEntrega(data);
-        return PedidoAdminDTO.from(pedido);
+        pedido.setOrigemEntrega(origem);
+    }
+
+    private Pedido pedidoParaAtualizar(Long pedidoId) {
+        return pedidoRepository.buscarParaAtualizar(pedidoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pedido " + pedidoId + " não encontrado"));
     }
 
     private Pedido pedido(Long pedidoId) {

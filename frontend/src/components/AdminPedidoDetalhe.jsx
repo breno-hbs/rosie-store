@@ -269,7 +269,8 @@ function Etiqueta({ pedido, onAtualizar }) {
 }
 
 // A peça chegou (#27): a Roseane confere o rastreio e marca a data da entrega (hoje, ou o dia em que o
-// rastreio mostrou a entrega). Dela conta o prazo de 7 dias para a cliente pedir troca.
+// rastreio mostrou a entrega). Dela conta o prazo de 7 dias para a cliente pedir troca. Desde a #64 o sistema
+// também confirma sozinho pelo rastreio do Melhor Envio; o botão fica como plano B.
 function Entrega({ pedido, onAtualizar }) {
   const hoje = hojeNaLoja()
   const [data, setData] = useState(hoje)
@@ -297,6 +298,11 @@ function Entrega({ pedido, onAtualizar }) {
           Entregue em {pedido.dataEntrega ? formatarData(pedido.dataEntrega) : '—'}. A cliente pode pedir troca até 7
           dias depois.
         </p>
+        <p className="admin-pedido__texto">
+          {pedido.origemEntrega === 'RASTREIO'
+            ? 'Entrega confirmada pelo rastreio do Melhor Envio.'
+            : 'Entrega marcada à mão no painel.'}
+        </p>
       </section>
     )
   }
@@ -305,7 +311,8 @@ function Entrega({ pedido, onAtualizar }) {
     <section className="admin-pedido__bloco admin-pedido__entrega" aria-labelledby="pedido-entrega-marcar">
       <h2 id="pedido-entrega-marcar" className="rotulo">Confirmar entrega</h2>
       <p className="admin-pedido__texto">
-        Quando o rastreio mostrar que a peça chegou, marque aqui. O prazo de troca da cliente (7 dias) conta a partir
+        O sistema confere o rastreio algumas vezes por dia e marca a entrega sozinho quando a transportadora
+        confirma. Se o rastreio não atualizar, marque aqui. O prazo de troca da cliente (7 dias) conta a partir
         dessa data.
       </p>
       <form className="admin-pedido__entrega-form" onSubmit={marcar}>

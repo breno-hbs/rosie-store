@@ -1,6 +1,7 @@
 package com.rosie.backend.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 // Etiqueta de envio (RF12, #25). Em produção é o Melhor Envio; nos testes, uma implementação falsa, para o
@@ -15,7 +16,7 @@ public interface EmissorEtiqueta {
     // Põe o envio no carrinho do Melhor Envio e devolve o id dele. Ainda não cobra nada.
     String adicionarAoCarrinho(NovoEnvio envio);
 
-    // Em que pé o envio está e o código de rastreio, se já existir
+    // Em que pé o envio está, o código de rastreio, se já existir, e se a transportadora já entregou (#64)
     SituacaoEnvio consultar(String envioId);
 
     // Paga o envio com o saldo da conta do Melhor Envio
@@ -26,6 +27,12 @@ public interface EmissorEtiqueta {
 
     // Link para abrir e imprimir a etiqueta gerada
     String linkImpressao(String envioId);
+
+    // false quando o servidor não tem o Melhor Envio configurado (sem MELHOR_ENVIO_TOKEN): a rotina do rastreio
+    // (#64) nem tenta consultar
+    default boolean disponivel() {
+        return true;
+    }
 
     // servicoId é o id do serviço no Melhor Envio escolhido no checkout (pedido.servicoFreteId)
     record NovoEnvio(
@@ -51,7 +58,14 @@ public interface EmissorEtiqueta {
     record Volume(int alturaCm, int larguraCm, int comprimentoCm, BigDecimal pesoKg) {
     }
 
-    record SituacaoEnvio(Etapa etapa, String codigoRastreio) {
+    // entregue: a transportadora informou a entrega (#64). entregueEm é o dia dela em São Paulo, ou null se o
+    // Melhor Envio não informou.
+    record SituacaoEnvio(Etapa etapa, String codigoRastreio, boolean entregue, LocalDate entregueEm) {
+
+        // Ainda não entregue
+        public SituacaoEnvio(Etapa etapa, String codigoRastreio) {
+            this(etapa, codigoRastreio, false, null);
+        }
     }
 
     enum Etapa {

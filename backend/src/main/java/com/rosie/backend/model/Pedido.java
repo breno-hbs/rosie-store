@@ -85,9 +85,21 @@ public class Pedido {
     @Column(name = "codigo_rastreio", length = 50)
     private String codigoRastreio;
 
-    // Dia em que a peça chegou, marcado pela Roseane no painel (#27): o prazo de troca conta daqui
+    // Dia em que a peça chegou, marcado pela Roseane no painel (#27) ou informado pelo rastreio (#64): o prazo
+    // de troca conta daqui
     @Column(name = "data_entrega")
     private LocalDate dataEntrega;
+
+    // Quem confirmou a entrega (#64). null nos pedidos entregues antes dela, todos marcados à mão.
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "origem_entrega", length = 20)
+    private OrigemEntrega origemEntrega;
+
+    // Última vez que a rotina do rastreio (#64) consultou este pedido no Melhor Envio: a rodada começa pelos
+    // consultados há mais tempo, para nenhum pedido ficar sempre de fora do lote
+    @Column(name = "rastreio_consultado_em")
+    private LocalDateTime rastreioConsultadoEm;
 
     // Mercado Pago (#24): a preferência do Checkout Pro, o link de pagamento e o pagamento aprovado
     @Column(name = "preferencia_id", length = 100)

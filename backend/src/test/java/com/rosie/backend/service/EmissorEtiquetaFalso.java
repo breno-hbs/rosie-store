@@ -4,6 +4,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,10 @@ public class EmissorEtiquetaFalso implements EmissorEtiqueta {
     public final Map<String, RuntimeException> falhas = new HashMap<>();
     // Segura o carrinho por um tempo, para dois cliques simultâneos se cruzarem
     public long demoraNoCarrinhoMs;
+    // Falha programada na consulta de um envio só (rastreio, #64): os outros respondem normalmente
+    public final Map<String, RuntimeException> falhasNaConsulta = new HashMap<>();
+    // Roda durante a consulta, antes de responder (ex.: a Roseane clica em "Marcar como entregue" no meio)
+    public Runnable aoConsultar;
 
     @Override
     public String adicionarAoCarrinho(NovoEnvio envio) {
@@ -44,6 +49,9 @@ public class EmissorEtiquetaFalso implements EmissorEtiqueta {
     public synchronized SituacaoEnvio consultar(String envioId) {
         consultas++;
         falharSe("consultar");
+        RuntimeException falha = falhasNaConsulta.get(envioId);
+        if (falha != null) throw falha;
+        if (aoConsultar != null) aoConsultar.run();
         return envios.get(envioId);
     }
 
@@ -72,6 +80,16 @@ public class EmissorEtiquetaFalso implements EmissorEtiqueta {
         envios.put(envioId, new SituacaoEnvio(Etapa.GERADO, codigo));
     }
 
+    // Envio já postado, a caminho (rastreio, #64)
+    public synchronized void emTransito(String envioId, String codigo) {
+        envios.put(envioId, new SituacaoEnvio(Etapa.GERADO, codigo));
+    }
+
+    // A transportadora entregou; dia null = o Melhor Envio não informou a data
+    public synchronized void entregar(String envioId, String codigo, LocalDate dia) {
+        envios.put(envioId, new SituacaoEnvio(Etapa.GERADO, codigo, true, dia));
+    }
+
     // A Roseane cancelou o envio no painel do Melhor Envio
     public synchronized void cancelar(String envioId) {
         envios.put(envioId, new SituacaoEnvio(Etapa.CANCELADO, null));
@@ -86,6 +104,8 @@ public class EmissorEtiquetaFalso implements EmissorEtiqueta {
         rastreio = "ME123456789BR";
         falhas.clear();
         demoraNoCarrinhoMs = 0;
+        falhasNaConsulta.clear();
+        aoConsultar = null;
     }
 
     private void falharSe(String passo) {
