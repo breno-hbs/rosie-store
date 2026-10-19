@@ -1,3 +1,4 @@
+import { ROTA_POLITICA_PRIVACIDADE } from '../privacidade.js'
 import LogoBadge from './LogoBadge.jsx'
 import './Footer.css'
 
@@ -49,8 +50,9 @@ export default function Footer() {
 
       <div className="footer__base">
         <p>© Rosie — todos os direitos reservados</p>
-        {/* Âncora do link do cadastro até a página da política existir (#31) */}
-        <p id="politica-privacidade">Política de privacidade</p>
+        <a className="footer__politica" href={ROTA_POLITICA_PRIVACIDADE}>
+          Política de privacidade
+        </a>
       </div>
     </footer>
   )

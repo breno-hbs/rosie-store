@@ -1,0 +1,152 @@
+/* Página "Política de privacidade" (#31, fora do Figma). Texto longo: coluna de até 680px, corpo de 15px
+   com entrelinha folgada para ler no celular, títulos das seções no estilo Título 3. */
+
+.politica {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  max-width: calc(680px + 2 * var(--margem));
+  margin: 0 auto;
+  padding: 40px var(--margem) 60px;
+}
+
+.politica__topo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.politica__topo .titulo-2 {
+  overflow-wrap: anywhere;
+}
+
+.politica__versao {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+/* Aviso de texto-modelo: borda tracejada, para não parecer parte do texto da política */
+.politica__modelo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+  border: 1px dashed var(--fumaca);
+}
+
+.politica__intro,
+.politica__texto {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--acento);
+}
+
+/* Índice: links grandes o bastante para o dedo */
+.politica__indice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--linha);
+  border-bottom: 1px solid var(--linha);
+}
+
+.politica__indice ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+.politica__indice a {
+  display: inline-block;
+  padding: 6px 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--linha);
+}
+
+.politica__indice a:hover {
+  color: var(--tinta);
+  text-decoration-color: var(--tinta);
+}
+
+.politica__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.politica__secao {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* O título não fica escondido sob a Nav ao seguir um link do índice */
+  scroll-margin-top: 96px;
+}
+
+.politica__secao ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.politica__secao strong {
+  font-weight: 500;
+  color: var(--tinta);
+}
+
+.politica__secao a {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Ficha do controlador: rótulo em cima, valor embaixo */
+.politica__ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--linha);
+}
+
+.politica__ficha dt {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fumaca);
+}
+
+.politica__ficha dd {
+  margin: 4px 0 0;
+}
+
+/* O que ainda falta a Roseane preencher */
+.politica__preencher {
+  padding: 0 4px;
+  font-style: italic;
+  color: var(--tinta);
+  background: var(--foto-vazia);
+}
+
+@media (min-width: 768px) {
+  .politica {
+    padding-top: 60px;
+  }
+
+  .politica__texto {
+    font-size: 16px;
+  }
+}

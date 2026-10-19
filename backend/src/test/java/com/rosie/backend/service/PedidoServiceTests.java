@@ -327,6 +327,7 @@ class PedidoServiceTests {
                 .email(email)
                 .senhaHash("hash-irrelevante")
                 .role(Role.CLIENTE)
+                .privacidadeVersao(PoliticaPrivacidade.VERSAO)
                 .build());
     }
 

@@ -8,7 +8,9 @@ import {
   lerFrete,
   listarCategorias,
   listarEnderecos,
+  privacidadePendente,
 } from '../api.js'
+import AceitePrivacidade from '../components/AceitePrivacidade.jsx'
 import CamposEndereco from '../components/CamposEndereco.jsx'
 import Nav from '../components/Nav.jsx'
 import Footer from '../components/Footer.jsx'
@@ -108,6 +110,8 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
   const [opcao, setOpcao] = useState(null)
   const [vezFrete, setVezFrete] = useState(0)
   const [envio, setEnvio] = useState({ enviando: false, erro: null })
+  // Política de privacidade nova ainda não aceita (#31): avisada no login ou pelo 409 do POST /pedidos
+  const [aceitePendente, setAceitePendente] = useState(privacidadePendente)
 
   const enderecoSalvo = enderecos.find((e) => e.id === escolha)
   const cepNovo = somenteDigitos(novo.cep)
@@ -116,7 +120,8 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
   const frete = opcao && opcao.cep === cepEntrega ? opcao : null
   const total = Number(carrinho.subtotal) + (frete ? Number(frete.preco) : 0)
   const novoCompleto = enderecoCompleto(novo)
-  const podeFinalizar = frete !== null && (escolha !== 'novo' || novoCompleto) && !envio.enviando
+  const podeFinalizar =
+    frete !== null && (escolha !== 'novo' || novoCompleto) && !envio.enviando && !aceitePendente
 
   async function finalizar(evento) {
     evento.preventDefault()
@@ -135,6 +140,11 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
       // Continua "enviando" enquanto o navegador vai para o Mercado Pago
       window.location.assign(pedido.urlPagamento)
     } catch (erro) {
+      if (erro.codigo === 'PRIVACIDADE_PENDENTE') {
+        setAceitePendente(true)
+        setEnvio({ enviando: false, erro: null })
+        return
+      }
       setEnvio({ enviando: false, erro })
       if (erro.codigo === 'FRETE_ALTERADO') setVezFrete((vez) => vez + 1)
     }
@@ -241,6 +251,7 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
             <dd>{formatarPreco(total)}</dd>
           </div>
         </dl>
+        {aceitePendente && <AceitePrivacidade textoBotao="Aceitar" onAceito={() => setAceitePendente(false)} />}
         <button type="submit" className="botao botao--primario checkout__finalizar" disabled={!podeFinalizar}>
           {envio.enviando ? 'Indo para o pagamento…' : 'Finalizar pedido'}
         </button>

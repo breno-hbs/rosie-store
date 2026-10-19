@@ -18,6 +18,7 @@ import com.rosie.backend.repository.UsuarioRepository;
 import com.rosie.backend.service.CalculadoraFrete.OpcaoFrete;
 import com.rosie.backend.service.CalculadoraFreteFalsa;
 import com.rosie.backend.service.PedidoService;
+import com.rosie.backend.service.PoliticaPrivacidade;
 import com.rosie.backend.service.TokenService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -143,6 +144,7 @@ class PagamentoSimuladoControllerTest {
 
     private Usuario salvarCliente(String email) {
         return usuarioRepository.save(Usuario.builder()
-                .nome("Cliente Simulado").email(email).senhaHash("hash-irrelevante").role(Role.CLIENTE).build());
+                .nome("Cliente Simulado").email(email).senhaHash("hash-irrelevante").role(Role.CLIENTE)
+                .privacidadeVersao(PoliticaPrivacidade.VERSAO).build());
     }
 }

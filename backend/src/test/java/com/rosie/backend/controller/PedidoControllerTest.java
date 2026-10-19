@@ -22,6 +22,7 @@ import com.rosie.backend.repository.UsuarioRepository;
 import com.rosie.backend.service.CalculadoraFrete.OpcaoFrete;
 import com.rosie.backend.service.CalculadoraFreteFalsa;
 import com.rosie.backend.service.GatewayPagamentoFalso;
+import com.rosie.backend.service.PoliticaPrivacidade;
 import com.rosie.backend.service.TokenService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -119,6 +120,17 @@ class PedidoControllerTest {
                 .build();
         produto.getEstoque().add(ProdutoEstoque.builder().produto(produto).tamanho(Tamanho.M).quantidade(1).build());
         produtoRepository.save(produto);
+    }
+
+    @Test
+    void politicaAceitaNumaVersaoAntigaSeguraOCheckout() throws Exception {
+        cliente.setPrivacidadeVersao("2020-01-01");
+        adicionarAoCarrinho(1);
+
+        mockMvc.perform(criar(corpo(endereco.getId(), 1, "CARTAO"), tokenCliente))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("PRIVACIDADE_PENDENTE"));
+        assertThat(pedidoRepository.findByUsuarioId(cliente.getId())).isEmpty();
     }
 
     @Test
@@ -292,6 +304,7 @@ class PedidoControllerTest {
                 .email(email)
                 .senhaHash("hash-irrelevante")
                 .role(role)
+                .privacidadeVersao(role == Role.CLIENTE ? PoliticaPrivacidade.VERSAO : null)
                 .build());
     }
 }

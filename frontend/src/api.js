@@ -220,8 +220,9 @@ export async function cadastrarCliente(dados) {
   return sessao.usuario
 }
 
-// POST /auth/login → { token, usuario: { id, nome, role } }; guarda a sessão.
-// Credencial errada (ou conta de admin): ApiError com codigo CREDENCIAIS_INVALIDAS (401)
+// POST /auth/login → { token, usuario: { id, nome, role }, privacidadePendente }; guarda a sessão.
+// privacidadePendente (#31): a cliente aceitou uma versão antiga da política e precisa aceitar a nova.
+// Credencial errada, conta de admin ou conta excluída: ApiError com codigo CREDENCIAIS_INVALIDAS (401)
 export async function entrarNaLoja(email, senha) {
   const sessao = await requisicao('/auth/login', { metodo: 'POST', corpo: { email, senha } })
   guardarSessao('cliente', sessao)
@@ -233,7 +234,8 @@ export function buscarCliente(opcoes) {
   return getCliente('/auth/me', opcoes)
 }
 
-// Dados pessoais da Minha Conta (#26). GET /conta → { id, nome, email, telefone (só dígitos) }
+// Dados pessoais da Minha Conta (#26). GET /conta → { id, nome, email, telefone (só dígitos),
+// privacidadeVersao, privacidadeAceitaEm } (as duas últimas: o aceite da política, #31)
 export function buscarConta(opcoes) {
   return getCliente('/conta', opcoes)
 }
@@ -260,6 +262,39 @@ export async function atualizarConta(dados, opcoes) {
 // caracteres: ApiError com codigo DADOS_INVALIDOS (400) e a mensagem pronta
 export function trocarSenha(senhaAtual, novaSenha, opcoes) {
   return putCliente('/conta/senha', { senhaAtual, novaSenha }, opcoes)
+}
+
+// Política de privacidade (LGPD, #31). GET /privacidade → { versao, vigencia } da política em vigor (público):
+// a versão vem só da API, a mesma que o cadastro e o aceite gravam.
+export function buscarPoliticaPrivacidade(opcoes) {
+  return requisicao('/privacidade', opcoes)
+}
+
+// A sessão da loja diz se falta aceitar a versão em vigor da política (login com versão antiga)
+export function privacidadePendente() {
+  return lerSessao('cliente')?.privacidadePendente === true
+}
+
+// POST /conta/privacidade → a conta com a versão aceita; a sessão deixa de pedir o aceite
+export async function aceitarPrivacidade(opcoes) {
+  const conta = await postCliente('/conta/privacidade', { aceitePrivacidade: true }, opcoes)
+  const sessao = lerSessao('cliente')
+  if (sessao) {
+    try {
+      guardarSessao('cliente', { ...sessao, privacidadePendente: false })
+    } catch {
+      // Sem armazenamento, o checkout ainda confere no servidor
+    }
+  }
+  return conta
+}
+
+// POST /conta/exclusao; { senha } → null, e a sessão é esquecida (a API já não aceita o token).
+// Senha errada: DADOS_INVALIDOS (400); pedido a caminho ou troca aberta: CONTA_COM_PEDIDO_EM_ANDAMENTO (409)
+export async function excluirConta(senha, opcoes) {
+  await postCliente('/conta/exclusao', { senha }, opcoes)
+  sairDaLoja()
+  window.dispatchEvent(new CustomEvent(EVENTO_CONTA, { detail: null }))
 }
 
 // Sem logout no servidor: esquece o token e continua na página

@@ -1,13 +1,24 @@
 import { useState } from 'react'
-import { atualizarConta, buscarConta, trocarSenha } from '../api.js'
-import { linkWhatsApp, mascararTelefone, somenteDigitos } from '../formato.js'
+import { atualizarConta, buscarConta, excluirConta, trocarSenha } from '../api.js'
+import { formatarData, linkWhatsApp, mascararTelefone, somenteDigitos } from '../formato.js'
+import { ROTA_POLITICA_PRIVACIDADE } from '../privacidade.js'
 import useCarregar from '../useCarregar.js'
 import ContaAviso from './ContaAviso.jsx'
 
 // Aba "Dados Pessoais" da Minha Conta (#26): nome e telefone editáveis, e-mail só leitura (é o login)
-// e troca de senha pedindo a atual.
+// e troca de senha pedindo a atual. No fim, os direitos do titular (LGPD, #31): o aceite da política, onde
+// ver cada dado guardado e a exclusão da conta.
 export default function ContaDados() {
   const { carregando, dados: conta, erro, tentarDeNovo } = useCarregar(buscarConta)
+  const [excluida, setExcluida] = useState(false)
+
+  // A confirmação substitui a aba inteira: volta ao topo para ela aparecer
+  function mostrarExcluida() {
+    setExcluida(true)
+    window.scrollTo(0, 0)
+  }
+
+  if (excluida) return <ContaExcluida />
 
   return (
     <section className="conta__secao" aria-labelledby="titulo-dados">
@@ -25,6 +36,7 @@ export default function ContaDados() {
         <>
           <FormularioDados conta={conta} />
           <FormularioSenha />
+          <Privacidade conta={conta} onExcluida={mostrarExcluida} />
         </>
       )}
     </section>
@@ -199,5 +211,134 @@ function FormularioSenha() {
         </p>
       )}
     </form>
+  )
+}
+
+// Onde a cliente vê cada dado guardado (direito de acesso) e quando aceitou a política
+function Privacidade({ conta, onExcluida }) {
+  return (
+    <section className="conta__formulario" aria-labelledby="titulo-privacidade">
+      <h2 className="titulo-3" id="titulo-privacidade">
+        Privacidade
+      </h2>
+      <p className="conta__texto">
+        {conta.privacidadeVersao
+          ? `Você aceitou a Política de privacidade (versão ${conta.privacidadeVersao}) em ${formatarData(conta.privacidadeAceitaEm)}.`
+          : 'Não há registro de aceite da Política de privacidade nesta conta.'}{' '}
+        <a className="conta__link" href={ROTA_POLITICA_PRIVACIDADE}>
+          Ler a política
+        </a>
+      </p>
+      <p className="conta__texto">
+        Guardamos o seu nome, e-mail e telefone (acima), os <a className="conta__link" href="/minha-conta/enderecos">endereços</a>, os{' '}
+        <a className="conta__link" href="/minha-conta">pedidos</a> e as{' '}
+        <a className="conta__link" href="/minha-conta/trocas">trocas</a>. Os dados do cartão ficam só no Mercado Pago.
+      </p>
+      <ExcluirConta onExcluida={onExcluida} />
+    </section>
+  )
+}
+
+// Exclusão da conta (#31), confirmada com a senha. Começa fechada: o botão abre a explicação e o formulário.
+function ExcluirConta({ onExcluida }) {
+  const [aberto, setAberto] = useState(false)
+  const [senha, setSenha] = useState('')
+  const [ciente, setCiente] = useState(false)
+  const [envio, setEnvio] = useState({ enviando: false, erro: null })
+
+  if (!aberto) {
+    return (
+      <div className="conta__acoes">
+        <button type="button" className="botao botao--contorno" onClick={() => setAberto(true)}>
+          Excluir minha conta
+        </button>
+      </div>
+    )
+  }
+
+  async function excluir(evento) {
+    evento.preventDefault()
+    setEnvio({ enviando: true, erro: null })
+    try {
+      await excluirConta(senha)
+      onExcluida()
+    } catch (erro) {
+      setEnvio({ enviando: false, erro })
+    }
+  }
+
+  function cancelar() {
+    setAberto(false)
+    setSenha('')
+    setCiente(false)
+    setEnvio({ enviando: false, erro: null })
+  }
+
+  return (
+    <form className="conta__exclusao" onSubmit={excluir} noValidate aria-labelledby="titulo-exclusao">
+      <h3 className="conta__exclusao-titulo" id="titulo-exclusao">
+        Excluir minha conta
+      </h3>
+      <ul className="conta__exclusao-lista">
+        <li>Seu nome, e-mail, telefone e endereços são apagados, e a sacola é esvaziada.</li>
+        <li>Você não consegue mais entrar com esta conta. O e-mail fica livre para um cadastro novo.</li>
+        <li>Pedidos ainda não pagos são cancelados.</li>
+        <li>Os pedidos e valores continuam guardados, sem identificar você, porque a lei fiscal exige.</li>
+        <li>Com um pedido a caminho ou uma troca em andamento, a exclusão espera a entrega ou a troca terminar.</li>
+      </ul>
+      <label className="campo">
+        <span className="eyebrow">Sua senha</span>
+        <input
+          className="campo__caixa"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          disabled={envio.enviando}
+        />
+      </label>
+      <label className="conta__exclusao-ciente">
+        <input
+          type="checkbox"
+          checked={ciente}
+          onChange={(e) => setCiente(e.target.checked)}
+          disabled={envio.enviando}
+        />
+        <span>Entendi que a exclusão não pode ser desfeita.</span>
+      </label>
+      {envio.erro && (
+        <p className="conta__erro" role="alert">
+          {envio.erro.status === 409
+            ? envio.erro.message
+            : mensagemErro(envio.erro, 'Não foi possível excluir a conta agora. Tente de novo em instantes.')}
+        </p>
+      )}
+      <div className="conta__acoes">
+        <button type="submit" className="botao botao--primario" disabled={!senha || !ciente || envio.enviando}>
+          {envio.enviando ? 'Excluindo…' : 'Excluir conta'}
+        </button>
+        <button type="button" className="conta__link" onClick={cancelar} disabled={envio.enviando}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ContaExcluida() {
+  return (
+    <section className="conta__secao" aria-labelledby="titulo-excluida">
+      <h1 className="titulo-2" id="titulo-excluida">
+        Conta excluída
+      </h1>
+      <p className="conta__texto" role="status">
+        Seus dados pessoais foram apagados e você saiu da conta. Os pedidos ficam guardados sem identificar
+        você, como a lei fiscal exige.
+      </p>
+      <a className="botao botao--contorno" href="/">
+        Voltar para a loja
+      </a>
+    </section>
   )
 }

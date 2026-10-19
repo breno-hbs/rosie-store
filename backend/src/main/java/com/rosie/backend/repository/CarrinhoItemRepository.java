@@ -18,4 +18,7 @@ public interface CarrinhoItemRepository extends JpaRepository<CarrinhoItem, Long
 
     // PUT/DELETE /carrinho/itens/{itemId}: item de outro cliente fica invisível (404)
     Optional<CarrinhoItem> findByIdAndUsuarioId(Long id, Long usuarioId);
+
+    // Exclusão da conta (#31): a sacola some inteira
+    void deleteByUsuarioId(Long usuarioId);
 }
