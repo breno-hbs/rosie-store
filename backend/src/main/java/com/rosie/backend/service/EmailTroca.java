@@ -70,6 +70,7 @@ public class EmailTroca {
                 new Detalhe("Situação", situacao(status)));
 
         List<String> paragrafos = new ArrayList<>();
+        List<String> fechamento = new ArrayList<>();
         Destaque destaque = recado == null ? null : new Destaque("Recado da Rosie", recado);
         String titulo;
         String assunto;
@@ -93,7 +94,7 @@ public class EmailTroca {
                 } else {
                     destaque = new Destaque("Motivo", recado);
                 }
-                paragrafos.add("Se ainda estiver no prazo, você pode pedir a troca de novo pela sua conta.");
+                fechamento.add("Se ainda estiver no prazo, você pode pedir a troca de novo pela sua conta.");
             }
             case CONCLUIDA -> {
                 titulo = "Sua troca foi concluída";
@@ -102,7 +103,7 @@ public class EmailTroca {
             }
             default -> throw new IllegalArgumentException("Troca " + status + " não tem e-mail");
         }
-        paragrafos.add(contato());
+        fechamento.add(contato());
 
         List<Link> links = new ArrayList<>();
         links.add(new Link("Ver minhas trocas", urlLoja + "/minha-conta/trocas"));
@@ -110,8 +111,8 @@ public class EmailTroca {
         links.add(new Link("Instagram @rosie.sttore", INSTAGRAM));
 
         String nome = primeiroNome(cliente.getNome());
-        Mensagem mensagem = new Mensagem(nome.isEmpty() ? "Olá!" : "Olá, " + nome + "!", titulo, detalhes,
-                paragrafos, destaque, links,
+        Mensagem mensagem = new Mensagem(nome.isEmpty() ? "Olá!" : "Olá, " + nome + "!", titulo, paragrafos,
+                destaque, detalhes, fechamento, links,
                 "Você recebeu este e-mail porque pediu uma troca na Rosie. A situação completa fica sempre em "
                         + "Minha Conta, no site.");
         return new Email(cliente.getEmail(), assunto, ModeloEmail.html(mensagem), ModeloEmail.texto(mensagem),

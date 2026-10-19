@@ -21,11 +21,11 @@ public final class ModeloEmail {
     private ModeloEmail() {
     }
 
-    // saudacao ("Olá, Maria!"), titulo (o assunto em linguagem simples), detalhes (rótulo e valor, ex.:
-    // Pedido #270), paragrafos, um destaque opcional (ex.: o recado da Roseane, com quebras de linha),
-    // links e o rodapé. Tudo texto puro.
-    public record Mensagem(String saudacao, String titulo, List<Detalhe> detalhes, List<String> paragrafos,
-                           Destaque destaque, List<Link> links, String rodape) {
+    // Na ordem em que aparece: saudacao ("Olá, Maria!"), titulo (o assunto em linguagem simples),
+    // paragrafos, um destaque opcional (ex.: o recado da Roseane, com quebras de linha), detalhes (rótulo e
+    // valor, ex.: Pedido #270), fechamento (ex.: como falar com a loja), links e o rodapé. Tudo texto puro.
+    public record Mensagem(String saudacao, String titulo, List<String> paragrafos, Destaque destaque,
+                           List<Detalhe> detalhes, List<String> fechamento, List<Link> links, String rodape) {
     }
 
     public record Detalhe(String rotulo, String valor) {
@@ -46,24 +46,7 @@ public final class ModeloEmail {
         corpo.append("<h1 style=\"margin:0 0 24px;font-size:22px;line-height:1.3;font-weight:500;color:")
                 .append(TINTA).append(";\">").append(escapar(mensagem.titulo())).append("</h1>");
 
-        if (!mensagem.detalhes().isEmpty()) {
-            corpo.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" ")
-                    .append("style=\"margin:0 0 24px;border-top:1px solid ").append(LINHA).append(";\">");
-            for (Detalhe detalhe : mensagem.detalhes()) {
-                corpo.append("<tr><td style=\"padding:8px 0;border-bottom:1px solid ").append(LINHA)
-                        .append(";font-size:14px;color:").append(ACENTO).append(";\">")
-                        .append(escapar(detalhe.rotulo()))
-                        .append("</td><td align=\"right\" style=\"padding:8px 0;border-bottom:1px solid ")
-                        .append(LINHA).append(";font-size:14px;color:").append(TINTA).append(";\">")
-                        .append(escapar(detalhe.valor())).append("</td></tr>");
-            }
-            corpo.append("</table>");
-        }
-
-        for (String paragrafo : mensagem.paragrafos()) {
-            corpo.append("<p style=\"margin:0 0 16px;font-size:15px;line-height:1.6;color:").append(TINTA)
-                    .append(";\">").append(escapar(paragrafo)).append("</p>");
-        }
+        paragrafos(corpo, mensagem.paragrafos());
 
         Destaque destaque = mensagem.destaque();
         if (destaque != null) {
@@ -75,6 +58,22 @@ public final class ModeloEmail {
                     .append("line-height:1.6;color:").append(TINTA).append(";\">")
                     .append(escapar(destaque.texto()).replace("\n", "<br>")).append("</p></td></tr></table>");
         }
+
+        if (!mensagem.detalhes().isEmpty()) {
+            corpo.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" ")
+                    .append("style=\"margin:8px 0 24px;border-top:1px solid ").append(LINHA).append(";\">");
+            for (Detalhe detalhe : mensagem.detalhes()) {
+                corpo.append("<tr><td style=\"padding:8px 0;border-bottom:1px solid ").append(LINHA)
+                        .append(";font-size:14px;color:").append(ACENTO).append(";\">")
+                        .append(escapar(detalhe.rotulo()))
+                        .append("</td><td align=\"right\" style=\"padding:8px 0;border-bottom:1px solid ")
+                        .append(LINHA).append(";font-size:14px;color:").append(TINTA).append(";\">")
+                        .append(escapar(detalhe.valor())).append("</td></tr>");
+            }
+            corpo.append("</table>");
+        }
+
+        paragrafos(corpo, mensagem.fechamento());
 
         for (Link link : mensagem.links()) {
             corpo.append("<p style=\"margin:0 0 12px;font-size:15px;\"><a href=\"").append(escapar(link.url()))
@@ -100,17 +99,21 @@ public final class ModeloEmail {
         StringBuilder texto = new StringBuilder("ROSIE\n\n");
         if (mensagem.saudacao() != null) texto.append(mensagem.saudacao()).append("\n\n");
         texto.append(mensagem.titulo()).append("\n\n");
+        for (String paragrafo : mensagem.paragrafos()) {
+            texto.append(paragrafo).append("\n\n");
+        }
+        if (mensagem.destaque() != null) {
+            texto.append(mensagem.destaque().rotulo()).append(":\n")
+                    .append(mensagem.destaque().texto().replace("\r\n", "\n")).append("\n\n");
+        }
         if (!mensagem.detalhes().isEmpty()) {
             for (Detalhe detalhe : mensagem.detalhes()) {
                 texto.append(detalhe.rotulo()).append(": ").append(detalhe.valor()).append('\n');
             }
             texto.append('\n');
         }
-        for (String paragrafo : mensagem.paragrafos()) {
+        for (String paragrafo : mensagem.fechamento()) {
             texto.append(paragrafo).append("\n\n");
-        }
-        if (mensagem.destaque() != null) {
-            texto.append(mensagem.destaque().rotulo()).append(":\n").append(mensagem.destaque().texto().replace("\r\n", "\n")).append("\n\n");
         }
         for (Link link : mensagem.links()) {
             texto.append(link.texto()).append(": ").append(link.url()).append('\n');
@@ -118,6 +121,13 @@ public final class ModeloEmail {
         if (!mensagem.links().isEmpty()) texto.append('\n');
         texto.append("--\n").append(mensagem.rodape()).append('\n');
         return texto.toString();
+    }
+
+    private static void paragrafos(StringBuilder corpo, List<String> paragrafos) {
+        for (String paragrafo : paragrafos) {
+            corpo.append("<p style=\"margin:0 0 16px;font-size:15px;line-height:1.6;color:").append(TINTA)
+                    .append(";\">").append(escapar(paragrafo)).append("</p>");
+        }
     }
 
     // Escapa < > & " e ' (HtmlUtils), e normaliza as quebras de linha
