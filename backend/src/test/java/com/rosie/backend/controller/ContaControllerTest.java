@@ -103,6 +103,8 @@ class ContaControllerTest {
         for (String[] caso : List.of(
                 new String[]{"{\"nome\":\"\",\"telefone\":\"11987654321\"}", "Informe o nome"},
                 new String[]{"{\"nome\":\"Maria\",\"telefone\":\"\"}", "Informe o telefone"},
+                new String[]{"{\"nome\":\"Maria\",\"telefone\":\"   \"}", "Informe o telefone"},
+                new String[]{"{\"nome\":\"\",\"telefone\":\"\"}", "Informe o nome"},
                 new String[]{"{\"nome\":\"Maria\",\"telefone\":\"(11) 98765-4321\"}",
                         "Telefone inválido: informe DDD e número, só com dígitos"},
                 new String[]{"{\"nome\":\"" + "a".repeat(151) + "\",\"telefone\":\"11987654321\"}",
@@ -114,6 +116,7 @@ class ContaControllerTest {
         }
         mockMvc.perform(atualizar("{}", tokenCliente))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Informe o nome"))
                 .andExpect(jsonPath("$.codigo").value("DADOS_INVALIDOS"));
     }
 
