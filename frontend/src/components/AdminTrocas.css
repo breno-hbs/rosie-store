@@ -1,0 +1,89 @@
+/* Trocas do painel (#27). Usa a tabela de AdminPedidos.css; aqui só o que muda. */
+
+.admin-trocas__pedido,
+.admin-trocas__peca,
+.admin-trocas__detalhe,
+.admin-trocas__observacao {
+  display: block;
+}
+
+.admin-trocas__peca {
+  color: var(--tinta);
+}
+
+.admin-trocas__detalhe {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.admin-trocas__observacao {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--acento);
+  overflow-wrap: anywhere;
+}
+
+.admin-trocas__tabela td {
+  overflow-wrap: anywhere;
+}
+
+/* Solicitada pede resposta: selo preenchido, como o pedido pago sem etiqueta */
+.admin-trocas__status[data-status='SOLICITADA'] {
+  border-color: var(--tinta);
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.admin-trocas__status[data-status='RECUSADA'] {
+  color: var(--fumaca);
+}
+
+.admin-trocas__botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.admin-trocas__botao {
+  min-height: 32px;
+  padding: 0;
+  font-size: inherit;
+  text-decoration-color: currentColor;
+}
+
+/* Recado e confirmação logo abaixo da troca */
+.admin-pedidos__tabela tr.admin-trocas__confirmar {
+  padding-top: 0;
+}
+
+.admin-trocas__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+
+@media (min-width: 768px) {
+  .admin-trocas__tabela th:nth-child(1) { width: 14%; }
+  .admin-trocas__tabela th:nth-child(2) { width: 18%; }
+  .admin-trocas__tabela th:nth-child(3) { width: 24%; }
+  .admin-trocas__tabela th:nth-child(4) { width: 16%; }
+  .admin-trocas__tabela th:nth-child(5) { width: 16%; }
+  .admin-trocas__tabela th:nth-child(6) { width: 12%; }
+
+  .admin-trocas__tabela td {
+    vertical-align: top;
+  }
+
+  .admin-pedidos__tabela tr.admin-trocas__confirmar td {
+    padding-top: 0;
+  }
+
+  /* A linha da troca aberta perde a borda de baixo: o recado continua o mesmo bloco */
+  .admin-trocas__tabela tr:has(+ .admin-trocas__confirmar) td {
+    border-bottom-color: transparent;
+  }
+}

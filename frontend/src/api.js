@@ -405,13 +405,14 @@ export function criarPedido(dados, opcoes) {
   return postCliente('/pedidos', dados, opcoes)
 }
 
-// GET /pedidos (Minha Conta, #26) → [{ id, status, valorTotal, createdAt }], do mais recente ao mais antigo
+// GET /pedidos (Minha Conta, #26) → [{ id, status, valorTotal, createdAt, prazoTroca }], do mais recente ao
+// mais antigo. prazoTroca ('2026-10-24', #27): último dia para pedir troca; null antes da entrega
 export function listarPedidos(opcoes) {
   return getCliente('/pedidos', opcoes)
 }
 
 // GET /pedidos/{id} → { id, status, formaPagamento, subtotal, valorFrete, valorTotal, transportadora,
-// servicoFrete, prazoFreteDias, codigoRastreio, urlPagamento, createdAt, endereco, itens: [{ produtoId,
+// servicoFrete, prazoFreteDias, codigoRastreio, dataEntrega, prazoTroca, urlPagamento, createdAt, endereco, itens: [{ produtoId,
 // nome, imagemPrincipal, tamanho, quantidade, precoUnitario, subtotal }] }. Pedido de outra cliente: 404.
 // status: AGUARDANDO_PAGAMENTO, PAGAMENTO_RECUSADO, PAGO, PAGO_COM_PENDENCIA, ENVIADO, ENTREGUE, CANCELADO
 export function buscarPedido(id, opcoes) {
@@ -533,7 +534,7 @@ export function listarPedidosAdmin(opcoes) {
 }
 
 // GET /admin/pedidos/{id} → o PedidoDTO da cliente + { cliente, pagamentoId, pagoEm, pendencia, envioId,
-// urlEtiqueta, etiquetaGeradaEm }
+// urlEtiqueta, etiquetaGeradaEm, dataEntrega }
 export function buscarPedidoAdmin(id, opcoes) {
   return getAdmin(`/admin/pedidos/${id}`, opcoes)
 }
@@ -544,4 +545,38 @@ export function buscarPedidoAdmin(id, opcoes) {
 // ETIQUETA_EM_ANDAMENTO (409, mensagem pronta); ETIQUETA_FALHOU (502); ETIQUETA_INDISPONIVEL (503)
 export function gerarEtiqueta(id, opcoes) {
   return postAdmin(`/admin/pedidos/${id}/etiqueta`, undefined, opcoes)
+}
+
+// POST /admin/pedidos/{id}/entregue → o pedido atualizado (ENTREGUE, com dataEntrega), #27. dataEntrega
+// ('2026-10-17') é opcional: sem ela, vale hoje. Pedido que não está ENVIADO: PEDIDO_NAO_ENVIADO (409);
+// data no futuro ou antes do envio: DADOS_INVALIDOS (400). Repetir num pedido já entregue não muda a data.
+export function marcarEntregue(id, dataEntrega, opcoes) {
+  return postAdmin(`/admin/pedidos/${id}/entregue`, dataEntrega ? { dataEntrega } : undefined, opcoes)
+}
+
+// ----- Troca e devolução (#27) -----
+
+// POST /trocas; { pedidoId, produtoId, tamanho, quantidade?, motivo: 'DEFEITO' | 'NAO_SERVIU',
+// observacao? } → a troca: { id, pedidoId, produtoId, nome, imagemPrincipal, tamanho, quantidade, motivo,
+// freteConta: 'ROSIE' | 'CLIENTE' (sai do motivo, no servidor), status, observacao, resposta, createdAt,
+// updatedAt }. Erros com mensagem pronta: PEDIDO_NAO_ENTREGUE, TROCA_FORA_DO_PRAZO e TROCA_JA_SOLICITADA
+// (409); DADOS_INVALIDOS (400); pedido de outra cliente: 404
+export function solicitarTroca(dados, opcoes) {
+  return postCliente('/trocas', dados, opcoes)
+}
+
+// GET /trocas → as trocas da cliente, da mais recente à mais antiga
+export function listarTrocas(opcoes) {
+  return getCliente('/trocas', opcoes)
+}
+
+// GET /admin/trocas → as trocas de todas as clientes (cada uma com cliente: { id, nome, email, telefone })
+export function listarTrocasAdmin(opcoes) {
+  return getAdmin('/admin/trocas', opcoes)
+}
+
+// PUT /admin/trocas/{id}/status; status SOLICITADA → APROVADA ou RECUSADA, APROVADA → CONCLUIDA, com
+// resposta (recado para a cliente) opcional → a troca atualizada. Fora do caminho: STATUS_TROCA_INVALIDO (409)
+export function atualizarStatusTroca(id, status, resposta, opcoes) {
+  return putAdmin(`/admin/trocas/${id}/status`, { status, resposta }, opcoes)
 }

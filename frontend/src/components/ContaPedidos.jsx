@@ -3,6 +3,7 @@ import { buscarPedido, listarPedidos } from '../api.js'
 import useCarregar from '../useCarregar.js'
 import ContaAviso from './ContaAviso.jsx'
 import { formatarData, formatarPreco, mascararCep, rotuloStatusPedido, statusEncerrado } from '../formato.js'
+import { dentroDoPrazo } from '../troca.js'
 
 // Aba "Meus Pedidos" da Minha Conta (#26): a tabela do Figma (pedido, data, status, total, "Ver
 // detalhes") ou, com pedidoId, o detalhe do pedido (/minha-conta/pedidos/{id}).
@@ -164,6 +165,7 @@ function ConteudoPedido({ pedido }) {
             Pagar agora
           </a>
         )}
+        {pedido.status === 'ENTREGUE' && <Troca pedido={pedido} />}
       </div>
 
       <div className="conta__bloco">
@@ -235,5 +237,27 @@ function ConteudoPedido({ pedido }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// Pedido entregue (#27): a data da entrega e, dentro do prazo, o botão para a tela de troca
+function Troca({ pedido }) {
+  const noPrazo = dentroDoPrazo(pedido.prazoTroca)
+  return (
+    <>
+      {pedido.dataEntrega && <p className="conta__texto">Entregue em {formatarData(pedido.dataEntrega)}.</p>}
+      {pedido.prazoTroca && (
+        <p className="conta__nota">
+          {noPrazo
+            ? `Defeito ou não serviu? Você pode pedir troca até ${formatarData(pedido.prazoTroca)}.`
+            : `O prazo para pedir troca terminou em ${formatarData(pedido.prazoTroca)}.`}
+        </p>
+      )}
+      {noPrazo && (
+        <a className="botao botao--contorno conta__pagar" href={`/trocas?pedido=${pedido.id}`}>
+          Solicitar troca
+        </a>
+      )}
+    </>
   )
 }

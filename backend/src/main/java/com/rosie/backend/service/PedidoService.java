@@ -45,6 +45,7 @@ public class PedidoService {
     private final UsuarioRepository usuarioRepository;
     private final FreteService freteService;
     private final GatewayPagamento gatewayPagamento;
+    private final PrazoTroca prazoTroca;
 
     // Se o Mercado Pago falhar, a exceção desfaz o pedido inteiro (nada fica gravado sem link de pagamento)
     public PedidoCriadoDTO criar(Long clienteId, PedidoRequestDTO requisicao) {
@@ -107,13 +108,14 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public List<PedidoResumoDTO> listar(Long clienteId) {
         return pedidoRepository.findByUsuarioIdOrderByCreatedAtDescIdDesc(clienteId).stream()
-                .map(PedidoResumoDTO::from)
+                .map(pedido -> PedidoResumoDTO.from(pedido, prazoTroca.ate(pedido)))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public PedidoDTO buscar(Long clienteId, Long pedidoId) {
-        return PedidoDTO.from(buscarDaCliente(clienteId, pedidoId));
+        Pedido pedido = buscarDaCliente(clienteId, pedidoId);
+        return PedidoDTO.from(pedido, prazoTroca.ate(pedido));
     }
 
     Pedido buscarDaCliente(Long clienteId, Long pedidoId) {

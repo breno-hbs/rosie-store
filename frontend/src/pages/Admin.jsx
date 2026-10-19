@@ -8,10 +8,11 @@ import AdminPedidos from '../components/AdminPedidos.jsx'
 import AdminProdutoForm from '../components/AdminProdutoForm.jsx'
 import AdminProdutos from '../components/AdminProdutos.jsx'
 import AdminSidebar from '../components/AdminSidebar.jsx'
+import AdminTrocas from '../components/AdminTrocas.jsx'
 import { SECOES_ADMIN } from '../components/adminSecoes.js'
 import './Admin.css'
 
-// Casca do painel: produtos (#14), estoque (#16), categorias (#17), tabela de medidas (#20) e pedidos (#25).
+// Casca do painel: produtos (#14), estoque (#16), categorias (#17), tabela de medidas (#20), pedidos (#25) e trocas (#27).
 // produtoId: 'novo' ou o id do produto em edição; categoriaId: categoria com a tabela de medidas aberta;
 // pedidoId: pedido aberto no detalhe.
 export default function Admin({ secao, produtoId, categoriaId, pedidoId }) {
@@ -40,6 +41,8 @@ export default function Admin({ secao, produtoId, categoriaId, pedidoId }) {
     conteudo = <AdminPedidoDetalhe id={pedidoId} />
   } else if (secao === 'pedidos') {
     conteudo = <AdminPedidos />
+  } else if (secao === 'trocas') {
+    conteudo = <AdminTrocas />
   } else if (secao === 'categorias') {
     conteudo = (
       <>

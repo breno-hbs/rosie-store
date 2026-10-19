@@ -172,9 +172,27 @@
   color: var(--tinta);
 }
 
-.admin-pedido__etiqueta {
+.admin-pedido__etiqueta,
+.admin-pedido__entrega {
   padding: 20px;
   border: 1px solid var(--tinta);
+}
+
+/* Marcar como entregue (#27): data e botão lado a lado quando cabem */
+.admin-pedido__entrega-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.admin-pedido__entrega-data {
+  flex: 1 1 180px;
+  max-width: 240px;
+}
+
+.admin-pedido__entrega-form .botao {
+  min-height: 48px;
 }
 
 .admin-pedido__rastreio {
@@ -329,7 +347,8 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .admin-pedido__etiqueta {
+  .admin-pedido__etiqueta,
+  .admin-pedido__entrega {
     grid-column: 1 / -1;
   }
 }
