@@ -154,6 +154,7 @@ O `application.properties` importa esse arquivo automaticamente quando ele exist
 | `ROSIE_REMETENTE_EMAIL` | (vazio) | E-mail do remetente (opcional) |
 | `ROSIE_REMETENTE_LOGRADOURO`, `ROSIE_REMETENTE_NUMERO`, `ROSIE_REMETENTE_COMPLEMENTO`, `ROSIE_REMETENTE_BAIRRO`, `ROSIE_REMETENTE_CIDADE`, `ROSIE_REMETENTE_UF` | (vazio) | Endereço de onde a Rosie despacha (o CEP é o `ROSIE_CEP_ORIGEM`). Só o complemento é opcional; `UF` é a sigla (SP) |
 | `ETIQUETA_TIMEOUT` | `20s` | Tempo máximo de espera por cada chamada da etiqueta ao Melhor Envio (passou disso, 502 `ETIQUETA_FALHOU`) |
+| `TROCA_PRAZO_DIAS` | `7` | Dias corridos depois da entrega em que a cliente pode pedir troca (#27). O padrão é o direito de arrependimento do CDC; pode aumentar, não diminuir |
 
 Windows (PowerShell, vale só para o terminal aberto):
 

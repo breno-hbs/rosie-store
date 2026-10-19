@@ -11,6 +11,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,6 +84,10 @@ public class Pedido {
 
     @Column(name = "codigo_rastreio", length = 50)
     private String codigoRastreio;
+
+    // Dia em que a peça chegou, marcado pela Roseane no painel (#27): o prazo de troca conta daqui
+    @Column(name = "data_entrega")
+    private LocalDate dataEntrega;
 
     // Mercado Pago (#24): a preferência do Checkout Pro, o link de pagamento e o pagamento aprovado
     @Column(name = "preferencia_id", length = 100)

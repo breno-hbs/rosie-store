@@ -29,6 +29,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /pedidos` | Implementado (exige token `CLIENTE`; só os pedidos da cliente do token, do mais recente ao mais antigo) | lista de `PedidoResumoDTO` |
 | `GET /pedidos/{id}` | Implementado (exige token `CLIENTE`; 404 também para pedido de outra cliente) | `PedidoDTO` |
 | `GET /conta` | Implementado (exige token `CLIENTE`) | `ContaDTO` |
+| `POST /trocas` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 404 também para pedido de outra cliente; 409 `PEDIDO_NAO_ENTREGUE`/`TROCA_FORA_DO_PRAZO`/`TROCA_JA_SOLICITADA`) | `TrocaDTO` |
+| `GET /trocas` | Implementado (exige token `CLIENTE`; só as trocas da cliente do token, da mais recente à mais antiga) | lista de `TrocaDTO` |
 | `PUT /conta` | Implementado (exige token `CLIENTE`; nome e telefone; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
 | `PUT /conta/senha` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha atual errada) | — |
 | `POST /pagamentos/webhook` | Implementado (público, assinado pelo Mercado Pago; 200; 401 `ASSINATURA_INVALIDA`; 502/503 para o Mercado Pago tentar de novo) | — |
@@ -51,6 +53,12 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; 404) | `TabelaMedidasDTO` |
 | `PUT /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; troca a tabela inteira; 400 com `DADOS_INVALIDOS`; 404) | `TabelaMedidasDTO` |
 | `DELETE /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; 204; 404) | — |
+| `GET /admin/pedidos` | Implementado (exige token `ADMIN`; todos os pedidos) | lista de `PedidoAdminResumoDTO` |
+| `GET /admin/pedidos/{id}` | Implementado (exige token `ADMIN`; 404) | `PedidoAdminDTO` |
+| `POST /admin/pedidos/{id}/etiqueta` | Implementado (exige token `ADMIN`; ver "Gerar etiqueta") | `PedidoAdminDTO` |
+| `POST /admin/pedidos/{id}/entregue` | Implementado (exige token `ADMIN`; corpo opcional com `dataEntrega`; 400 `DADOS_INVALIDOS`; 404; 409 `PEDIDO_NAO_ENVIADO`) | `PedidoAdminDTO` |
+| `GET /admin/trocas` | Implementado (exige token `ADMIN`; todas as trocas) | lista de `TrocaAdminDTO` |
+| `PUT /admin/trocas/{id}/status` | Implementado (exige token `ADMIN`; 400 `DADOS_INVALIDOS`; 404; 409 `STATUS_TROCA_INVALIDO`) | `TrocaAdminDTO` |
 | Demais endpoints | Não implementados | — |
 
 ---
@@ -61,7 +69,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 - **Formato:** JSON em todas as requisições e respostas (exceção: o upload de foto do produto é `multipart/form-data`)
 - **Autenticação:** JWT via header `Authorization: Bearer {token}` — obtido no login
 - **Tamanhos:** sempre um dos valores `P`, `M`, `G`, `GG`
-- **Datas:** formato ISO 8601 (`2026-08-25T14:30:00`)
+- **Datas:** formato ISO 8601 (`2026-08-25T14:30:00`); campos só de dia, como `dataEntrega` e `prazoTroca`, vêm sem hora (`2026-08-25`)
 - **Erros:** sempre nesse formato (`ErroResponseDTO`), com o HTTP status code correspondente (400, 401, 403, 404, 409, 500, 502, 503)
 
 ```json
@@ -95,6 +103,11 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `ASSINATURA_INVALIDA` | 401 | Webhook do Mercado Pago sem `x-signature`, com assinatura malformada ou que não confere com o segredo |
 | `FRETE_FALHOU` | 502 | Frete: o Melhor Envio não respondeu a tempo, caiu ou devolveu algo inesperado. A cliente pode tentar de novo |
 | `FRETE_INDISPONIVEL` | 503 | Frete: servidor sem `MELHOR_ENVIO_TOKEN` ou `ROSIE_CEP_ORIGEM`, ou token recusado pelo Melhor Envio |
+| `PEDIDO_NAO_ENVIADO` | 409 | Painel: marcar como entregue um pedido que não está `ENVIADO` (ainda sem etiqueta, não pago ou cancelado) |
+| `PEDIDO_NAO_ENTREGUE` | 409 | Troca: o pedido ainda não foi marcado como entregue |
+| `TROCA_FORA_DO_PRAZO` | 409 | Troca: passou o prazo (7 dias corridos depois da entrega); `erro` traz o último dia |
+| `TROCA_JA_SOLICITADA` | 409 | Troca: já existe troca dessa peça do pedido que não foi recusada |
+| `STATUS_TROCA_INVALIDO` | 409 | Painel: mudança de status da troca fora do caminho (ex.: concluir sem aprovar, mexer numa recusada) |
 
 ---
 
@@ -251,6 +264,7 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `CLOUDINARY_URL` | Não (sem ela, o upload de fotos responde 503) | Credencial do Cloudinary, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`; ver "Upload de imagem" |
 | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `ROSIE_API_URL` | Não (faltando qualquer uma, o checkout responde 503) | Pagamento pelo Mercado Pago; ver "Finalizar pedido" |
 | `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago |
+| `TROCA_PRAZO_DIAS` | Não (padrão `7`) | Prazo para pedir troca, em dias corridos depois da entrega; ver "Troca e devolução" |
 
 O admin inicial é criado na subida da API só enquanto não existir nenhum usuário `ADMIN`; depois as três variáveis `ROSIE_ADMIN_*` são ignoradas.
 
@@ -593,7 +607,7 @@ Exige token `CLIENTE`. Fecha o pedido com **o carrinho inteiro** da cliente do t
 | `PAGO` | Pagamento aprovado: o estoque já baixou e as peças saíram da sacola |
 | `PAGO_COM_PENDENCIA` | Pagamento aprovado, mas o pedido não fechou sozinho: faltou estoque (outra cliente pagou antes a última peça) ou o valor pago não bate com o total. **O estoque não baixa** (nunca fica negativo), as peças saem da sacola e o motivo fica gravado em `pedido.pendencia` para a Roseane resolver (enviar quando repor, combinar troca ou devolver o dinheiro pelo Mercado Pago). O painel de pedidos (#25) mostra o motivo no detalhe do pedido; resolver a pendência pelo painel ainda não existe |
 | `ENVIADO` | A Roseane gerou a etiqueta no painel (ver "Painel admin — Pedidos e etiqueta"): a etiqueta foi comprada e gerada no Melhor Envio e o pedido tem `codigoRastreio` (assim que o Melhor Envio devolver). A peça pode ainda não ter sido postada |
-| `ENTREGUE` | Reservado: nada marca ainda (fica para quando o rastreio for acompanhado) |
+| `ENTREGUE` | A Roseane marcou no painel que a peça chegou (ver "Marcar como entregue"), com a data da entrega (`dataEntrega`). Daí conta o prazo de troca. Acompanhar o rastreio para marcar sozinho fica para outra issue |
 | `CANCELADO` | Pagamento cancelado ou expirado no Mercado Pago (ex.: PIX não pago no prazo). Se mesmo assim chegar um pagamento aprovado depois, ele é processado como qualquer aprovação |
 
 Na tabela `pedido` a coluna `status` é `VARCHAR(30)`. **Banco criado antes da #24** (o `ddl-auto=update` não muda o tipo de coluna que já existe, e a coluna era `ENUM` sem os status novos): rode uma vez `ALTER TABLE pedido MODIFY status VARCHAR(30) NOT NULL;`.
@@ -639,6 +653,8 @@ Exige token `CLIENTE`. Pedido de outra cliente responde **404** `RECURSO_NAO_ENC
   "servicoFrete": "PAC",
   "prazoFreteDias": 7,
   "codigoRastreio": null,
+  "dataEntrega": null,
+  "prazoTroca": null,
   "urlPagamento": "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=...",
   "createdAt": "2026-10-18T14:30:00",
   "endereco": { "id": 5, "cep": "03925050", "logradouro": "Rua das Flores", "numero": "120", "complemento": null,
@@ -650,7 +666,7 @@ Exige token `CLIENTE`. Pedido de outra cliente responde **404** `RECURSO_NAO_ENC
 }
 ```
 
-`urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra. `codigoRastreio` fica `null` até a Roseane gerar a etiqueta (#25); depois traz o código da transportadora ou, enquanto ela não devolve, o do Melhor Envio (os dois rastreáveis no [Melhor Rastreio](https://www.melhorrastreio.com.br)). O link da etiqueta não vem aqui: é só do painel.
+`urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra. `codigoRastreio` fica `null` até a Roseane gerar a etiqueta (#25); depois traz o código da transportadora ou, enquanto ela não devolve, o do Melhor Envio (os dois rastreáveis no [Melhor Rastreio](https://www.melhorrastreio.com.br)). O link da etiqueta não vem aqui: é só do painel. `dataEntrega` (o dia em que a peça chegou) e `prazoTroca` (o último dia para pedir troca, ver "Troca e devolução") ficam `null` até a Roseane marcar o pedido como entregue.
 
 O detalhe do pedido na Minha Conta (#26) também usa esta rota: mostra itens, endereço, frete, status e, quando a etiqueta (#25) preencher, o `codigoRastreio` com o link "Acompanhar a entrega" (um `urlRastreio` no pedido, se a #25 acrescentar; senão o Melhor Rastreio com o código). Com `urlPagamento`, a tela oferece "Pagar agora".
 
@@ -662,29 +678,82 @@ Exige token `CLIENTE`. Todos os pedidos da cliente do token (inclusive os que es
 ```json
 // Response 200 — lista de PedidoResumoDTO
 [
-  { "id": 100, "status": "ENTREGUE", "valorTotal": 211.90, "createdAt": "2026-08-20T14:30:00" },
-  { "id": 98, "status": "ENVIADO", "valorTotal": 189.00, "createdAt": "2026-08-12T10:15:00" }
+  { "id": 100, "status": "ENTREGUE", "valorTotal": 211.90, "createdAt": "2026-08-20T14:30:00", "prazoTroca": "2026-08-29" },
+  { "id": 98, "status": "ENVIADO", "valorTotal": 189.00, "createdAt": "2026-08-12T10:15:00", "prazoTroca": null }
 ]
 ```
+
+`prazoTroca` (#27) é o mesmo do `GET /pedidos/{id}`: a tela de troca lista os pedidos entregues que ainda estão no prazo.
 
 `status` é um dos valores de "Status do pedido"; a loja mostra o nome legível ("Aguardando pagamento", "Pago", "Enviado"...).
 
 ---
 
-## Troca e devolução (RF18, RNF08)
+## Troca e devolução (RF18, RNF08) — requer autenticação CLIENTE
 
+A cliente pede a troca (ou devolução) de **uma peça** de um pedido dela: o produto no tamanho comprado. Quem paga o frete de volta (`freteConta`) é calculado no servidor a partir do motivo e nunca vem da requisição (RNF08): `DEFEITO` → `ROSIE`; `NAO_SERVIU` → `CLIENTE` (a política do RF07). O motivo vale para troca e para devolução do dinheiro: qual das duas a cliente quer, ela conta na `observacao` e combina com a Roseane.
+
+**Prazo (decisão #27): 7 dias corridos depois da entrega**, contando o dia da entrega como dia 0 e valendo o sétimo dia inteiro (entregue em 20/08, pode pedir até 27/08). É o direito de arrependimento do CDC (art. 49) para compra fora da loja física. O dia da entrega é o que a Roseane marca no painel (ver "Marcar como entregue"), e "hoje" é sempre o dia em São Paulo. O prazo é configurável por `TROCA_PRAZO_DIAS` (padrão 7; maior se a Roseane quiser dar mais tempo, nunca menor que 7). Para defeito, o CDC dá mais tempo para reclamar (art. 26: 30 ou 90 dias, conforme o produto): fora do prazo da loja, a cliente fala com a Roseane pelo WhatsApp.
+
+### Pedir troca
 `POST /trocas`
 
 ```json
-// Request
-{ "pedidoId": 100, "produtoId": 10, "motivo": "DEFEITO" } // ou "NAO_SERVIU"
-// Response 201
+// Request — TrocaRequestDTO
+{
+  "pedidoId": 100,
+  "produtoId": 10,
+  "tamanho": "M",            // opcional se o produto veio num tamanho só no pedido
+  "quantidade": 1,           // opcional: sem ela, todas as unidades compradas da peça
+  "motivo": "DEFEITO",       // ou "NAO_SERVIU"
+  "observacao": "A costura da manga abriu na primeira lavagem" // opcional, até 1000 caracteres
+}
+// Response 201 — TrocaDTO
 {
   "id": 1,
+  "pedidoId": 100,
+  "produtoId": 10,
+  "nome": "Conjunto Serpente",
+  "imagemPrincipal": "https://res.cloudinary.com/...",
+  "tamanho": "M",
+  "quantidade": 1,
+  "motivo": "DEFEITO",
+  "freteConta": "ROSIE",
   "status": "SOLICITADA",
-  "freteConta": "ROSIE" // ou "CLIENTE", calculado automaticamente a partir do motivo (RNF08)
+  "observacao": "A costura da manga abriu na primeira lavagem",
+  "resposta": null,
+  "createdAt": "2026-08-22T10:00:00",
+  "updatedAt": "2026-08-22T10:00:00"
 }
 ```
+
+| Situação | Resposta |
+|---|---|
+| Pedido que não existe ou de outra cliente | 404 `RECURSO_NAO_ENCONTRADO` |
+| Pedido que não está `ENTREGUE` | 409 `PEDIDO_NAO_ENTREGUE` |
+| Passou o prazo | 409 `TROCA_FORA_DO_PRAZO` ("O prazo para pedir troca deste pedido terminou em 27/08/2026") |
+| Produto/tamanho que não está no pedido, produto em dois tamanhos sem `tamanho`, `quantidade` acima da comprada, motivo ausente ou fora de `DEFEITO`/`NAO_SERVIU` | 400 `DADOS_INVALIDOS` |
+| Já existe troca dessa peça (produto + tamanho) no pedido que não foi recusada | 409 `TROCA_JA_SOLICITADA` |
+
+**Uma troca por peça:** cada produto + tamanho do pedido tem no máximo uma troca `SOLICITADA`, `APROVADA` ou `CONCLUIDA`; só uma `RECUSADA` libera pedir de novo (dentro do prazo). Peças diferentes do mesmo pedido têm cada uma a sua. A linha do pedido fica travada durante o POST, então dois cliques seguidos criam uma troca só (o segundo recebe 409 `TROCA_JA_SOLICITADA`).
+
+**Estoque e dinheiro ficam com a Roseane:** a troca não mexe no estoque nem estorna o pagamento. Quando a peça volta, a Roseane ajusta o estoque na Gestão de Estoque e, se for devolução, devolve o dinheiro pelo Mercado Pago. A etiqueta de volta (logística reversa) também ainda é combinada fora da loja.
+
+### Minhas trocas
+`GET /trocas`
+
+Lista de `TrocaDTO` da cliente do token, **da mais recente à mais antiga**. Sem trocas: `[]`.
+
+### Status da troca
+
+| Status | Quando |
+|---|---|
+| `SOLICITADA` | A cliente pediu; a Roseane ainda não respondeu |
+| `APROVADA` | A Roseane aceitou: a cliente manda a peça de volta (frete de quem diz `freteConta`) |
+| `RECUSADA` | A Roseane não aceitou (o motivo vai em `resposta`). Final; a cliente pode pedir de novo dentro do prazo |
+| `CONCLUIDA` | A peça voltou e a troca (ou a devolução do dinheiro) foi resolvida. Final |
+
+Caminhos possíveis: `SOLICITADA` → `APROVADA` ou `RECUSADA`; `APROVADA` → `CONCLUIDA`. `resposta` é o recado da Roseane que a cliente lê na Minha Conta.
 
 ---
 
@@ -991,7 +1060,7 @@ Uma tabela por categoria, que a Roseane preenche no painel (`/admin/categorias/{
 
 ---
 
-## Painel admin — Pedidos e etiqueta (RF12) — requer autenticação ADMIN
+## Painel admin — Pedidos, etiqueta e entrega (RF12) — requer autenticação ADMIN
 
 Todas as rotas exigem token de `ADMIN` (401 `NAO_AUTENTICADO` sem token, 403 `ACESSO_NEGADO` com token de cliente). O painel vê os pedidos de todas as clientes, em qualquer status. Pedido que não existe: 404 `RECURSO_NAO_ENCONTRADO`.
 
@@ -1018,7 +1087,7 @@ Todos os pedidos, do mais recente para o mais antigo, sem paginação (o volume 
 ### Detalhe do pedido
 `GET /admin/pedidos/{id}`
 
-Os campos do `GET /pedidos/{id}` da cliente (menos `urlPagamento`), mais quem comprou, o pagamento e a etiqueta.
+Os campos do `GET /pedidos/{id}` da cliente (menos `urlPagamento` e `prazoTroca`), mais quem comprou, o pagamento e a etiqueta.
 
 ```json
 // Response 200 — PedidoAdminDTO
@@ -1040,6 +1109,7 @@ Os campos do `GET /pedidos/{id}` da cliente (menos `urlPagamento`), mais quem co
   "urlEtiqueta": "https://melhorenvio.com.br/imprimir/ixQLaqqjmb2E",
   "etiquetaGeradaEm": "2026-10-18T16:02:00",
   "codigoRastreio": "AA123456789BR",
+  "dataEntrega": null,
   "createdAt": "2026-10-18T14:30:00",
   "endereco": { "id": 5, "cep": "03925050", "logradouro": "Rua das Flores", "numero": "120", "complemento": null,
                 "bairro": "Jardim Iva", "cidade": "São Paulo", "estado": "SP" },
@@ -1057,6 +1127,7 @@ Os campos do `GET /pedidos/{id}` da cliente (menos `urlPagamento`), mais quem co
 | `urlEtiqueta` | Link para abrir e imprimir a etiqueta (link **privado** do Melhor Envio: abre com a conta da loja logada lá). `null` até a etiqueta ficar pronta |
 | `etiquetaGeradaEm` | Quando a etiqueta ficou pronta |
 | `codigoRastreio` | Código da transportadora; enquanto ela não devolve, o do Melhor Envio. Pode ficar `null` logo depois de gerar (ver abaixo) |
+| `dataEntrega` | Dia em que a peça chegou, marcado pela Roseane (#27); `null` antes |
 
 ### Gerar etiqueta
 `POST /admin/pedidos/{id}/etiqueta` (sem corpo)
@@ -1094,6 +1165,62 @@ Compra e gera a etiqueta de envio no Melhor Envio para um pedido `PAGO` e devolv
 **Erros do Melhor Envio:** recusa com mensagem (4xx, ex.: saldo insuficiente, campo inválido) → 502 `ETIQUETA_FALHOU` com "O Melhor Envio recusou a etiqueta: " + a primeira mensagem de lá; queda, 5xx, timeout (`ETIQUETA_TIMEOUT`, 20 s por chamada) ou resposta fora do formato → 502 `ETIQUETA_FALHOU` genérico. Servidor sem `MELHOR_ENVIO_TOKEN`, `ROSIE_CEP_ORIGEM` ou os dados obrigatórios do remetente, ou token recusado (401/403) → 503 `ETIQUETA_INDISPONIVEL`. O token precisa dos escopos `cart-read`, `cart-write`, `shipping-checkout`, `shipping-generate`, `shipping-print` e `shipping-tracking`.
 
 **Modo de desenvolvimento:** com `FRETE_SIMULADO=true` a etiqueta também é de mentira: nada é cobrado, o rastreio sai no formato `SIM00000000BR` e o link abre `/etiqueta-simulada.html` da loja. Nunca ligar em produção.
+
+### Marcar como entregue
+`POST /admin/pedidos/{id}/entregue`
+
+A Roseane confirma que a peça chegou (#27), olhando o rastreio: o pedido passa de `ENVIADO` para `ENTREGUE` e grava `dataEntrega`, de onde conta o prazo de troca.
+
+```json
+// Request (opcional): o dia da entrega, se não foi hoje. Sem corpo, ou sem a data, vale hoje (em São Paulo)
+{ "dataEntrega": "2026-10-17" }
+// Response 200 — PedidoAdminDTO com "status": "ENTREGUE" e "dataEntrega": "2026-10-17"
+```
+
+| Situação | Resposta |
+|---|---|
+| Pedido `ENVIADO` | 200, vira `ENTREGUE` |
+| Pedido já `ENTREGUE` | 200 com o pedido como está (a data não muda) |
+| Qualquer outro status | 409 `PEDIDO_NAO_ENVIADO` |
+| `dataEntrega` no futuro, ou antes do dia em que a etiqueta foi gerada | 400 `DADOS_INVALIDOS` |
+
+---
+
+## Painel admin — Trocas (#27) — requer autenticação ADMIN
+
+Mesmas regras de token do painel. Troca que não existe: 404 `RECURSO_NAO_ENCONTRADO`.
+
+### Listar trocas
+`GET /admin/trocas`
+
+Todas as trocas de todas as clientes, da mais recente para a mais antiga, sem paginação. Cada uma é o `TrocaDTO` da cliente mais quem pediu:
+
+```json
+// Response 200 — lista de TrocaAdminDTO
+[
+  {
+    "id": 1,
+    "pedidoId": 100,
+    "cliente": { "id": 7, "nome": "Maria Silva", "email": "maria@exemplo.com", "telefone": "11988887777" },
+    "produtoId": 10, "nome": "Conjunto Serpente", "imagemPrincipal": "https://res.cloudinary.com/...",
+    "tamanho": "M", "quantidade": 1,
+    "motivo": "DEFEITO", "freteConta": "ROSIE", "status": "SOLICITADA",
+    "observacao": "A costura da manga abriu na primeira lavagem", "resposta": null,
+    "createdAt": "2026-08-22T10:00:00", "updatedAt": "2026-08-22T10:00:00"
+  }
+]
+```
+
+### Mudar o status da troca
+`PUT /admin/trocas/{id}/status`
+
+```json
+// Request — TrocaStatusRequestDTO
+{ "status": "APROVADA", "resposta": "Pode mandar pelos Correios, a etiqueta vai pelo WhatsApp" } // resposta opcional, até 1000 caracteres
+// Response 200 — TrocaAdminDTO atualizado
+```
+
+Só pelos caminhos de "Status da troca" (`SOLICITADA` → `APROVADA`/`RECUSADA`; `APROVADA` → `CONCLUIDA`); fora deles, 409 `STATUS_TROCA_INVALIDO`. Mandar o status atual de novo só troca o recado. Sem `resposta` (ou com ela em branco), fica o recado anterior. Status ausente ou desconhecido: 400 `DADOS_INVALIDOS`.
 
 ---
 
