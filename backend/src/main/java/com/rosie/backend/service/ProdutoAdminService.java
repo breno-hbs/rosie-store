@@ -2,6 +2,7 @@ package com.rosie.backend.service;
 
 import com.rosie.backend.dto.EstoqueDTO;
 import com.rosie.backend.dto.EstoqueProdutoDTO;
+import com.rosie.backend.dto.PacoteDTO;
 import com.rosie.backend.dto.ProdutoAdminDTO;
 import com.rosie.backend.dto.ProdutoAdminResumoDTO;
 import com.rosie.backend.dto.ProdutoEdicaoDTO;
@@ -100,6 +101,15 @@ public class ProdutoAdminService {
         if (dados.composicao() != null) produto.setComposicao(textoOpcional(dados.composicao()));
         produto.setPreco(dados.preco());
         produto.setCategoria(categoria);
+        // Ausente mantém o pacote atual (reativar não manda); presente troca os quatro campos juntos, e o
+        // que vier nulo volta para o pacote padrão do frete (#56)
+        PacoteDTO pacote = dados.pacote();
+        if (pacote != null) {
+            produto.setPesoKg(pacote.pesoKg());
+            produto.setAlturaCm(pacote.alturaCm());
+            produto.setLarguraCm(pacote.larguraCm());
+            produto.setComprimentoCm(pacote.comprimentoCm());
+        }
     }
 
     // Texto vazio ou só com espaços vira null, e a Página de Produto esconde o item

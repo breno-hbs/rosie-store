@@ -1,6 +1,7 @@
 package com.rosie.backend.service;
 
 import com.rosie.backend.dto.EstoqueDTO;
+import com.rosie.backend.dto.PacoteDTO;
 import com.rosie.backend.dto.ProdutoAdminDTO;
 import com.rosie.backend.dto.ProdutoAdminResumoDTO;
 import com.rosie.backend.dto.ProdutoEdicaoDTO;
@@ -108,7 +109,7 @@ class ProdutoAdminServiceTests {
         entityManager.clear();
 
         ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoEdicaoDTO(
-                "Editado", "  ", null, new BigDecimal("150.50"), calca.getId(), null, null));
+                "Editado", "  ", null, new BigDecimal("150.50"), calca.getId(), null, null, null));
 
         assertThat(editado.nome()).isEqualTo("Editado");
         assertThat(editado.descricao()).isNull();
@@ -257,10 +258,55 @@ class ProdutoAdminServiceTests {
 
         // o mesmo que a reativação mandava antes do #50: sem composicao
         ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoEdicaoDTO(
-                "Vestido Linho", null, null, new BigDecimal("189.00"), vestido.getId(), null, true));
+                "Vestido Linho", null, null, new BigDecimal("189.00"), vestido.getId(), null, true, null));
 
         assertThat(editado.descricao()).isEqualTo("Descrição de teste");
         assertThat(editado.composicao()).isEqualTo("Viscose");
+    }
+
+    @Test
+    void criarGuardaOPacoteDoFreteEEdicaoSemPacoteMantem() {
+        ProdutoAdminDTO criado = produtoAdminService.criar(requestComPacote(
+                new PacoteDTO(new BigDecimal("0.850"), 8, 25, 35)));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(criado.pacote()).isEqualTo(new PacoteDTO(new BigDecimal("0.850"), 8, 25, 35));
+
+        // o Reativar da lista não manda o pacote
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoEdicaoDTO(
+                "Calça Jeans", null, null, new BigDecimal("149.90"), calca.getId(), null, true, null));
+
+        assertThat(editado.pacote().pesoKg()).isEqualByComparingTo("0.85");
+        assertThat(editado.pacote().alturaCm()).isEqualTo(8);
+        assertThat(editado.pacote().larguraCm()).isEqualTo(25);
+        assertThat(editado.pacote().comprimentoCm()).isEqualTo(35);
+    }
+
+    @Test
+    void atualizarComPacoteTrocaOsQuatroCamposENuloVoltaParaOPadrao() {
+        ProdutoAdminDTO criado = produtoAdminService.criar(requestComPacote(
+                new PacoteDTO(new BigDecimal("0.85"), 8, 25, 35)));
+        entityManager.flush();
+        entityManager.clear();
+
+        ProdutoAdminDTO editado = produtoAdminService.atualizar(criado.id(), new ProdutoEdicaoDTO(
+                "Calça Jeans", null, null, new BigDecimal("149.90"), calca.getId(), null, null,
+                new PacoteDTO(new BigDecimal("1.1"), null, null, 40)));
+
+        assertThat(editado.pacote()).isEqualTo(new PacoteDTO(new BigDecimal("1.1"), null, null, 40));
+    }
+
+    @Test
+    void colunasDoPacoteAceitamNulo() {
+        // produtos cadastrados antes das colunas existirem ficam com null e usam o pacote padrão
+        List<Object> nulaveis = entityManager.createNativeQuery("""
+                SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'produto'
+                  AND COLUMN_NAME IN ('peso_kg', 'altura_cm', 'largura_cm', 'comprimento_cm')
+                """).getResultList();
+
+        assertThat(nulaveis).hasSize(4).containsOnly("YES");
     }
 
     @Test
@@ -276,16 +322,21 @@ class ProdutoAdminServiceTests {
 
     private ProdutoRequestDTO request(String nome, Categoria categoria, Boolean destaque, Boolean ativo, List<EstoqueDTO> estoque) {
         return new ProdutoRequestDTO(nome, "Descrição de teste", null, new BigDecimal("189.00"), categoria.getId(),
-                destaque, ativo, estoque);
+                destaque, ativo, estoque, null);
     }
 
     private ProdutoEdicaoDTO edicao(Categoria categoria, Boolean destaque, Boolean ativo) {
         return new ProdutoEdicaoDTO("Produto", "Descrição de teste", null, new BigDecimal("189.00"), categoria.getId(),
-                destaque, ativo);
+                destaque, ativo, null);
+    }
+
+    private ProdutoRequestDTO requestComPacote(PacoteDTO pacote) {
+        return new ProdutoRequestDTO("Calça Jeans", null, null, new BigDecimal("149.90"), calca.getId(), null, null,
+                null, pacote);
     }
 
     private ProdutoRequestDTO requestComComposicao(String composicao) {
         return new ProdutoRequestDTO("Vestido Linho", "Descrição de teste", composicao, new BigDecimal("189.00"),
-                vestido.getId(), null, null, null);
+                vestido.getId(), null, null, null, null);
     }
 }

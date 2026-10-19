@@ -35,11 +35,15 @@ public record ProdutoRequestDTO(
 
         // Tamanhos que o produto tem; os que ficarem de fora não são vendidos
         @Valid
-        List<@NotNull(message = "Item de estoque vazio") @Valid EstoqueDTO> estoque
+        List<@NotNull(message = "Item de estoque vazio") @Valid EstoqueDTO> estoque,
+
+        // Peso e medidas da peça embalada para o frete (#56); ausente = tudo com o pacote padrão
+        @Valid
+        PacoteDTO pacote
 ) {
 
     // Os mesmos campos da edição, sem o estoque inicial
     public ProdutoEdicaoDTO dadosDoProduto() {
-        return new ProdutoEdicaoDTO(nome, descricao, composicao, preco, categoriaId, destaque, ativo);
+        return new ProdutoEdicaoDTO(nome, descricao, composicao, preco, categoriaId, destaque, ativo, pacote);
     }
 }

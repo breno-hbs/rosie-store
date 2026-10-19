@@ -1,17 +1,21 @@
 package com.rosie.backend.service;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.math.BigDecimal;
 import java.util.List;
 
 // Modo de desenvolvimento (FRETE_SIMULADO=true): opções fixas, sem chamar o Melhor Envio, para testar
 // a tela sem token. Nunca ligar em produção. O CEP 99999-999 responde sem opções (nenhuma transportadora
-// atende), para ver esse estado na tela.
+// atende), para ver esse estado na tela. O log mostra o pacote de cada peça (#56), que o preço simulado ignora.
+@Slf4j
 public class FreteSimulado implements CalculadoraFrete {
 
     static final String CEP_SEM_OPCOES = "99999999";
 
     @Override
     public List<OpcaoFrete> calcular(String cepDestino, List<PecaFrete> pecas) {
+        log.info("Frete simulado para {}: {}", cepDestino, pecas);
         if (CEP_SEM_OPCOES.equals(cepDestino)) return List.of();
 
         int extras = Math.max(0, pecas.stream().mapToInt(PecaFrete::quantidade).sum() - 1);

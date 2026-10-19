@@ -20,6 +20,7 @@ import com.rosie.backend.repository.PedidoRepository;
 import com.rosie.backend.repository.ProdutoRepository;
 import com.rosie.backend.repository.UsuarioRepository;
 import com.rosie.backend.service.EmissorEtiqueta.NovoEnvio;
+import com.rosie.backend.service.EmissorEtiqueta.Volume;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -133,6 +134,27 @@ class EtiquetaServiceTests {
         assertThat(envio.volume().pesoKg()).isEqualByComparingTo("0.9");
         // Valor declarado = peças, sem o frete: 2 x 159,90 + 120,00
         assertThat(envio.valorDeclarado()).isEqualByComparingTo("439.80");
+    }
+
+    @Test
+    void volumeUsaOPacoteDeCadaProdutoComoNaCotacao() {
+        // calça com peso e medidas próprios; o vestido continua com o pacote padrão (#56)
+        calca.setPesoKg(new BigDecimal("1.2"));
+        calca.setAlturaCm(8);
+        calca.setLarguraCm(25);
+        calca.setComprimentoCm(35);
+        produtoRepository.save(calca);
+        Pedido pedido = salvarPedido(StatusPedido.PAGO);
+
+        etiquetaService.gerar(pedido.getId());
+
+        // 2 vestidos de 5 cm + 1 calça de 8 cm empilhados; largura e comprimento da maior peça;
+        // 2 x 0,3 kg + 1,2 kg
+        Volume volume = emissor.enviosNoCarrinho.get(0).volume();
+        assertThat(volume.alturaCm()).isEqualTo(18);
+        assertThat(volume.larguraCm()).isEqualTo(25);
+        assertThat(volume.comprimentoCm()).isEqualTo(35);
+        assertThat(volume.pesoKg()).isEqualByComparingTo("1.8");
     }
 
     @Test
