@@ -1,0 +1,233 @@
+/* Tela "Solicitação de Troca" do Figma (#27): título centralizado e formulário de até 560px.
+   Mobile-first: os dois cartões de motivo empilham no celular e ficam lado a lado a partir de 480px. */
+
+.troca {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 40px var(--margem) 60px;
+}
+
+.troca__topo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.troca__corpo {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+}
+
+.troca__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Select com a mesma caixa do TextInput e a seta desenhada com borda (sem imagem nem gradiente),
+   como no formulário de produto do painel */
+.troca__select {
+  position: relative;
+  display: block;
+}
+
+.troca__select select {
+  appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+.troca__select::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1px solid var(--fumaca);
+  border-bottom: 1px solid var(--fumaca);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.troca__peca {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Motivo: os dois cartões são botões de rádio; o escolhido fica em tinta, como no Figma */
+.troca__motivos {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.troca__motivos legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+.troca__cartoes {
+  display: grid;
+  gap: 12px;
+  clear: both;
+}
+
+.troca__motivo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  line-height: 1.5;
+  border: 1px solid var(--linha);
+  cursor: pointer;
+}
+
+.troca__motivo:hover {
+  border-color: var(--tinta);
+}
+
+.troca__motivo:has(.troca__radio:focus-visible) {
+  outline: 1px solid var(--tinta);
+  outline-offset: 3px;
+}
+
+.troca__radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.troca__motivo-nome {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--tinta);
+}
+
+.troca__motivo-frete {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--fumaca);
+}
+
+.troca__motivo--escolhido {
+  background: var(--tinta);
+  border-color: var(--tinta);
+}
+
+.troca__motivo--escolhido .troca__motivo-nome {
+  color: var(--papel);
+}
+
+.troca__motivo--escolhido .troca__motivo-frete {
+  color: var(--pedra);
+}
+
+.troca__descricao {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.troca__enviar {
+  width: 100%;
+  min-height: 60px;
+}
+
+.troca__erro {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.troca__nota {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.troca__link {
+  color: var(--acento);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.troca__link:hover {
+  color: var(--tinta);
+}
+
+/* Carregando, erro, vazio e enviada */
+.troca__aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.troca__enviada {
+  align-items: center;
+  text-align: center;
+}
+
+.troca__frete {
+  padding: 16px 18px;
+  font-size: 13px;
+  color: var(--tinta);
+  border: 1px solid var(--tinta);
+}
+
+.troca__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: inherit;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.troca__enviada .troca__acoes {
+  justify-content: center;
+}
+
+@media (min-width: 480px) {
+  .troca__cartoes {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .troca__peca {
+    flex-direction: row;
+  }
+
+  .troca__peca-escolha {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .troca__quantidade {
+    width: 140px;
+  }
+}
+
+@media (min-width: 768px) {
+  .troca {
+    padding-top: 50px;
+    padding-bottom: 80px;
+  }
+}

@@ -10,6 +10,7 @@ import MinhaConta from './pages/MinhaConta.jsx'
 import PagamentoSimulado from './pages/PagamentoSimulado.jsx'
 import PedidoRetorno from './pages/PedidoRetorno.jsx'
 import Produto from './pages/Produto.jsx'
+import SolicitarTroca from './pages/SolicitarTroca.jsx'
 
 // Rotas pelo caminho da URL; os links recarregam a página, sem roteador por enquanto.
 // Em produção o Netlify serve o index.html para qualquer caminho (public/_redirects).
@@ -21,6 +22,8 @@ function rotaAtual() {
   if (/^\/cadastro\/?$/.test(caminho)) return { pagina: 'cadastro' }
   if (/^\/carrinho\/?$/.test(caminho)) return { pagina: 'carrinho' }
   if (/^\/checkout\/?$/.test(caminho)) return { pagina: 'checkout' }
+  // Solicitação de troca (#27): /trocas?pedido={id} já abre com o pedido escolhido
+  if (/^\/trocas\/?$/.test(caminho)) return { pagina: 'trocas' }
   // Volta do Mercado Pago (#24) e pagamento simulado de desenvolvimento
   const pedido = caminho.match(/^\/pedido\/(\d+)\/(sucesso|pendente|falha|pagamento-simulado)\/?$/)
   if (pedido) {
@@ -31,7 +34,7 @@ function rotaAtual() {
   // Minha Conta (#26): uma aba por caminho; o detalhe do pedido fica dentro de Meus Pedidos
   const pedidoConta = caminho.match(/^\/minha-conta\/pedidos\/(\d+)\/?$/)
   if (pedidoConta) return { pagina: 'minha-conta', aba: 'pedidos', pedidoId: Number(pedidoConta[1]) }
-  const conta = caminho.match(/^\/minha-conta(?:\/(pedidos|dados|enderecos))?\/?$/)
+  const conta = caminho.match(/^\/minha-conta(?:\/(pedidos|trocas|dados|enderecos))?\/?$/)
   if (conta) return { pagina: 'minha-conta', aba: conta[1] ?? 'pedidos' }
   if (/^\/admin\/login\/?$/.test(caminho)) return { pagina: 'admin-login' }
   const produtoAdmin = caminho.match(/^\/admin\/produtos\/(novo|\d+)\/?$/)
@@ -43,7 +46,7 @@ function rotaAtual() {
   if (medidasAdmin) return { pagina: 'admin', secao: 'categorias', categoriaId: Number(medidasAdmin[1]) }
   const pedidoAdmin = caminho.match(/^\/admin\/pedidos\/(\d+)\/?$/)
   if (pedidoAdmin) return { pagina: 'admin', secao: 'pedidos', pedidoId: Number(pedidoAdmin[1]) }
-  const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias|pedidos))?\/?$/)
+  const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias|pedidos|trocas))?\/?$/)
   if (admin) return { pagina: 'admin', secao: admin[1] ?? 'produtos' }
   return { pagina: 'home' }
 }
@@ -70,10 +73,12 @@ export default function App() {
     return null
   }
 
-  // Carrinho, checkout, pedido e Minha Conta só com cliente logado: sem sessão, entra e volta para a mesma página
-  const daCliente = ['carrinho', 'checkout', 'pedido', 'pagamento-simulado', 'minha-conta']
+  // Carrinho, checkout, pedido, Minha Conta e troca só com cliente logado: sem sessão, entra e volta para a mesma página
+  const daCliente = ['carrinho', 'checkout', 'pedido', 'pagamento-simulado', 'minha-conta', 'trocas']
   if (daCliente.includes(rota.pagina) && lerSessaoCliente() === null) {
-    window.location.replace(rotaLoginCliente({ voltar: window.location.pathname }))
+    // Sem a query (a volta do Mercado Pago traz parâmetros de pagamento), menos na troca: ?pedido= escolhe o pedido
+    const voltar = window.location.pathname + (rota.pagina === 'trocas' ? window.location.search : '')
+    window.location.replace(rotaLoginCliente({ voltar }))
     return null
   }
 
@@ -82,6 +87,7 @@ export default function App() {
   if (rota.pagina === 'checkout') return <Checkout />
   if (rota.pagina === 'pedido') return <PedidoRetorno id={rota.id} etapa={rota.etapa} />
   if (rota.pagina === 'pagamento-simulado') return <PagamentoSimulado id={rota.id} />
+  if (rota.pagina === 'trocas') return <SolicitarTroca />
   if (rota.pagina === 'minha-conta') return <MinhaConta aba={rota.aba} pedidoId={rota.pedidoId} />
   if (rota.pagina === 'entrar') return <Entrar />
   if (rota.pagina === 'cadastro') return <Cadastro />

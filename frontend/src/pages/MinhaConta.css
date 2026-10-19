@@ -553,3 +553,66 @@
     flex: 1;
   }
 }
+
+/* Minhas Trocas (#27): título com o botão "Solicitar troca" ao lado; cada troca é foto + texto, como as
+   peças do detalhe do pedido */
+.conta__titulo-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  width: 100%;
+  max-width: 760px;
+}
+
+.conta__trocas {
+  width: 100%;
+  max-width: 760px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.conta__troca {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: start;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.conta__troca-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.conta__troca-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.conta__link--nota {
+  font-size: inherit;
+  color: inherit;
+}
+
+.conta__troca-resposta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--tinta);
+  border: 1px solid var(--linha);
+}

@@ -4,4 +4,5 @@ export const SECOES_ADMIN = [
   { id: 'estoque', nome: 'Estoque' },
   { id: 'categorias', nome: 'Categorias' },
   { id: 'pedidos', nome: 'Pedidos' },
+  { id: 'trocas', nome: 'Trocas' },
 ]

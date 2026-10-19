@@ -3,17 +3,19 @@ import { listarCategorias, sairDaLoja } from '../api.js'
 import ContaDados from '../components/ContaDados.jsx'
 import ContaEnderecos from '../components/ContaEnderecos.jsx'
 import ContaPedidos from '../components/ContaPedidos.jsx'
+import ContaTrocas from '../components/ContaTrocas.jsx'
 import Footer from '../components/Footer.jsx'
 import Nav from '../components/Nav.jsx'
 import './MinhaConta.css'
 
 const ABAS = [
   { id: 'pedidos', rotulo: 'Meus Pedidos', caminho: '/minha-conta', titulo: 'Meus pedidos' },
+  { id: 'trocas', rotulo: 'Trocas', caminho: '/minha-conta/trocas', titulo: 'Minhas trocas' },
   { id: 'dados', rotulo: 'Dados Pessoais', caminho: '/minha-conta/dados', titulo: 'Dados pessoais' },
   { id: 'enderecos', rotulo: 'Endereços', caminho: '/minha-conta/enderecos', titulo: 'Endereços' },
 ]
 
-// Tela "Minha Conta" do Figma (#26). Só com cliente logado (App.jsx manda para /entrar antes).
+// Tela "Minha Conta" do Figma (#26), com a aba Trocas (#27). Só com cliente logado (App.jsx manda para /entrar antes).
 // Cada aba tem o seu caminho (os links recarregam a página, como no resto da loja); "Sair" esquece a
 // sessão e volta para a Home. No celular as abas viram uma faixa no topo, como o menu da Nav.
 export default function MinhaConta({ aba, pedidoId }) {
@@ -64,6 +66,7 @@ export default function MinhaConta({ aba, pedidoId }) {
 
         <main className="conta__conteudo">
           {atual.id === 'pedidos' && <ContaPedidos pedidoId={pedidoId} />}
+          {atual.id === 'trocas' && <ContaTrocas />}
           {atual.id === 'dados' && <ContaDados />}
           {atual.id === 'enderecos' && <ContaEnderecos />}
         </main>

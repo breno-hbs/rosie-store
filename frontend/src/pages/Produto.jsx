@@ -13,13 +13,10 @@ import ProductCard from '../components/ProductCard.jsx'
 import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
 import Footer from '../components/Footer.jsx'
 import { formatarPreco, linkWhatsApp } from '../formato.js'
+import { POLITICA_TROCA } from '../troca.js'
 import './Produto.css'
 
 const QTD_RELACIONADOS = 4
-
-// RF07: a política de troca aparece em toda página de produto
-const POLITICA_TROCA =
-  'Trocas aceitas em caso de defeito ou produto que não serviu. Frete de devolução por conta da Rosie em caso de defeito; por conta do cliente nos demais casos.'
 
 export default function Produto({ id }) {
   const [categorias, setCategorias] = useState([])

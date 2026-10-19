@@ -1,10 +1,13 @@
 import LogoBadge from './LogoBadge.jsx'
 import './Footer.css'
 
-// Só o Instagram tem destino conhecido; os demais itens ganham link quando as páginas existirem.
+// Instagram e Trocas e devoluções (#27) têm destino; os demais itens ganham link quando as páginas existirem.
 const colunas = [
   { titulo: 'Loja', itens: [{ texto: 'Todos os produtos' }, { texto: 'Novidades' }, { texto: 'Mais vendidos' }] },
-  { titulo: 'Institucional', itens: [{ texto: 'Sobre' }, { texto: 'Trocas e devoluções' }, { texto: 'Envio' }] },
+  {
+    titulo: 'Institucional',
+    itens: [{ texto: 'Sobre' }, { texto: 'Trocas e devoluções', href: '/trocas', interno: true }, { texto: 'Envio' }],
+  },
   {
     titulo: 'Contato',
     itens: [
@@ -31,7 +34,7 @@ export default function Footer() {
               {coluna.itens.map((item) => (
                 <li key={item.texto}>
                   {item.href ? (
-                    <a href={item.href} target="_blank" rel="noreferrer">
+                    <a href={item.href} {...(item.interno ? {} : { target: '_blank', rel: 'noreferrer' })}>
                       {item.texto}
                     </a>
                   ) : (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { buscarPedidoAdmin, gerarEtiqueta } from '../api.js'
-import { formatarPreco, mascararTelefone } from '../formato.js'
+import { buscarPedidoAdmin, gerarEtiqueta, marcarEntregue } from '../api.js'
+import { formatarData, formatarPreco, mascararTelefone } from '../formato.js'
+import { hojeNaLoja } from '../troca.js'
 import { FORMA_PAGAMENTO, STATUS_PEDIDO, formatarDataHora, mensagemDeErro } from './pedidosAdmin.js'
 import './AdminPedidos.css'
 
@@ -10,7 +11,7 @@ function formatarCep(cep) {
 
 // Detalhe do pedido no painel (#25): peças, entrega, cliente, pagamento e a etiqueta do Melhor Envio.
 // "Gerar etiqueta" pede confirmação, porque compra a etiqueta com o saldo da conta do Melhor Envio; depois
-// vira "Imprimir etiqueta", com o código de rastreio.
+// vira "Imprimir etiqueta", com o código de rastreio. Enviado, a Roseane marca quando a peça chegou (#27).
 export default function AdminPedidoDetalhe({ id }) {
   const [pedido, setPedido] = useState(null)
   const [erro, setErro] = useState(null)
@@ -63,6 +64,9 @@ export default function AdminPedidoDetalhe({ id }) {
 
           <div className="admin-pedido__grade">
             <Etiqueta pedido={pedido} onAtualizar={setPedido} />
+            {(pedido.status === 'ENVIADO' || pedido.status === 'ENTREGUE') && (
+              <Entrega pedido={pedido} onAtualizar={setPedido} />
+            )}
 
             <section className="admin-pedido__bloco" aria-labelledby="pedido-pecas">
               <h2 id="pedido-pecas" className="rotulo">Peças</h2>
@@ -255,6 +259,72 @@ function Etiqueta({ pedido, onAtualizar }) {
     <section className="admin-pedido__bloco admin-pedido__etiqueta" aria-labelledby="pedido-etiqueta">
       <h2 id="pedido-etiqueta" className="rotulo">Etiqueta de envio</h2>
       {conteudo}
+      {erro && (
+        <p className="admin-pedido__alerta" role="alert">
+          {erro}
+        </p>
+      )}
+    </section>
+  )
+}
+
+// A peça chegou (#27): a Roseane confere o rastreio e marca a data da entrega (hoje, ou o dia em que o
+// rastreio mostrou a entrega). Dela conta o prazo de 7 dias para a cliente pedir troca.
+function Entrega({ pedido, onAtualizar }) {
+  const hoje = hojeNaLoja()
+  const [data, setData] = useState(hoje)
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState(null)
+
+  async function marcar(evento) {
+    evento.preventDefault()
+    setSalvando(true)
+    setErro(null)
+    try {
+      onAtualizar(await marcarEntregue(pedido.id, data || undefined))
+    } catch (e) {
+      setErro(mensagemDeErro(e, 'Não foi possível marcar o pedido como entregue.'))
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  if (pedido.status === 'ENTREGUE') {
+    return (
+      <section className="admin-pedido__bloco" aria-labelledby="pedido-entregue">
+        <h2 id="pedido-entregue" className="rotulo">Entrega</h2>
+        <p className="admin-pedido__texto">
+          Entregue em {pedido.dataEntrega ? formatarData(pedido.dataEntrega) : '—'}. A cliente pode pedir troca até 7
+          dias depois.
+        </p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="admin-pedido__bloco admin-pedido__entrega" aria-labelledby="pedido-entrega-marcar">
+      <h2 id="pedido-entrega-marcar" className="rotulo">Entrega</h2>
+      <p className="admin-pedido__texto">
+        Quando o rastreio mostrar que a peça chegou, marque aqui. O prazo de troca da cliente (7 dias) conta a partir
+        dessa data.
+      </p>
+      <form className="admin-pedido__entrega-form" onSubmit={marcar}>
+        <label className="campo admin-pedido__entrega-data">
+          <span className="rotulo">Data da entrega</span>
+          <input
+            type="date"
+            className="campo__caixa"
+            value={data}
+            max={hoje}
+            min={pedido.etiquetaGeradaEm?.slice(0, 10)}
+            onChange={(e) => setData(e.target.value)}
+            required
+          />
+        </label>
+        <button type="submit" className="botao botao--primario" disabled={salvando}>
+          {salvando ? 'Salvando…' : 'Marcar como entregue'}
+        </button>
+      </form>
       {erro && (
         <p className="admin-pedido__alerta" role="alert">
           {erro}
