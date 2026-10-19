@@ -292,7 +292,7 @@ function Entrega({ pedido, onAtualizar }) {
   if (pedido.status === 'ENTREGUE') {
     return (
       <section className="admin-pedido__bloco" aria-labelledby="pedido-entregue">
-        <h2 id="pedido-entregue" className="rotulo">Entrega</h2>
+        <h2 id="pedido-entregue" className="rotulo">Entregue</h2>
         <p className="admin-pedido__texto">
           Entregue em {pedido.dataEntrega ? formatarData(pedido.dataEntrega) : '—'}. A cliente pode pedir troca até 7
           dias depois.
@@ -303,7 +303,7 @@ function Entrega({ pedido, onAtualizar }) {
 
   return (
     <section className="admin-pedido__bloco admin-pedido__entrega" aria-labelledby="pedido-entrega-marcar">
-      <h2 id="pedido-entrega-marcar" className="rotulo">Entrega</h2>
+      <h2 id="pedido-entrega-marcar" className="rotulo">Confirmar entrega</h2>
       <p className="admin-pedido__texto">
         Quando o rastreio mostrar que a peça chegou, marque aqui. O prazo de troca da cliente (7 dias) conta a partir
         dessa data.

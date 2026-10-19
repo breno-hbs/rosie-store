@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ApiError, buscarPedido, listarCategorias, listarPedidos, listarTrocas, solicitarTroca } from '../api.js'
 import Footer from '../components/Footer.jsx'
 import Nav from '../components/Nav.jsx'
-import { formatarData, formatarPreco, linkWhatsApp } from '../formato.js'
+import { formatarData, linkWhatsApp } from '../formato.js'
 import { MOTIVOS_TROCA, POLITICA_TROCA, dentroDoPrazo, textoFrete, trocaAberta } from '../troca.js'
 import useCarregar from '../useCarregar.js'
 import './SolicitarTroca.css'
@@ -145,6 +145,8 @@ function Formulario({ pedidos, trocas, pedidoInicial, onEnviada }) {
   const quantidade = escolha.pedidoId === pedidoId && escolha.quantidade ? escolha.quantidade : peca?.quantidade
 
   const escolhido = pedidos.find((p) => p.id === pedidoId)
+  // Pedido com todas as peças já em troca: não há o que enviar
+  const semPecaLivre = detalhe.id === pedidoId && detalhe.pedido !== null && livres.length === 0
   const urlInvalida = pedidoInicial !== null && !pedidos.some((p) => p.id === pedidoInicial)
 
   function escolherPedido(valor) {
@@ -211,7 +213,7 @@ function Formulario({ pedidos, trocas, pedidoInicial, onEnviada }) {
             <option value="">Selecionar pedido...</option>
             {pedidos.map((p) => (
               <option key={p.id} value={p.id}>
-                Pedido #{p.id} · {formatarPreco(p.valorTotal)} · troca até {formatarData(p.prazoTroca)}
+                Pedido #{p.id} · troca até {formatarData(p.prazoTroca)}
               </option>
             ))}
           </select>
@@ -232,47 +234,51 @@ function Formulario({ pedidos, trocas, pedidoInicial, onEnviada }) {
         />
       )}
 
-      <fieldset className="troca__motivos">
-        <legend className="eyebrow">Motivo da troca</legend>
-        <div className="troca__cartoes">
-          {MOTIVOS_TROCA.map((m) => (
-            <label key={m.id} className={`troca__motivo${motivo === m.id ? ' troca__motivo--escolhido' : ''}`}>
-              <input
-                type="radio"
-                name="motivo"
-                value={m.id}
-                checked={motivo === m.id}
-                onChange={() => setMotivo(m.id)}
-                className="troca__radio"
-              />
-              <span className="troca__motivo-nome">{m.nome}</span>
-              <span className="troca__motivo-frete">{m.frete}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {!semPecaLivre && (
+        <>
+          <fieldset className="troca__motivos">
+            <legend className="eyebrow">Motivo da troca</legend>
+            <div className="troca__cartoes">
+              {MOTIVOS_TROCA.map((m) => (
+                <label key={m.id} className={`troca__motivo${motivo === m.id ? ' troca__motivo--escolhido' : ''}`}>
+                  <input
+                    type="radio"
+                    name="motivo"
+                    value={m.id}
+                    checked={motivo === m.id}
+                    onChange={() => setMotivo(m.id)}
+                    className="troca__radio"
+                  />
+                  <span className="troca__motivo-nome">{m.nome}</span>
+                  <span className="troca__motivo-frete">{m.frete}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
-      <label className="campo">
-        <span className="eyebrow">Descreva o problema</span>
-        <textarea
-          className="campo__caixa troca__descricao"
-          rows={4}
-          maxLength={1000}
-          placeholder="Conte com detalhes o que aconteceu..."
-          value={observacao}
-          onChange={(e) => setObservacao(e.target.value)}
-        />
-      </label>
+          <label className="campo">
+            <span className="eyebrow">Descreva o problema</span>
+            <textarea
+              className="campo__caixa troca__descricao"
+              rows={4}
+              maxLength={1000}
+              placeholder="Conte com detalhes o que aconteceu..."
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+            />
+          </label>
 
-      {envio.erro && (
-        <p className="troca__erro" role="alert">
-          {envio.erro}
-        </p>
+          {envio.erro && (
+            <p className="troca__erro" role="alert">
+              {envio.erro}
+            </p>
+          )}
+
+          <button type="submit" className="botao botao--primario troca__enviar" disabled={envio.enviando}>
+            {envio.enviando ? 'Enviando…' : 'Enviar solicitação'}
+          </button>
+        </>
       )}
-
-      <button type="submit" className="botao botao--primario troca__enviar" disabled={envio.enviando}>
-        {envio.enviando ? 'Enviando…' : 'Enviar solicitação'}
-      </button>
 
       <p className="troca__nota">
         {POLITICA_TROCA} Pedidos podem ser trocados até 7 dias depois da entrega
