@@ -16,7 +16,6 @@ import com.rosie.backend.service.EmissorEtiqueta.NovoEnvio;
 import com.rosie.backend.service.EmissorEtiqueta.SituacaoEnvio;
 import com.rosie.backend.service.EmissorEtiqueta.Volume;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -50,26 +49,17 @@ public class EtiquetaService {
     private final PedidoRepository pedidoRepository;
     private final EmissorEtiqueta emissor;
     private final TransactionTemplate transacao;
-    private final BigDecimal pesoKg;
-    private final int larguraCm;
-    private final int alturaCm;
-    private final int comprimentoCm;
+    private final PacotePeca pacotePeca;
     private final Map<Long, ReentrantLock> travas = new ConcurrentHashMap<>();
 
     public EtiquetaService(PedidoRepository pedidoRepository,
                            EmissorEtiqueta emissor,
                            TransactionTemplate transacao,
-                           @Value("${rosie.frete.peca.peso-kg}") BigDecimal pesoKg,
-                           @Value("${rosie.frete.peca.largura-cm}") int larguraCm,
-                           @Value("${rosie.frete.peca.altura-cm}") int alturaCm,
-                           @Value("${rosie.frete.peca.comprimento-cm}") int comprimentoCm) {
+                           PacotePeca pacotePeca) {
         this.pedidoRepository = pedidoRepository;
         this.emissor = emissor;
         this.transacao = transacao;
-        this.pesoKg = pesoKg;
-        this.larguraCm = larguraCm;
-        this.alturaCm = alturaCm;
-        this.comprimentoCm = comprimentoCm;
+        this.pacotePeca = pacotePeca;
     }
 
     // Idempotente: com a etiqueta e o rastreio já no pedido, só devolve o pedido, sem chamar o Melhor Envio.
@@ -184,14 +174,28 @@ public class EtiquetaService {
                         item.getQuantidade(), item.getPrecoUnitario()))
                 .toList();
 
-        // Pacote padrão por peça (rosie.frete.peca.*, o mesmo da cotação), empilhadas numa caixa só: Correios
-        // não aceita mais de um volume por envio. Até o produto ter peso e medidas (#56).
-        int pecas = pedido.getItens().stream().mapToInt(PedidoItem::getQuantidade).sum();
-        Volume volume = new Volume(alturaCm * pecas, larguraCm, comprimentoCm,
-                pesoKg.multiply(BigDecimal.valueOf(pecas)));
+        Volume volume = volume(pedido.getItens());
 
         BigDecimal valorDeclarado = pedido.getValorTotal().subtract(pedido.getValorFrete());
         return new NovoEnvio(pedido.getId(), pedido.getServicoFreteId(), destinatario, itens, volume, valorDeclarado);
+    }
+
+    // O pacote de cada peça vem do PacotePeca, o mesmo da cotação (#56). As peças vão empilhadas numa caixa
+    // só (Correios não aceita mais de um volume por envio): alturas e pesos somados, largura e comprimento da
+    // maior peça.
+    private Volume volume(List<PedidoItem> itens) {
+        int altura = 0;
+        int largura = 0;
+        int comprimento = 0;
+        BigDecimal peso = BigDecimal.ZERO;
+        for (PedidoItem item : itens) {
+            PacotePeca.Medidas pacote = pacotePeca.de(item.getProduto());
+            altura += pacote.alturaCm() * item.getQuantidade();
+            largura = Math.max(largura, pacote.larguraCm());
+            comprimento = Math.max(comprimento, pacote.comprimentoCm());
+            peso = peso.add(pacote.pesoKg().multiply(BigDecimal.valueOf(item.getQuantidade())));
+        }
+        return new Volume(altura, largura, comprimento, peso);
     }
 
     private void atualizar(Long pedidoId, Consumer<Pedido> mudanca) {

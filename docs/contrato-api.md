@@ -622,7 +622,7 @@ Exige token `CLIENTE` (401 sem token, 403 com token de admin). Cota **as peças 
 
 **Falha do Melhor Envio:** timeout (5 s, `FRETE_TIMEOUT`), queda, erro 5xx ou resposta fora do formato → 502 `FRETE_FALHOU`. Servidor sem `MELHOR_ENVIO_TOKEN`/`ROSIE_CEP_ORIGEM`, ou token recusado (401/403 do Melhor Envio) → 503 `FRETE_INDISPONIVEL`. Um 422 do Melhor Envio apontando o CEP de destino vira 400 `DADOS_INVALIDOS`.
 
-**Pacote cotado (limitação até o produto ter peso e medidas):** cada linha do carrinho vai como um produto do Melhor Envio com a quantidade da linha, valor declarado (seguro) igual ao preço atual da peça e um pacote padrão por peça, configurável em `rosie.frete.peca.*`: **0,3 kg, 20 × 5 × 30 cm** (largura × altura × comprimento). O Melhor Envio junta as peças nos pacotes. Sem aviso de recebimento nem mão própria.
+**Pacote cotado (#56):** cada linha do carrinho vai como um produto do Melhor Envio com a quantidade da linha, valor declarado (seguro) igual ao preço atual da peça e o pacote de uma peça embalada: o peso e as medidas cadastrados no produto (`pacote` no painel, ver "Criar produto"). **Campo vazio usa o pacote padrão só nele**, configurável em `rosie.frete.peca.*`: **0,3 kg, 20 × 5 × 30 cm** (largura × altura × comprimento); produto sem nada preenchido vai inteiro com o padrão. Ex.: peso 1,2 kg e o resto vazio → 1,2 kg, 20 × 5 × 30 cm. O Melhor Envio junta as peças nos pacotes. A etiqueta usa a mesma montagem (ver "Gerar etiqueta"). Sem aviso de recebimento nem mão própria.
 
 **Modo de desenvolvimento:** com `FRETE_SIMULADO=true` a API não chama o Melhor Envio e devolve opções fixas (PAC, SEDEX e Jadlog .Package, com preço subindo por peça extra); o CEP `99999-999` responde `opcoes: []`. Nunca ligar em produção.
 
@@ -857,7 +857,7 @@ Serve às duas telas do painel: "Lista de Produtos" usa `estoqueTotal` e "Gestã
 ### Detalhe de um produto no painel
 `GET /admin/produtos/{id}`
 
-Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também responde para produto inativo. Diferente da loja, `imagens` traz cada foto com `id`, `ordem` e `enquadramento` (`ProdutoImagemDTO`), para o painel remover e reordenar; a de `ordem` 0 é a principal. A `url` é a mesma da loja, já em 4:5.
+Mesmo formato do `GET /produtos/{id}`, mais `ativo`, `destaque` e `pacote` (peso e medidas da peça embalada, para o frete; só no painel, a loja não recebe). `pacote` vem sempre, com `null` nos campos não preenchidos. Também responde para produto inativo. Diferente da loja, `imagens` traz cada foto com `id`, `ordem` e `enquadramento` (`ProdutoImagemDTO`), para o painel remover e reordenar; a de `ordem` 0 é a principal. A `url` é a mesma da loja, já em 4:5.
 
 ```json
 // Response 200 — ProdutoAdminDTO
@@ -871,7 +871,8 @@ Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também respon
   "imagens": [ { "id": 3, "url": "https://res.cloudinary.com/<cloud>/image/upload/c_fill,ar_4:5,g_auto/c_limit,w_1000/f_auto,q_auto/v1/rosie/produtos/abc123.jpg", "ordem": 0, "enquadramento": "AUTOMATICO" } ],
   "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ],
   "ativo": true,
-  "destaque": false
+  "destaque": false,
+  "pacote": { "pesoKg": 0.450, "alturaCm": 6, "larguraCm": 25, "comprimentoCm": null }
 }
 ```
 
@@ -887,7 +888,8 @@ Mesmo formato do `GET /produtos/{id}`, mais `ativo` e `destaque`. Também respon
   "preco": 189.00,
   "categoriaId": 1,
   "destaque": false,
-  "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ]
+  "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ],
+  "pacote": { "pesoKg": 0.45, "alturaCm": 6, "larguraCm": 25, "comprimentoCm": 35 }
 }
 // Response 201 — ProdutoAdminDTO (o produto criado, no formato do GET /admin/produtos/{id})
 // Response 400
@@ -905,9 +907,10 @@ Campos:
 | `categoriaId` | Obrigatório. Categoria que não existe responde **400** `DADOS_INVALIDOS` ("Categoria não encontrada"), não 404: o erro está no corpo, não no recurso da URL |
 | `destaque` | Opcional (padrão `false`). Marca o produto para o carrossel e o Best Sellers da Home (`GET /produtos/destaques`) |
 | `ativo` | Opcional (padrão `true`) |
+| `pacote` | Opcional (#56). Peso e medidas de **uma peça já embalada**, usados na cotação do frete e na etiqueta: `pesoKg` (maior que zero, até 30 kg, até 3 casas decimais), `alturaCm`, `larguraCm` e `comprimentoCm` (inteiros de 1 a 100). Cada um é opcional: `null` usa o pacote padrão do frete naquele campo (ver "Calcular frete"). Produtos que já existiam ficam com os quatro `null`. No PUT, `pacote` ausente (ou `null`) mantém os quatro valores atuais; presente substitui os quatro de uma vez (campo ausente ou `null` dentro dele volta para o padrão) |
 | `estoque` | Opcional, **só no POST** (estoque inicial). Só os tamanhos que o produto tem: cada `tamanho` é `P`, `M`, `G` ou `GG`, sem repetir, e `quantidade` é inteiro `>= 0` (`0` = esgotado). Tamanho fora da lista não é vendido. Depois do cadastro, o estoque muda só por `PUT /admin/produtos/{id}/estoque` |
 
-Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O preço deve ser maior que zero", "Selecione a categoria", "Categoria não encontrada", "Tamanho inválido: use P, M, G ou GG", "Tamanho P repetido no estoque", "A quantidade não pode ser negativa".
+Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O preço deve ser maior que zero", "Selecione a categoria", "Categoria não encontrada", "Tamanho inválido: use P, M, G ou GG", "Tamanho P repetido no estoque", "A quantidade não pode ser negativa", "O peso deve ser maior que zero", "O peso pode ser de até 30 kg", "Peso inválido: use até 3 casas decimais", "A altura da embalagem deve ser de pelo menos 1 cm", "A altura da embalagem pode ser de até 100 cm" (idem para largura e comprimento).
 
 ### Editar produto
 `PUT /admin/produtos/{id}`
@@ -921,12 +924,13 @@ Mensagens de 400 em uso: "Informe o nome do produto", "Informe o preço", "O pre
   "preco": 189.00,
   "categoriaId": 1,
   "destaque": false,
-  "ativo": true
+  "ativo": true,
+  "pacote": { "pesoKg": 0.45, "alturaCm": 6, "larguraCm": 25, "comprimentoCm": null }
 }
 // Response 200 — ProdutoAdminDTO atualizado (com o estoque atual, que não muda)
 ```
 
-Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque`, `ativo`, `descricao` e `composicao` ausentes (ou `null`) mantêm o valor atual; `descricao` e `composicao` vazias limpam o campo.
+Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque`, `ativo`, `descricao`, `composicao` e `pacote` ausentes (ou `null`) mantêm o valor atual; `descricao` e `composicao` vazias limpam o campo. O `pacote` vai inteiro: o formulário do painel sempre manda os quatro campos, e para voltar um deles ao padrão basta mandá-lo `null` (o Reativar da lista não manda `pacote` e não mexe nele).
 
 **Decisão (#47): a edição não mexe no estoque, e um `estoque` no corpo é ignorado** (não dá 400). O estoque muda só por `PUT /admin/produtos/{id}/estoque` (tela "Gestão de Estoque"). Antes, o PUT substituía o estoque inteiro, e um formulário de edição aberto antes de uma mudança de estoque (pela tela de estoque ou, mais adiante, por uma venda) desfazia essa mudança ao salvar. Ignorar em vez de rejeitar é o que o back já faz com qualquer campo que o DTO não tem, e não quebra um cliente antigo que ainda mande o campo; o que importa é que ele não tem efeito.
 
@@ -1220,7 +1224,7 @@ Compra e gera a etiqueta de envio no Melhor Envio para um pedido `PAGO` e devolv
 
 **Passos no Melhor Envio**, cada um gravado no pedido assim que volta:
 
-1. `POST /api/v2/me/cart`: põe o envio no carrinho, com o serviço escolhido no checkout (`pedido.servicoFreteId`), o remetente (`ROSIE_REMETENTE_*` e `ROSIE_CEP_ORIGEM`), o destinatário (nome, telefone e e-mail da cliente e o endereço do pedido), a declaração de conteúdo (uma linha por peça, "Conjunto Serpente (M)", com quantidade e preço pago; `non_commercial: true`, sem nota fiscal), o valor declarado (soma das peças, sem o frete) e a tag "Pedido {id}" (para achar o envio no painel do Melhor Envio). **Volume:** um pacote só (Correios não aceita mais de um por envio), com o pacote padrão por peça do frete (`rosie.frete.peca.*`: 20 × 5 × 30 cm, 0,3 kg) empilhado: altura e peso multiplicados pelo número de peças. Vale até o produto ter peso e medidas (#56). O `id` devolvido vira `envioId`.
+1. `POST /api/v2/me/cart`: põe o envio no carrinho, com o serviço escolhido no checkout (`pedido.servicoFreteId`), o remetente (`ROSIE_REMETENTE_*` e `ROSIE_CEP_ORIGEM`), o destinatário (nome, telefone e e-mail da cliente e o endereço do pedido), a declaração de conteúdo (uma linha por peça, "Conjunto Serpente (M)", com quantidade e preço pago; `non_commercial: true`, sem nota fiscal), o valor declarado (soma das peças, sem o frete) e a tag "Pedido {id}" (para achar o envio no painel do Melhor Envio). **Volume:** um pacote só (Correios não aceita mais de um por envio), com as peças empilhadas. O pacote de cada peça é o mesmo da cotação (peso e medidas do produto, com o padrão `rosie.frete.peca.*` nos campos vazios, #56): alturas e pesos somados (vezes a quantidade), largura e comprimento da maior peça. Ex.: 2 vestidos sem medidas (20 × 5 × 30 cm, 0,3 kg) + 1 calça de 25 × 8 × 35 cm e 1,2 kg → 25 × 18 × 35 cm, 1,8 kg. Usa as medidas atuais do produto na hora de gerar a etiqueta, não as da compra. O `id` devolvido vira `envioId`.
 2. `POST /api/v2/me/shipment/checkout`: compra com o saldo da conta.
 3. `POST /api/v2/me/shipment/generate`: gera a etiqueta.
 4. `POST /api/v2/me/shipment/print` (`mode: private`): link de impressão, que vira `urlEtiqueta`.

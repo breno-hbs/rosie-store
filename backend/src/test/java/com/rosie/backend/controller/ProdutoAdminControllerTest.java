@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -186,6 +187,79 @@ class ProdutoAdminControllerTest {
     }
 
     @Test
+    void pacoteDoFreteSoApareceNoPainelEEdicaoSemPacoteMantem() throws Exception {
+        String criado = mockMvc.perform(comAdmin(post("/admin/produtos")).content(corpoComPacote(
+                        "{\"pesoKg\":0.85,\"alturaCm\":8,\"larguraCm\":25,\"comprimentoCm\":35}")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.pacote.pesoKg").value(0.85))
+                .andExpect(jsonPath("$.pacote.alturaCm").value(8))
+                .andExpect(jsonPath("$.pacote.larguraCm").value(25))
+                .andExpect(jsonPath("$.pacote.comprimentoCm").value(35))
+                .andReturn().getResponse().getContentAsString();
+        Integer id = JsonPath.read(criado, "$.id");
+
+        // o DTO público não leva o pacote
+        mockMvc.perform(get("/produtos/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pacote").doesNotExist());
+
+        // PUT sem "pacote" (como o Reativar da lista) mantém o peso e as medidas
+        mockMvc.perform(comAdmin(put("/admin/produtos/" + id)).content(corpoEdicao("Editado", false)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pacote.pesoKg").value(0.85))
+                .andExpect(jsonPath("$.pacote.comprimentoCm").value(35));
+
+        // PUT com o pacote troca os quatro: o que vem nulo volta para o padrão
+        mockMvc.perform(comAdmin(put("/admin/produtos/" + id)).content("""
+                        {"nome":"Editado","preco":120.00,"categoriaId":%d,"pacote":{"pesoKg":1.2,"alturaCm":null}}
+                        """.formatted(categoria.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pacote.pesoKg").value(1.2))
+                .andExpect(jsonPath("$.pacote.alturaCm").value(nullValue()))
+                .andExpect(jsonPath("$.pacote.larguraCm").value(nullValue()))
+                .andExpect(jsonPath("$.pacote.comprimentoCm").value(nullValue()));
+    }
+
+    @Test
+    void produtoSemPacoteVemComOsCamposNulos() throws Exception {
+        mockMvc.perform(comAdmin(post("/admin/produtos")).content(corpo("Produto", "100.00", categoria.getId(), "[]", false)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.pacote.pesoKg").value(nullValue()))
+                .andExpect(jsonPath("$.pacote.alturaCm").value(nullValue()));
+    }
+
+    @Test
+    void pesoZeroOuAcimaDe30KgRetorna400() throws Exception {
+        esperarDadosInvalidos(corpoComPacote("{\"pesoKg\":0}"), "O peso deve ser maior que zero");
+        esperarDadosInvalidos(corpoComPacote("{\"pesoKg\":-0.3}"), "O peso deve ser maior que zero");
+        esperarDadosInvalidos(corpoComPacote("{\"pesoKg\":30.5}"), "O peso pode ser de até 30 kg");
+        esperarDadosInvalidos(corpoComPacote("{\"pesoKg\":0.1234}"), "Peso inválido: use até 3 casas decimais");
+    }
+
+    @Test
+    void medidaForaDe1A100CmRetorna400() throws Exception {
+        esperarDadosInvalidos(corpoComPacote("{\"alturaCm\":0}"), "A altura da embalagem deve ser de pelo menos 1 cm");
+        esperarDadosInvalidos(corpoComPacote("{\"larguraCm\":101}"), "A largura da embalagem pode ser de até 100 cm");
+        esperarDadosInvalidos(corpoComPacote("{\"comprimentoCm\":-5}"),
+                "O comprimento da embalagem deve ser de pelo menos 1 cm");
+    }
+
+    @Test
+    void pacoteInvalidoNaEdicaoRetorna400() throws Exception {
+        String criado = mockMvc.perform(comAdmin(post("/admin/produtos")).content(corpo("Produto", "100.00",
+                        categoria.getId(), "[]", false)))
+                .andReturn().getResponse().getContentAsString();
+        Integer id = JsonPath.read(criado, "$.id");
+
+        mockMvc.perform(comAdmin(put("/admin/produtos/" + id)).content("""
+                        {"nome":"Produto","preco":100.00,"categoriaId":%d,"pacote":{"comprimentoCm":150}}
+                        """.formatted(categoria.getId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O comprimento da embalagem pode ser de até 100 cm"))
+                .andExpect(jsonPath("$.codigo").value("DADOS_INVALIDOS"));
+    }
+
+    @Test
     void produtoInexistenteRetorna404() throws Exception {
         mockMvc.perform(comAdmin(put("/admin/produtos/-1")).content(corpo("Produto", "100.00", categoria.getId(), "[]", false)))
                 .andExpect(status().isNotFound())
@@ -229,6 +303,12 @@ class ProdutoAdminControllerTest {
         return """
                 {"nome":"%s","descricao":"Tecido leve","preco":%s,"categoriaId":%d,"destaque":%b,"estoque":%s}
                 """.formatted(nome, preco, categoriaId, destaque, estoque);
+    }
+
+    private String corpoComPacote(String pacote) {
+        return """
+                {"nome":"Calça Jeans","preco":149.90,"categoriaId":%d,"estoque":[],"pacote":%s}
+                """.formatted(categoria.getId(), pacote);
     }
 
     private String corpoEdicao(String nome, boolean destaque) {

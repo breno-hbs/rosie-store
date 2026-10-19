@@ -274,6 +274,13 @@
   opacity: 1;
 }
 
+/* Peso e medidas da embalagem para o frete (#56): 2 por linha no celular, 4 a partir do tablet */
+.produto-form__pacote {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 /* Estoque só para leitura na edição (#47) */
 dl.produto-form__tamanhos {
   margin: 0;
@@ -341,6 +348,10 @@ dl.produto-form__tamanhos {
 @media (min-width: 768px) {
   .produto-form__linha {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .produto-form__pacote {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

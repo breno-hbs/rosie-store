@@ -107,6 +107,64 @@ class FreteServiceTests {
     }
 
     @Test
+    void produtoComPesoEMedidasVaiComOProprioPacote() {
+        produto.setPesoKg(new BigDecimal("0.850"));
+        produto.setAlturaCm(8);
+        produto.setLarguraCm(25);
+        produto.setComprimentoCm(35);
+        produtoRepository.save(produto);
+        adicionar(Tamanho.P, 1);
+
+        freteService.calcular(cliente.getId(), "03925050");
+
+        assertThat(calculadora.chamadas.get(0).pecas()).containsExactly(new PecaFrete(
+                "produto-" + produto.getId() + "-P", 1, new BigDecimal("159.90"),
+                new BigDecimal("0.850"), 25, 8, 35));
+    }
+
+    @Test
+    void campoVazioNoProdutoUsaOPacotePadraoSoNele() {
+        produto.setPesoKg(new BigDecimal("1.2"));
+        produto.setComprimentoCm(40);
+        produtoRepository.save(produto);
+        adicionar(Tamanho.P, 1);
+
+        freteService.calcular(cliente.getId(), "03925050");
+
+        // largura (20) e altura (5) do padrão
+        PecaFrete peca = calculadora.chamadas.get(0).pecas().get(0);
+        assertThat(peca.pesoKg()).isEqualByComparingTo("1.2");
+        assertThat(peca.larguraCm()).isEqualTo(20);
+        assertThat(peca.alturaCm()).isEqualTo(5);
+        assertThat(peca.comprimentoCm()).isEqualTo(40);
+    }
+
+    @Test
+    void carrinhoMisturadoCotaCadaPecaComOPacoteDoSeuProduto() {
+        Produto calca = Produto.builder()
+                .nome("Calça Jeans")
+                .preco(new BigDecimal("149.90"))
+                .categoria(produto.getCategoria())
+                .pesoKg(new BigDecimal("0.9"))
+                .alturaCm(6)
+                .larguraCm(30)
+                .comprimentoCm(40)
+                .build();
+        calca.getEstoque().add(ProdutoEstoque.builder().produto(calca).tamanho(Tamanho.G).quantidade(2).build());
+        produtoRepository.save(calca);
+        adicionar(Tamanho.P, 2);
+        adicionar(calca, Tamanho.G, 1);
+
+        freteService.calcular(cliente.getId(), "03925050");
+
+        assertThat(calculadora.chamadas.get(0).pecas()).containsExactly(
+                new PecaFrete("produto-" + produto.getId() + "-P", 2, new BigDecimal("159.90"),
+                        new BigDecimal("0.3"), 20, 5, 30),
+                new PecaFrete("produto-" + calca.getId() + "-G", 1, new BigDecimal("149.90"),
+                        new BigDecimal("0.900"), 30, 6, 40)); // escala da coluna peso_kg
+    }
+
+    @Test
     void semOpcoesDevolveListaVazia() {
         adicionar(Tamanho.P, 1);
 
@@ -143,6 +201,10 @@ class FreteServiceTests {
     }
 
     private void adicionar(Tamanho tamanho, int quantidade) {
+        adicionar(produto, tamanho, quantidade);
+    }
+
+    private void adicionar(Produto produto, Tamanho tamanho, int quantidade) {
         carrinhoItemRepository.save(CarrinhoItem.builder()
                 .usuario(cliente)
                 .produto(produto)

@@ -44,6 +44,20 @@ public class Produto {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal preco;
 
+    // Peso e medidas da peça embalada, para o frete e a etiqueta (#56). Opcionais, nulos nos produtos que
+    // já existiam: o que estiver nulo usa o pacote padrão (rosie.frete.peca.*, ver PacotePeca)
+    @Column(name = "peso_kg", precision = 5, scale = 3)
+    private BigDecimal pesoKg;
+
+    @Column(name = "altura_cm")
+    private Integer alturaCm;
+
+    @Column(name = "largura_cm")
+    private Integer larguraCm;
+
+    @Column(name = "comprimento_cm")
+    private Integer comprimentoCm;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean ativo = true;
