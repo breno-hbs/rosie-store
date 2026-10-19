@@ -87,7 +87,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | Código | HTTP | Quando |
 |---|---|---|
 | `RECURSO_NAO_ENCONTRADO` | 404 | Recurso buscado por id não existe (ex.: `GET /produtos/{id}`) |
-| `DADOS_INVALIDOS` | 400 | Corpo ausente, JSON malformado ou campo inválido (ex.: e-mail vazio no login, preço zero, categoria inexistente ou tamanho repetido no cadastro de produto); `erro` traz a mensagem do primeiro campo |
+| `DADOS_INVALIDOS` | 400 | Corpo ausente, JSON malformado ou campo inválido (ex.: e-mail vazio no login, preço zero, categoria inexistente ou tamanho repetido no cadastro de produto); `erro` traz a mensagem de um campo só: o primeiro inválido na ordem do DTO e, se ele quebra mais de uma regra, a de obrigatório (ex.: "Informe o telefone") antes da de formato |
 | `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada, usuário sem permissão ou conta excluída (mesma resposta em todos os casos) |
 | `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado, expirado ou de uma conta excluída |
 | `ACESSO_NEGADO` | 403 | Token válido, mas sem a role exigida (ex.: token de cliente em `/admin/**`) |
