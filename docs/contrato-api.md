@@ -330,6 +330,7 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `ROSIE_API_URL` | Não (faltando qualquer uma, o checkout responde 503) | Pagamento pelo Mercado Pago; ver "Finalizar pedido" |
 | `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago |
 | `TROCA_PRAZO_DIAS` | Não (padrão `7`) | Prazo para pedir troca, em dias corridos depois da entrega; ver "Troca e devolução" |
+| `ROSIE_RASTREIO_ATIVO`, `ROSIE_RASTREIO_INTERVALO`, `ROSIE_RASTREIO_LOTE`, `ROSIE_RASTREIO_PAUSA` | Não (padrões `true`, `6h`, `50`, `1s`) | Entrega pelo rastreio: liga/desliga, intervalo entre as rodadas, pedidos por rodada e pausa entre as consultas ao Melhor Envio; ver "Entrega pelo rastreio". Só roda com `MELHOR_ENVIO_TOKEN` |
 | `JPA_SHOW_SQL` | Não (padrão `false`) | `true` mostra no log os comandos SQL (com `?` no lugar dos valores), para depurar. Desligado para não encher o log da hospedagem |
 
 O admin inicial é criado na subida da API só enquanto não existir nenhum usuário `ADMIN`; depois as três variáveis `ROSIE_ADMIN_*` são ignoradas.
@@ -675,7 +676,7 @@ Exige token `CLIENTE`. Fecha o pedido com **o carrinho inteiro** da cliente do t
 | `PAGO` | Pagamento aprovado: o estoque já baixou e as peças saíram da sacola |
 | `PAGO_COM_PENDENCIA` | Pagamento aprovado, mas o pedido não fechou sozinho: faltou estoque (outra cliente pagou antes a última peça) ou o valor pago não bate com o total. **O estoque não baixa** (nunca fica negativo), as peças saem da sacola e o motivo fica gravado em `pedido.pendencia` para a Roseane resolver (enviar quando repor, combinar troca ou devolver o dinheiro pelo Mercado Pago). O painel de pedidos (#25) mostra o motivo no detalhe do pedido; resolver a pendência pelo painel ainda não existe |
 | `ENVIADO` | A Roseane gerou a etiqueta no painel (ver "Painel admin — Pedidos e etiqueta"): a etiqueta foi comprada e gerada no Melhor Envio e o pedido tem `codigoRastreio` (assim que o Melhor Envio devolver). A peça pode ainda não ter sido postada |
-| `ENTREGUE` | A Roseane marcou no painel que a peça chegou (ver "Marcar como entregue"), com a data da entrega (`dataEntrega`). Daí conta o prazo de troca. Acompanhar o rastreio para marcar sozinho fica para outra issue |
+| `ENTREGUE` | A peça chegou, com a data da entrega (`dataEntrega`): confirmada sozinha pelo rastreio do Melhor Envio (ver "Entrega pelo rastreio") ou marcada pela Roseane no painel (ver "Marcar como entregue"). Daí conta o prazo de troca |
 | `CANCELADO` | Pagamento cancelado ou expirado no Mercado Pago (ex.: PIX não pago no prazo). Se mesmo assim chegar um pagamento aprovado depois, ele é processado como qualquer aprovação |
 
 Na tabela `pedido` a coluna `status` é `VARCHAR(30)`. **Banco criado antes da #24** (o `ddl-auto=update` não muda o tipo de coluna que já existe, e a coluna era `ENUM` sem os status novos): rode uma vez `ALTER TABLE pedido MODIFY status VARCHAR(30) NOT NULL;`.
@@ -734,7 +735,7 @@ Exige token `CLIENTE`. Pedido de outra cliente responde **404** `RECURSO_NAO_ENC
 }
 ```
 
-`urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra. `codigoRastreio` fica `null` até a Roseane gerar a etiqueta (#25); depois traz o código da transportadora ou, enquanto ela não devolve, o do Melhor Envio (os dois rastreáveis no [Melhor Rastreio](https://www.melhorrastreio.com.br)). O link da etiqueta não vem aqui: é só do painel. `dataEntrega` (o dia em que a peça chegou) e `prazoTroca` (o último dia para pedir troca, ver "Troca e devolução") ficam `null` até a Roseane marcar o pedido como entregue.
+`urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra. `codigoRastreio` fica `null` até a Roseane gerar a etiqueta (#25); depois traz o código da transportadora ou, enquanto ela não devolve, o do Melhor Envio (os dois rastreáveis no [Melhor Rastreio](https://www.melhorrastreio.com.br)). O link da etiqueta não vem aqui: é só do painel. `dataEntrega` (o dia em que a peça chegou) e `prazoTroca` (o último dia para pedir troca, ver "Troca e devolução") ficam `null` até o pedido ser entregue (pelo rastreio ou pela Roseane no painel).
 
 O detalhe do pedido na Minha Conta (#26) também usa esta rota: mostra itens, endereço, frete, status e, quando a etiqueta (#25) preencher, o `codigoRastreio` com o link "Acompanhar a entrega" (um `urlRastreio` no pedido, se a #25 acrescentar; senão o Melhor Rastreio com o código). Com `urlPagamento`, a tela oferece "Pagar agora".
 
@@ -761,7 +762,7 @@ Exige token `CLIENTE`. Todos os pedidos da cliente do token (inclusive os que es
 
 A cliente pede a troca (ou devolução) de **uma peça** de um pedido dela: o produto no tamanho comprado. Quem paga o frete de volta (`freteConta`) é calculado no servidor a partir do motivo e nunca vem da requisição (RNF08): `DEFEITO` → `ROSIE`; `NAO_SERVIU` → `CLIENTE` (a política do RF07). O motivo vale para troca e para devolução do dinheiro: qual das duas a cliente quer, ela conta na `observacao` e combina com a Roseane.
 
-**Prazo (decisão #27): 7 dias corridos depois da entrega**, contando o dia da entrega como dia 0 e valendo o sétimo dia inteiro (entregue em 20/08, pode pedir até 27/08). É o direito de arrependimento do CDC (art. 49) para compra fora da loja física. O dia da entrega é o que a Roseane marca no painel (ver "Marcar como entregue"), e "hoje" é sempre o dia em São Paulo. O prazo é configurável por `TROCA_PRAZO_DIAS` (padrão 7; maior se a Roseane quiser dar mais tempo, nunca menor que 7). Para defeito, o CDC dá mais tempo para reclamar (art. 26: 30 ou 90 dias, conforme o produto): fora do prazo da loja, a cliente fala com a Roseane pelo WhatsApp.
+**Prazo (decisão #27): 7 dias corridos depois da entrega**, contando o dia da entrega como dia 0 e valendo o sétimo dia inteiro (entregue em 20/08, pode pedir até 27/08). É o direito de arrependimento do CDC (art. 49) para compra fora da loja física. O dia da entrega é o que a transportadora informa no rastreio (ver "Entrega pelo rastreio") ou o que a Roseane marca no painel (ver "Marcar como entregue"), e "hoje" é sempre o dia em São Paulo. O prazo é configurável por `TROCA_PRAZO_DIAS` (padrão 7; maior se a Roseane quiser dar mais tempo, nunca menor que 7). Para defeito, o CDC dá mais tempo para reclamar (art. 26: 30 ou 90 dias, conforme o produto): fora do prazo da loja, a cliente fala com a Roseane pelo WhatsApp.
 
 ### Pedir troca
 `POST /trocas`
@@ -1182,6 +1183,7 @@ Os campos do `GET /pedidos/{id}` da cliente (menos `urlPagamento` e `prazoTroca`
   "etiquetaGeradaEm": "2026-10-18T16:02:00",
   "codigoRastreio": "AA123456789BR",
   "dataEntrega": null,
+  "origemEntrega": null,
   "createdAt": "2026-10-18T14:30:00",
   "endereco": { "id": 5, "cep": "03925050", "logradouro": "Rua das Flores", "numero": "120", "complemento": null,
                 "bairro": "Jardim Iva", "cidade": "São Paulo", "estado": "SP" },
@@ -1199,7 +1201,8 @@ Os campos do `GET /pedidos/{id}` da cliente (menos `urlPagamento` e `prazoTroca`
 | `urlEtiqueta` | Link para abrir e imprimir a etiqueta (link **privado** do Melhor Envio: abre com a conta da loja logada lá). `null` até a etiqueta ficar pronta |
 | `etiquetaGeradaEm` | Quando a etiqueta ficou pronta |
 | `codigoRastreio` | Código da transportadora; enquanto ela não devolve, o do Melhor Envio. Pode ficar `null` logo depois de gerar (ver abaixo) |
-| `dataEntrega` | Dia em que a peça chegou, marcado pela Roseane (#27); `null` antes |
+| `dataEntrega` | Dia em que a peça chegou, informado pelo rastreio (#64) ou marcado pela Roseane (#27); `null` antes |
+| `origemEntrega` | Quem confirmou a entrega: `RASTREIO` (a rotina do rastreio, #64) ou `MANUAL` (o botão "Marcar como entregue", #27; também os pedidos entregues antes da #64). `null` antes da entrega. O painel mostra "Entrega confirmada pelo rastreio" ou "Entrega marcada à mão" |
 
 ### Gerar etiqueta
 `POST /admin/pedidos/{id}/etiqueta` (sem corpo)
@@ -1241,7 +1244,7 @@ Compra e gera a etiqueta de envio no Melhor Envio para um pedido `PAGO` e devolv
 ### Marcar como entregue
 `POST /admin/pedidos/{id}/entregue`
 
-A Roseane confirma que a peça chegou (#27), olhando o rastreio: o pedido passa de `ENVIADO` para `ENTREGUE` e grava `dataEntrega`, de onde conta o prazo de troca.
+A Roseane confirma que a peça chegou (#27), olhando o rastreio: o pedido passa de `ENVIADO` para `ENTREGUE` e grava `dataEntrega` (com `origemEntrega: "MANUAL"`), de onde conta o prazo de troca. Desde a #64 o sistema confirma sozinho pelo rastreio (ver "Entrega pelo rastreio"); o botão continua como plano B (transportadora sem rastreio, atraso na atualização).
 
 ```json
 // Request (opcional): o dia da entrega, se não foi hoje. Sem corpo, ou sem a data, vale hoje (em São Paulo)
@@ -1252,9 +1255,28 @@ A Roseane confirma que a peça chegou (#27), olhando o rastreio: o pedido passa 
 | Situação | Resposta |
 |---|---|
 | Pedido `ENVIADO` | 200, vira `ENTREGUE` |
-| Pedido já `ENTREGUE` | 200 com o pedido como está (a data não muda) |
+| Pedido já `ENTREGUE` (à mão ou pelo rastreio) | 200 com o pedido como está (a data e a origem não mudam) |
 | Qualquer outro status | 409 `PEDIDO_NAO_ENVIADO` |
 | `dataEntrega` no futuro, ou antes do dia em que a etiqueta foi gerada | 400 `DADOS_INVALIDOS` |
+
+### Entrega pelo rastreio (#64)
+Sem rota: uma rotina agendada da API faz o mesmo que o botão "Marcar como entregue", sozinha.
+
+A cada `ROSIE_RASTREIO_INTERVALO` (padrão 6 h; a primeira rodada sai 1 min depois de a API subir), a API consulta no Melhor Envio (`POST /api/v2/me/shipment/tracking`, o mesmo passo 5 da etiqueta) os pedidos `ENVIADO` que têm `envioId` e `codigoRastreio`. Quando o envio vem `delivered`, o pedido passa a `ENTREGUE` com `origemEntrega: "RASTREIO"` e `dataEntrega` igual ao dia de `delivered_at` em São Paulo (o Melhor Envio manda `"2026-10-17 14:46:00"`, no horário de Brasília; com fuso, é convertido). Sem `delivered_at`, vale o dia da consulta (e fica registrado no log). Os outros estados do rastreio (postado, em trânsito, devolvido, extraviado) não mudam nada.
+
+| Regra | Como fica |
+|---|---|
+| Mesma regra do botão | O mesmo serviço do `POST /admin/pedidos/{id}/entregue`: só `ENVIADO` avança; a data não pode ser no futuro nem antes do dia da etiqueta (fora disso o pedido fica `ENVIADO` e o erro vai para o log) |
+| Pedido já `ENTREGUE` | Nem é consultado; a data e a origem nunca mudam, seja a entrega marcada à mão ou por uma rodada anterior |
+| Clique e rodada ao mesmo tempo | A linha do pedido fica travada até o fim da confirmação: quem chega depois encontra o pedido entregue e não muda nada. Duas rodadas ao mesmo tempo (duas instâncias da API) também não se atropelam |
+| Erro do Melhor Envio num pedido | Vai para o log e a rodada segue com os próximos; o pedido é consultado de novo na rodada seguinte. Token recusado (401/403) encerra a rodada |
+| Limites da API | No máximo `ROSIE_RASTREIO_LOTE` pedidos por rodada (padrão 50), um de cada vez, com `ROSIE_RASTREIO_PAUSA` entre as consultas (padrão 1 s). A fila começa pelos consultados há mais tempo, então os que ficaram de fora entram na rodada seguinte |
+| Sem `MELHOR_ENVIO_TOKEN` (ou sem a configuração da etiqueta) | Não roda e avisa uma vez no log; a entrega fica para o botão |
+| `ROSIE_RASTREIO_ATIVO=false` | Desliga a rotina (os testes do back rodam assim) |
+
+**Decisão (#64): rotina agendada, não webhook.** O webhook do Melhor Envio é dos aplicativos cadastrados com OAuth (exige app, URL pública e validação de assinatura), e a loja usa um token pessoal. Algumas consultas por dia bastam para abrir o prazo de troca sem a Roseane precisar clicar.
+
+**Modo de desenvolvimento:** com `FRETE_SIMULADO=true`, a etiqueta simulada conta como entregue no dia em que foi gerada (enquanto a API não reinicia), e a rodada seguinte marca o pedido `ENTREGUE` pelo rastreio. Para testar o botão em vez da rotina, `ROSIE_RASTREIO_ATIVO=false`.
 
 ---
 
