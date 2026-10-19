@@ -1294,6 +1294,10 @@ Todas as trocas de todas as clientes, da mais recente para a mais antiga, sem pa
 
 Só pelos caminhos de "Status da troca" (`SOLICITADA` → `APROVADA`/`RECUSADA`; `APROVADA` → `CONCLUIDA`); fora deles, 409 `STATUS_TROCA_INVALIDO`. Mandar o status atual de novo só troca o recado. Sem `resposta` (ou com ela em branco), fica o recado anterior. Status ausente ou desconhecido: 400 `DADOS_INVALIDOS`.
 
+**E-mail à cliente (#65).** Quando o status **muda** (para `APROVADA`, `RECUSADA` ou `CONCLUIDA`), a cliente recebe um e-mail no endereço da conta com o número do pedido, a peça, o tamanho, a quantidade, o novo status em linguagem simples e a `resposta` mandada **nesta** requisição, quando houver (o recado de uma mudança anterior não se repete). Na aprovação, o e-mail diz quem paga o frete de devolução (`freteConta`) e o próximo passo; na recusa, traz a `resposta` como motivo e os contatos da loja (WhatsApp, se `ROSIE_WHATSAPP_NUMERO` estiver definido, e Instagram). Mandar o status atual de novo **não** reenvia o e-mail. Conta excluída (LGPD, #31) não recebe e-mail.
+
+O e-mail é um efeito colateral que não muda a resposta: sai **depois do commit**, numa fila própria da API, e a resposta não espera o envio. Se o envio falhar (Resend fora do ar, domínio não verificado, chave inválida), o status continua mudado, a resposta é a mesma 200 e o erro só vai para o log da API; não há nova tentativa. Sem `RESEND_API_KEY` (dev local, CI), o e-mail não sai e o log registra só o destinatário mascarado e o assunto.
+
 ---
 
 ## Decisão: autenticação via JWT (confirmado)
