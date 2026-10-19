@@ -26,7 +26,11 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `PUT /enderecos/{id}` | Implementado (exige token `CLIENTE`; 400; 404; endereço já usado em pedido volta com id novo) | `EnderecoDTO` |
 | `DELETE /enderecos/{id}` | Implementado (exige token `CLIENTE`; 204; 404; endereço já usado em pedido só é arquivado) | — |
 | `POST /pedidos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 `CARRINHO_VAZIO`/`ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`/`FRETE_ALTERADO`; 502 `FRETE_FALHOU`/`PAGAMENTO_FALHOU`; 503 `FRETE_INDISPONIVEL`/`PAGAMENTO_INDISPONIVEL`) | `PedidoCriadoDTO` |
+| `GET /pedidos` | Implementado (exige token `CLIENTE`; só os pedidos da cliente do token, do mais recente ao mais antigo) | lista de `PedidoResumoDTO` |
 | `GET /pedidos/{id}` | Implementado (exige token `CLIENTE`; 404 também para pedido de outra cliente) | `PedidoDTO` |
+| `GET /conta` | Implementado (exige token `CLIENTE`) | `ContaDTO` |
+| `PUT /conta` | Implementado (exige token `CLIENTE`; nome e telefone; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
+| `PUT /conta/senha` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha atual errada) | — |
 | `POST /pagamentos/webhook` | Implementado (público, assinado pelo Mercado Pago; 200; 401 `ASSINATURA_INVALIDA`; 502/503 para o Mercado Pago tentar de novo) | — |
 | `POST /pedidos/{id}/pagamento-simulado` | Só desenvolvimento, com `PAGAMENTO_SIMULADO=true` (404 fora dele) | `PedidoDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
@@ -102,11 +106,11 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 |---|---|
 | `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias` | Público |
 | `POST /pagamentos/webhook` | Público, mas só processa aviso com a assinatura `x-signature` do Mercado Pago |
-| `/auth/**` (ex.: `GET /auth/me`), `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
+| `/auth/**` (ex.: `GET /auth/me`), `/conta/**`, `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
 | Qualquer outra | Qualquer token válido |
 
-As rotas da compra (#22, #23, #24, #27) já estão no `SecurityConfig` exigindo `CLIENTE`: os controllers novos não precisam mexer nele. Quem criar uma rota de cliente fora desses prefixos acrescenta o prefixo lá (como `/frete/**` na #23 e `/enderecos/**` na #24).
+As rotas da compra (#22, #23, #24, #27) já estão no `SecurityConfig` exigindo `CLIENTE`: os controllers novos não precisam mexer nele. Quem criar uma rota de cliente fora desses prefixos acrescenta o prefixo lá (como `/frete/**` na #23, `/enderecos/**` na #24 e `/conta/**` na #26).
 
 ### Cadastro de cliente
 `POST /auth/registrar`
@@ -173,6 +177,36 @@ Exige token `CLIENTE`. Devolve o dono do token; a loja usa para conferir se a se
 // Response 401 (sem token, token inválido ou expirado) — NAO_AUTENTICADO
 // Response 403 (token de admin) — ACESSO_NEGADO
 ```
+
+### Dados pessoais (Minha Conta, #26)
+`GET /conta`, `PUT /conta`, `PUT /conta/senha`
+
+Exigem token `CLIENTE` (401 sem token, 403 com token de admin). Sempre da cliente do token: não há id na URL.
+
+```json
+// GET /conta → 200 — ContaDTO
+{ "id": 7, "nome": "Maria Silva", "email": "maria@email.com", "telefone": "11987654321" }
+// PUT /conta — ContaRequestDTO → 200 com o ContaDTO atualizado
+{ "nome": "Maria Souza", "telefone": "1134567890" }
+// PUT /conta/senha — SenhaRequestDTO → 204, sem corpo
+{ "senhaAtual": "senha123", "novaSenha": "nova-senha-456" }
+// Response 400
+{ "erro": "Senha atual incorreta", "codigo": "DADOS_INVALIDOS" }
+```
+
+| Campo | Regra |
+|---|---|
+| `nome` | Obrigatório, até 150 caracteres (espaços nas pontas são removidos), como no cadastro |
+| `telefone` | Obrigatório, só dígitos com DDD: 10 ou 11 dígitos, como no cadastro. O front tira a máscara |
+| `email` | Só leitura: é o login e não muda por aqui (trocar exigiria confirmar o endereço novo) |
+| `senhaAtual` | Obrigatória e precisa conferir com a senha da conta |
+| `novaSenha` | Obrigatória, de 8 a 72 caracteres (e até 72 bytes, como no cadastro). Guardada só como hash BCrypt |
+
+Mensagens de 400 (`DADOS_INVALIDOS`): "Informe o nome", "O nome pode ter no máximo 150 caracteres", "Informe o telefone", "Telefone inválido: informe DDD e número, só com dígitos", "Informe a senha atual", "Senha atual incorreta", "Informe a nova senha", "A senha precisa ter de 8 a 72 caracteres".
+
+**Senha atual errada é 400, não 401:** a sessão continua valendo, só o formulário está errado (um 401 faria a loja tirar a cliente da conta). Os tokens já emitidos continuam valendo até vencer (JWT sem estado, 2 horas).
+
+**O nome no token não muda:** o `nome` do JWT (e do `GET /auth/me`) é o do momento do login. A loja atualiza o nome da sessão guardada no navegador com a resposta do `PUT /conta`, e o próximo login já sai com o nome novo.
 
 ### Login admin
 `POST /admin/auth/login`
@@ -618,16 +652,22 @@ Exige token `CLIENTE`. Pedido de outra cliente responde **404** `RECURSO_NAO_ENC
 
 `urlPagamento` só vem enquanto dá para pagar (`AGUARDANDO_PAGAMENTO` ou `PAGAMENTO_RECUSADO`); nos outros status é `null`. `precoUnitario` é o preço do momento da compra. `codigoRastreio` fica `null` até a Roseane gerar a etiqueta (#25); depois traz o código da transportadora ou, enquanto ela não devolve, o do Melhor Envio (os dois rastreáveis no [Melhor Rastreio](https://www.melhorrastreio.com.br)). O link da etiqueta não vem aqui: é só do painel.
 
+O detalhe do pedido na Minha Conta (#26) também usa esta rota: mostra itens, endereço, frete, status e, quando a etiqueta (#25) preencher, o `codigoRastreio` com o link "Acompanhar a entrega" (um `urlRastreio` no pedido, se a #25 acrescentar; senão o Melhor Rastreio com o código). Com `urlPagamento`, a tela oferece "Pagar agora".
+
 ### Listar meus pedidos
 `GET /pedidos`
 
+Exige token `CLIENTE`. Todos os pedidos da cliente do token (inclusive os que esperam pagamento e os cancelados), **do mais recente ao mais antigo** (`createdAt`; no mesmo segundo, o id maior primeiro). Cliente sem pedidos recebe `[]`. Os pedidos de outras clientes nunca aparecem. Para itens, endereço, frete e rastreio, a tela "Minha Conta" (#26) abre o `GET /pedidos/{id}`.
+
 ```json
-// Response 200 (usado na tela "Minha Conta")
+// Response 200 — lista de PedidoResumoDTO
 [
   { "id": 100, "status": "ENTREGUE", "valorTotal": 211.90, "createdAt": "2026-08-20T14:30:00" },
   { "id": 98, "status": "ENVIADO", "valorTotal": 189.00, "createdAt": "2026-08-12T10:15:00" }
 ]
 ```
+
+`status` é um dos valores de "Status do pedido"; a loja mostra o nome legível ("Aguardando pagamento", "Pago", "Enviado"...).
 
 ---
 

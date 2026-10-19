@@ -233,6 +233,35 @@ export function buscarCliente(opcoes) {
   return getCliente('/auth/me', opcoes)
 }
 
+// Dados pessoais da Minha Conta (#26). GET /conta → { id, nome, email, telefone (só dígitos) }
+export function buscarConta(opcoes) {
+  return getCliente('/conta', opcoes)
+}
+
+// PUT /conta; dados: { nome, telefone (só dígitos) } → a conta atualizada. O nome novo também vai para a
+// sessão guardada e para a Nav (EVENTO_CONTA), sem precisar entrar de novo. Campo inválido: DADOS_INVALIDOS (400)
+export const EVENTO_CONTA = 'rosie:conta'
+
+export async function atualizarConta(dados, opcoes) {
+  const conta = await putCliente('/conta', dados, opcoes)
+  const sessao = lerSessao('cliente')
+  if (sessao) {
+    try {
+      guardarSessao('cliente', { ...sessao, usuario: { ...sessao.usuario, nome: conta.nome } })
+    } catch {
+      // Sem armazenamento a Nav só mostra o nome novo no próximo login
+    }
+  }
+  window.dispatchEvent(new CustomEvent(EVENTO_CONTA, { detail: conta }))
+  return conta
+}
+
+// PUT /conta/senha; { senhaAtual, novaSenha } → null. Senha atual errada ou nova fora de 8 a 72
+// caracteres: ApiError com codigo DADOS_INVALIDOS (400) e a mensagem pronta
+export function trocarSenha(senhaAtual, novaSenha, opcoes) {
+  return putCliente('/conta/senha', { senhaAtual, novaSenha }, opcoes)
+}
+
 // Sem logout no servidor: esquece o token e continua na página
 export function sairDaLoja() {
   limparSessao('cliente')
@@ -342,6 +371,17 @@ export function criarEndereco(dados, opcoes) {
   return postCliente('/enderecos', dados, opcoes)
 }
 
+// PUT /enderecos/{id}; mesmo corpo do POST → o endereço salvo. Endereço já usado num pedido não muda:
+// o antigo é arquivado e a resposta vem com id novo (troque o da lista pelo da resposta).
+export function atualizarEndereco(id, dados, opcoes) {
+  return putCliente(`/enderecos/${id}`, dados, opcoes)
+}
+
+// DELETE /enderecos/{id} → null (já usado em pedido, só é arquivado; some da lista do mesmo jeito)
+export function removerEndereco(id, opcoes) {
+  return deleteCliente(`/enderecos/${id}`, opcoes)
+}
+
 // Rua, bairro, cidade e UF do CEP pelo ViaCEP (serviço público, sem token), para preencher o formulário.
 // → { logradouro, bairro, cidade, estado }, ou null se o CEP não existe. A API confere tudo de novo.
 export async function buscarEnderecoPorCep(cep, { signal } = {}) {
@@ -363,6 +403,11 @@ export async function buscarEnderecoPorCep(cep, { signal } = {}) {
 // CARRINHO_VAZIO e FRETE_ALTERADO (409, mensagem pronta); FRETE_*/PAGAMENTO_FALHOU (502) e *_INDISPONIVEL (503)
 export function criarPedido(dados, opcoes) {
   return postCliente('/pedidos', dados, opcoes)
+}
+
+// GET /pedidos (Minha Conta, #26) → [{ id, status, valorTotal, createdAt }], do mais recente ao mais antigo
+export function listarPedidos(opcoes) {
+  return getCliente('/pedidos', opcoes)
 }
 
 // GET /pedidos/{id} → { id, status, formaPagamento, subtotal, valorFrete, valorTotal, transportadora,

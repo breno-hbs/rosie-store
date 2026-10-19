@@ -3,6 +3,7 @@ package com.rosie.backend.service;
 import com.rosie.backend.dto.PedidoCriadoDTO;
 import com.rosie.backend.dto.PedidoDTO;
 import com.rosie.backend.dto.PedidoRequestDTO;
+import com.rosie.backend.dto.PedidoResumoDTO;
 import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
@@ -34,6 +35,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -232,6 +234,73 @@ class PedidoServiceTests {
 
         assertThatThrownBy(() -> pedidoService.buscar(outra.getId(), criado.id()))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    @Test
+    void listaSoOsPedidosDaClienteDoMaisRecenteParaOMaisAntigo() {
+        Pedido entregue = salvarPedido(cliente, endereco, StatusPedido.ENTREGUE, "211.90");
+        Pedido cancelado = salvarPedido(cliente, endereco, StatusPedido.CANCELADO, "109.00");
+        Pedido aguardando = salvarPedido(cliente, endereco, StatusPedido.AGUARDANDO_PAGAMENTO, "189.00");
+        Usuario outra = salvarCliente("outra-lista@rosie.test");
+        salvarPedido(outra, salvarEndereco(outra), StatusPedido.PAGO, "50.00");
+        // A ordem é pela data, não pelo id: o cancelado foi criado depois, mas com data mais antiga
+        mudarData(entregue, "2026-08-20 14:30:00");
+        mudarData(cancelado, "2026-08-02 09:00:00");
+        mudarData(aguardando, "2026-10-18 10:00:00");
+
+        List<PedidoResumoDTO> pedidos = pedidoService.listar(cliente.getId());
+
+        assertThat(pedidos).extracting(PedidoResumoDTO::id)
+                .containsExactly(aguardando.getId(), entregue.getId(), cancelado.getId());
+        PedidoResumoDTO primeiro = pedidos.get(0);
+        assertThat(primeiro.status()).isEqualTo("AGUARDANDO_PAGAMENTO");
+        assertThat(primeiro.valorTotal()).isEqualByComparingTo("189.00");
+        assertThat(primeiro.createdAt()).isEqualTo(LocalDateTime.of(2026, 10, 18, 10, 0));
+
+        assertThat(pedidoService.listar(salvarCliente("sem-pedidos@rosie.test").getId())).isEmpty();
+    }
+
+    @Test
+    void oDetalheTrazORastreioQuandoExiste() {
+        Pedido pedido = salvarPedido(cliente, endereco, StatusPedido.ENVIADO, "211.90");
+        pedido.setCodigoRastreio("AA123456789BR");
+        entityManager.flush();
+        entityManager.clear();
+
+        PedidoDTO detalhe = pedidoService.buscar(cliente.getId(), pedido.getId());
+
+        assertThat(detalhe.status()).isEqualTo("ENVIADO");
+        assertThat(detalhe.codigoRastreio()).isEqualTo("AA123456789BR");
+        assertThat(detalhe.transportadora()).isEqualTo("Correios");
+        assertThat(detalhe.valorFrete()).isEqualByComparingTo("22.90");
+        assertThat(detalhe.subtotal()).isEqualByComparingTo("189.00");
+        assertThat(detalhe.endereco().logradouro()).isEqualTo("Rua das Flores");
+        // Pedido pago não oferece mais o link de pagamento
+        assertThat(detalhe.urlPagamento()).isNull();
+    }
+
+    private Pedido salvarPedido(Usuario dona, Endereco destino, StatusPedido status, String total) {
+        return pedidoRepository.saveAndFlush(Pedido.builder()
+                .usuario(dona)
+                .endereco(destino)
+                .status(status)
+                .formaPagamento(FormaPagamento.PIX)
+                .transportadora("Correios")
+                .servicoFrete("PAC")
+                .prazoFreteDias(7)
+                .valorFrete(new BigDecimal("22.90"))
+                .valorTotal(new BigDecimal(total))
+                .urlPagamento("https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=teste")
+                .build());
+    }
+
+    // created_at é preenchido pelo Hibernate no insert; aqui volta no tempo direto no banco
+    private void mudarData(Pedido pedido, String data) {
+        entityManager.createNativeQuery("update pedido set created_at = ?1 where id = ?2")
+                .setParameter(1, data)
+                .setParameter(2, pedido.getId())
+                .executeUpdate();
+        entityManager.clear();
     }
 
     private void adicionarAoCarrinho(Tamanho tamanho, int quantidade) {

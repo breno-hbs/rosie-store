@@ -1,25 +1,20 @@
 import { useEffect, useState } from 'react'
-import { buscarCarrinho, EVENTO_CARRINHO, lerSessaoCliente, rotaLoginCliente, sairDaLoja } from '../api.js'
+import { buscarCarrinho, EVENTO_CARRINHO, EVENTO_CONTA, lerSessaoCliente, rotaLoginCliente } from '../api.js'
 import LogoBadge from './LogoBadge.jsx'
 import './Nav.css'
 
 // "Conta": sem login leva a /entrar (voltando depois para a página atual); logado mostra o
-// primeiro nome e "Sair". A tela Minha Conta (#26) ainda não existe.
-function Conta({ sessao, onSair }) {
+// primeiro nome e leva à Minha Conta (#26), onde fica o "Sair".
+function Conta({ sessao }) {
   if (!sessao) {
     return <a className="nav__conta" href={rotaLoginCliente()}>Conta</a>
   }
 
   const nome = sessao.usuario.nome
   return (
-    <>
-      <span className="nav__cliente" title={nome}>
-        {nome.trim().split(/\s+/)[0]}
-      </span>
-      <button type="button" className="nav__sair" onClick={onSair}>
-        Sair
-      </button>
-    </>
+    <a className="nav__conta nav__cliente" href="/minha-conta" title={`Minha conta — ${nome}`}>
+      {nome.trim().split(/\s+/)[0]}
+    </a>
   )
 }
 
@@ -56,6 +51,13 @@ function Sacola({ logado }) {
 export default function Nav({ categorias, categoriaSelecionada, onSelecionarCategoria }) {
   const [sessao, setSessao] = useState(lerSessaoCliente)
 
+  // Nome trocado na Minha Conta aparece na hora
+  useEffect(() => {
+    const atualizar = () => setSessao(lerSessaoCliente())
+    window.addEventListener(EVENTO_CONTA, atualizar)
+    return () => window.removeEventListener(EVENTO_CONTA, atualizar)
+  }, [])
+
   return (
     <header className="nav">
       <a href="/" className="nav__logo" aria-label="Rosie — página inicial">
@@ -85,13 +87,7 @@ export default function Nav({ categorias, categoriaSelecionada, onSelecionarCate
 
       {/* Busca ainda não tem tela; fica visível como no Figma */}
       <div className="nav__acoes">
-        <Conta
-          sessao={sessao}
-          onSair={() => {
-            sairDaLoja()
-            setSessao(null)
-          }}
-        />
+        <Conta sessao={sessao} />
         <span>Buscar</span>
         <Sacola logado={sessao !== null} />
       </div>

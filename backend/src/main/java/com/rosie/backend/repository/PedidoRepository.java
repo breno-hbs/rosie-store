@@ -15,6 +15,9 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     // Histórico de pedidos do cliente
     List<Pedido> findByUsuarioId(Long usuarioId);
 
+    // GET /pedidos (#26): mais recentes primeiro; o id desempata pedidos do mesmo segundo
+    List<Pedido> findByUsuarioIdOrderByCreatedAtDescIdDesc(Long usuarioId);
+
     // GET /pedidos/{id}: pedido de outra cliente fica invisível (404)
     Optional<Pedido> findByIdAndUsuarioId(Long id, Long usuarioId);
 

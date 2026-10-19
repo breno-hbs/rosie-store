@@ -100,36 +100,6 @@
   color: var(--fumaca);
 }
 
-/* Formulário do Figma em três fileiras: CEP (160) e Rua; Número (140) e Complemento; Bairro, Cidade
-   e UF (80). No celular, a Rua e o Bairro descem para uma linha própria. */
-.checkout__novo {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.checkout__fileira {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.checkout__campo--cep { flex: 0 0 160px; }
-.checkout__campo--rua { flex: 1 1 200px; }
-.checkout__campo--numero { flex: 0 0 140px; }
-.checkout__campo--complemento { flex: 1 1 160px; }
-.checkout__campo--bairro,
-.checkout__campo--cidade { flex: 1 1 180px; }
-.checkout__campo--uf { flex: 0 0 80px; }
-
-.checkout__campo--uf .campo__caixa {
-  text-transform: uppercase;
-}
-
-.checkout__campo--aviso:empty {
-  display: none;
-}
-
 /* Cartão de crédito / PIX: a escolhida em tinta, a outra com borda de linha (Figma) */
 .checkout__formas {
   display: flex;

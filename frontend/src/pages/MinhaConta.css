@@ -1,0 +1,555 @@
+/* Tela "Minha Conta" do Figma (#26). Mobile-first: as abas viram uma faixa rolável no topo, como o
+   menu da Nav; no desktop, barra lateral de 220px com borda à direita e o conteúdo ao lado (gap 50). */
+
+.conta {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px var(--margem) 60px;
+}
+
+.conta__oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Abas */
+.conta__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--linha);
+}
+
+.conta__abas {
+  display: flex;
+  gap: 24px;
+  margin: 0 calc(-1 * var(--margem));
+  padding: 0 var(--margem);
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.conta__abas li {
+  flex: none;
+}
+
+/* Rosie/Corpo Regular: a aba atual em tinta, as outras em acento */
+.conta__aba {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--acento);
+  white-space: nowrap;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+}
+
+.conta__aba:hover {
+  color: var(--tinta);
+}
+
+.conta__aba[aria-current='page'] {
+  color: var(--tinta);
+  border-bottom-color: var(--tinta);
+}
+
+.conta__conteudo {
+  min-width: 0;
+}
+
+.conta__secao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.conta__secao > * {
+  max-width: 100%;
+}
+
+/* Carregando, erro e vazio */
+.conta__aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.conta__texto {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.conta__nota {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.conta__link {
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--acento);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.conta__link:hover {
+  color: var(--tinta);
+}
+
+.conta__link:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.conta__voltar {
+  font-size: 12px;
+  color: var(--fumaca);
+  text-decoration: none;
+}
+
+.conta__erro {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+/* Selo do status (Figma: borda de linha, Rótulo Tabela em acento; cancelado em fumaça) */
+.conta__selo {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--acento);
+  border: 1px solid var(--linha);
+}
+
+.conta__selo--encerrado {
+  color: var(--fumaca);
+}
+
+/* Tabela "Meus Pedidos". No celular cada pedido vira um bloco de duas colunas:
+   número e selo; data e total; "Ver detalhes". */
+.conta__pedidos {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.conta__pedidos thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.conta__pedidos th,
+.conta__pedidos td {
+  padding: 0;
+  text-align: left;
+  font-weight: 300;
+}
+
+.conta__pedidos tbody tr {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'numero status'
+    'data total'
+    'detalhes detalhes';
+  align-items: center;
+  gap: 6px 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--linha);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.conta__pedidos tbody tr:first-child {
+  border-top: 1px solid var(--linha);
+}
+
+.conta__pedido-numero { grid-area: numero; font-weight: 400; color: var(--tinta); }
+.conta__pedido-status { grid-area: status; justify-self: end; }
+.conta__pedido-data { grid-area: data; color: var(--fumaca); }
+.conta__pedido-total { grid-area: total; justify-self: end; }
+.conta__pedido-detalhes { grid-area: detalhes; }
+
+@media (min-width: 768px) {
+  .conta__pedidos thead {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .conta__pedidos th,
+  .conta__pedidos td {
+    padding-right: 20px;
+  }
+
+  .conta__pedidos thead th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    font-weight: 400;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  /* Colunas do Figma: 140, 160, 140, 140 e 120 (o selo pode passar de 140 com "Aguardando pagamento") */
+  .conta__pedidos tbody tr {
+    display: table-row;
+    border-top: 0;
+  }
+
+  .conta__pedidos tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .conta__pedidos tbody th,
+  .conta__pedidos tbody td {
+    padding-top: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .conta__pedido-numero {
+    width: 140px;
+    font-weight: 300;
+    color: var(--acento);
+  }
+
+  .conta__pedido-data {
+    width: 160px;
+    color: var(--acento);
+  }
+
+  .conta__pedido-status {
+    min-width: 140px;
+  }
+
+  .conta__pedido-total {
+    width: 140px;
+  }
+
+  .conta__pedido-detalhes {
+    width: 120px;
+  }
+
+  .conta__pedido-detalhes .conta__link {
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  .conta__pedido-detalhes .conta__link:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Detalhe do pedido */
+.conta__detalhe {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  max-width: 760px;
+}
+
+.conta__detalhe-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.conta__bloco {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.conta__rastreio {
+  font-weight: 400;
+  color: var(--tinta);
+  overflow-wrap: anywhere;
+}
+
+.conta__pagar {
+  margin-top: 4px;
+}
+
+.conta__itens {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.conta__item {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+/* Foto 4:5 como no resto da loja (64 × 80) */
+.conta__item-foto {
+  display: block;
+  aspect-ratio: 4 / 5;
+  background: var(--foto-vazia);
+  overflow: hidden;
+}
+
+.conta__item-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.conta__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.conta__item-nome {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--tinta);
+}
+
+.conta__item-nome:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.conta__item-preco {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.conta__colunas {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.conta__valores {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+}
+
+.conta__linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.conta__linha dt {
+  color: var(--fumaca);
+}
+
+.conta__linha dd {
+  margin: 0;
+  color: var(--acento);
+}
+
+.conta__linha--total {
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.conta__linha--total dt,
+.conta__linha--total dd {
+  color: var(--tinta);
+}
+
+@media (min-width: 768px) {
+  .conta__colunas {
+    display: grid;
+    grid-template-columns: 1fr minmax(240px, 300px);
+    gap: 50px;
+  }
+}
+
+/* Formulários (Dados Pessoais e Endereços) */
+.conta__formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.conta__formulario + .conta__formulario {
+  margin-top: 24px;
+  padding-top: 32px;
+  border-top: 1px solid var(--linha);
+}
+
+.conta__formulario--endereco {
+  max-width: 700px;
+  padding: 24px 0;
+}
+
+.conta__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.conta__retorno {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+.conta__retorno:empty {
+  display: none;
+}
+
+/* Endereços salvos */
+.conta__enderecos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  width: 100%;
+  max-width: 700px;
+}
+
+.conta__lista-enderecos {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.conta__lista-enderecos > li {
+  border-bottom: 1px solid var(--linha);
+}
+
+.conta__endereco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 0;
+}
+
+.conta__endereco-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conta__endereco-rua {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.conta__endereco-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+@media (min-width: 768px) {
+  .conta__endereco {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .conta__endereco .conta__erro {
+    flex-basis: 100%;
+  }
+}
+
+/* Desktop: barra lateral do Figma (220px, 40px até a borda) e o conteúdo ao lado */
+@media (min-width: 768px) {
+  .conta {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 50px;
+    padding: 40px var(--margem) 60px;
+  }
+
+  .conta__menu {
+    flex: 0 0 220px;
+    padding-right: 40px;
+    border-bottom: 0;
+    border-right: 1px solid var(--linha);
+  }
+
+  .conta__menu-titulo {
+    margin-bottom: 16px;
+  }
+
+  .conta__abas {
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .conta__aba {
+    min-height: 0;
+    padding: 14px 0;
+    margin-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .conta__aba[aria-current='page'] {
+    border-bottom: 0;
+  }
+
+  .conta__conteudo {
+    flex: 1;
+  }
+}

@@ -1,0 +1,35 @@
+/* Formulário de endereço do Figma em três fileiras: CEP (160) e Rua; Número (140) e Complemento;
+   Bairro, Cidade e UF (80). No celular, a Rua e o Bairro descem para uma linha própria. */
+.endereco-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.endereco-campos__fileira {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.endereco-campos__cep { flex: 0 0 160px; }
+.endereco-campos__rua { flex: 1 1 200px; }
+.endereco-campos__numero { flex: 0 0 140px; }
+.endereco-campos__complemento { flex: 1 1 160px; }
+.endereco-campos__bairro,
+.endereco-campos__cidade { flex: 1 1 180px; }
+.endereco-campos__uf { flex: 0 0 80px; }
+
+.endereco-campos__uf .campo__caixa {
+  text-transform: uppercase;
+}
+
+.endereco-campos__aviso {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.endereco-campos__aviso:empty {
+  display: none;
+}

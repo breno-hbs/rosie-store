@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
   buscarCarrinho,
-  buscarEnderecoPorCep,
   calcularFrete,
   criarEndereco,
   criarPedido,
@@ -10,8 +9,10 @@ import {
   listarCategorias,
   listarEnderecos,
 } from '../api.js'
+import CamposEndereco from '../components/CamposEndereco.jsx'
 import Nav from '../components/Nav.jsx'
 import Footer from '../components/Footer.jsx'
+import { ENDERECO_VAZIO, enderecoCompleto, enderecoParaApi } from '../endereco.js'
 import { formatarPreco, mascararCep, somenteDigitos } from '../formato.js'
 import '../components/CalculoFrete.css'
 import './Checkout.css'
@@ -89,8 +90,6 @@ export default function Checkout() {
   )
 }
 
-const ENDERECO_VAZIO = { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' }
-
 const FORMAS_PAGAMENTO = [
   { valor: 'CARTAO', rotulo: 'Cartão de crédito' },
   { valor: 'PIX', rotulo: 'PIX' },
@@ -116,10 +115,7 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
   // Opção cotada para outro CEP (o endereço mudou) não vale
   const frete = opcao && opcao.cep === cepEntrega ? opcao : null
   const total = Number(carrinho.subtotal) + (frete ? Number(frete.preco) : 0)
-  const novoCompleto =
-    cepNovo.length === 8 &&
-    ['logradouro', 'numero', 'bairro', 'cidade'].every((campo) => novo[campo].trim() !== '') &&
-    /^[A-Za-z]{2}$/.test(novo.estado.trim())
+  const novoCompleto = enderecoCompleto(novo)
   const podeFinalizar = frete !== null && (escolha !== 'novo' || novoCompleto) && !envio.enviando
 
   async function finalizar(evento) {
@@ -129,7 +125,7 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
     try {
       let enderecoId = escolha
       if (escolha === 'novo') {
-        const salvo = await criarEndereco({ ...novo, cep: cepNovo, estado: novo.estado.trim().toUpperCase() })
+        const salvo = await criarEndereco(enderecoParaApi(novo))
         // Se o pedido falhar depois, o endereço já fica na lista (não é salvo duas vezes)
         setEnderecos((atuais) => [...atuais, salvo])
         setEscolha(salvo.id)
@@ -181,7 +177,7 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
             </fieldset>
           )}
 
-          {escolha === 'novo' && <NovoEndereco valor={novo} onMudar={setNovo} />}
+          {escolha === 'novo' && <CamposEndereco valor={novo} onMudar={setNovo} />}
         </section>
 
         <section className="checkout__secao" aria-labelledby="titulo-entrega">
@@ -278,127 +274,6 @@ function mensagemErro(erro) {
   }
   if (erro.codigo === 'FRETE_INDISPONIVEL') return 'O cálculo de frete está indisponível no momento. Tente mais tarde.'
   return 'Não foi possível iniciar o pagamento agora. Tente de novo em instantes.'
-}
-
-// Campos do Figma: CEP e Rua; Número e Complemento; Bairro, Cidade e UF. Com os 8 números do CEP,
-// rua, bairro, cidade e UF vêm do ViaCEP (a cliente pode corrigir).
-function NovoEndereco({ valor, onMudar }) {
-  const cep = somenteDigitos(valor.cep)
-  const [busca, setBusca] = useState({ cep: null, resultado: null })
-  const buscando = cep.length === 8 && busca.cep !== cep
-
-  useEffect(() => {
-    if (cep.length !== 8) return
-    const controle = new AbortController()
-    buscarEnderecoPorCep(cep, { signal: controle.signal })
-      .then((encontrado) => {
-        setBusca({ cep, resultado: encontrado ? 'ok' : 'nao-encontrado' })
-        if (!encontrado) return
-        onMudar((atual) => ({
-          ...atual,
-          logradouro: encontrado.logradouro || atual.logradouro,
-          bairro: encontrado.bairro || atual.bairro,
-          cidade: encontrado.cidade || atual.cidade,
-          estado: encontrado.estado || atual.estado,
-        }))
-      })
-      .catch((erro) => {
-        // Sem ViaCEP a cliente preenche à mão
-        if (erro.name !== 'AbortError') setBusca({ cep, resultado: 'erro' })
-      })
-    return () => controle.abort()
-  }, [cep, onMudar])
-
-  function campo(nome) {
-    return {
-      name: nome,
-      value: valor[nome],
-      onChange: (e) => onMudar((atual) => ({ ...atual, [nome]: e.target.value })),
-    }
-  }
-
-  return (
-    <div className="checkout__novo">
-      <div className="checkout__fileira">
-        <label className="campo checkout__campo--cep">
-          <span className="eyebrow">CEP</span>
-          <input
-            className="campo__caixa"
-            name="cep"
-            inputMode="numeric"
-            autoComplete="postal-code"
-            placeholder="00000-000"
-            maxLength={9}
-            required
-            value={valor.cep}
-            onChange={(e) => onMudar((atual) => ({ ...atual, cep: mascararCep(e.target.value) }))}
-          />
-        </label>
-        <label className="campo checkout__campo--rua">
-          <span className="eyebrow">Rua</span>
-          <input
-            className="campo__caixa"
-            autoComplete="address-line1"
-            placeholder="Nome da rua"
-            maxLength={200}
-            required
-            {...campo('logradouro')}
-          />
-        </label>
-      </div>
-      <div className="checkout__fileira">
-        <label className="campo checkout__campo--numero">
-          <span className="eyebrow">Número</span>
-          <input className="campo__caixa" placeholder="000" maxLength={20} required {...campo('numero')} />
-        </label>
-        <label className="campo checkout__campo--complemento">
-          <span className="eyebrow">Complemento</span>
-          <input
-            className="campo__caixa"
-            autoComplete="address-line2"
-            placeholder="Apto, bloco (opcional)"
-            maxLength={100}
-            {...campo('complemento')}
-          />
-        </label>
-      </div>
-      <div className="checkout__fileira">
-        <label className="campo checkout__campo--bairro">
-          <span className="eyebrow">Bairro</span>
-          <input className="campo__caixa" placeholder="Bairro" maxLength={100} required {...campo('bairro')} />
-        </label>
-        <label className="campo checkout__campo--cidade">
-          <span className="eyebrow">Cidade</span>
-          <input
-            className="campo__caixa"
-            autoComplete="address-level2"
-            placeholder="Cidade"
-            maxLength={100}
-            required
-            {...campo('cidade')}
-          />
-        </label>
-        <label className="campo checkout__campo--uf">
-          <span className="eyebrow">UF</span>
-          <input
-            className="campo__caixa"
-            autoComplete="address-level1"
-            placeholder="SP"
-            maxLength={2}
-            required
-            {...campo('estado')}
-          />
-        </label>
-      </div>
-      <p className="checkout__nota checkout__campo--aviso" aria-live="polite">
-        {buscando
-          ? 'Buscando o endereço do CEP…'
-          : busca.cep === cep && busca.resultado === 'nao-encontrado'
-            ? 'CEP não encontrado. Confira os números ou preencha o endereço.'
-            : ''}
-      </p>
-    </div>
-  )
 }
 
 // Formas de entrega para o CEP do endereço, cotadas no Melhor Envio pela API (como no carrinho).

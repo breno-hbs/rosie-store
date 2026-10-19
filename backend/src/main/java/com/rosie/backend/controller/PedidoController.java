@@ -3,6 +3,7 @@ package com.rosie.backend.controller;
 import com.rosie.backend.dto.PedidoCriadoDTO;
 import com.rosie.backend.dto.PedidoDTO;
 import com.rosie.backend.dto.PedidoRequestDTO;
+import com.rosie.backend.dto.PedidoResumoDTO;
 import com.rosie.backend.service.PedidoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 // Checkout e pedidos da cliente do token (RF10, #24). /pedidos/** já exige role CLIENTE no SecurityConfig.
-// A lista de pedidos (GET /pedidos) é da Minha Conta (#26).
+// A lista e o detalhe também servem a Minha Conta (#26).
 @RestController
 @RequestMapping("/pedidos")
 @RequiredArgsConstructor
@@ -30,6 +33,11 @@ public class PedidoController {
     @ResponseStatus(HttpStatus.CREATED)
     public PedidoCriadoDTO criar(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PedidoRequestDTO requisicao) {
         return pedidoService.criar(clienteId(jwt), requisicao);
+    }
+
+    @GetMapping
+    public List<PedidoResumoDTO> listar(@AuthenticationPrincipal Jwt jwt) {
+        return pedidoService.listar(clienteId(jwt));
     }
 
     @GetMapping("/{id}")

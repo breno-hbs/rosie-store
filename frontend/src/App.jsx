@@ -6,6 +6,7 @@ import Carrinho from './pages/Carrinho.jsx'
 import Checkout from './pages/Checkout.jsx'
 import Entrar from './pages/Entrar.jsx'
 import Home from './pages/Home.jsx'
+import MinhaConta from './pages/MinhaConta.jsx'
 import PagamentoSimulado from './pages/PagamentoSimulado.jsx'
 import PedidoRetorno from './pages/PedidoRetorno.jsx'
 import Produto from './pages/Produto.jsx'
@@ -27,6 +28,11 @@ function rotaAtual() {
     if (pedido[2] === 'pagamento-simulado') return { pagina: 'pagamento-simulado', id }
     return { pagina: 'pedido', id, etapa: pedido[2] }
   }
+  // Minha Conta (#26): uma aba por caminho; o detalhe do pedido fica dentro de Meus Pedidos
+  const pedidoConta = caminho.match(/^\/minha-conta\/pedidos\/(\d+)\/?$/)
+  if (pedidoConta) return { pagina: 'minha-conta', aba: 'pedidos', pedidoId: Number(pedidoConta[1]) }
+  const conta = caminho.match(/^\/minha-conta(?:\/(pedidos|dados|enderecos))?\/?$/)
+  if (conta) return { pagina: 'minha-conta', aba: conta[1] ?? 'pedidos' }
   if (/^\/admin\/login\/?$/.test(caminho)) return { pagina: 'admin-login' }
   const produtoAdmin = caminho.match(/^\/admin\/produtos\/(novo|\d+)\/?$/)
   if (produtoAdmin) {
@@ -64,8 +70,8 @@ export default function App() {
     return null
   }
 
-  // Carrinho, checkout e pedido só com cliente logado: sem sessão, entra e volta para a mesma página
-  const daCliente = ['carrinho', 'checkout', 'pedido', 'pagamento-simulado']
+  // Carrinho, checkout, pedido e Minha Conta só com cliente logado: sem sessão, entra e volta para a mesma página
+  const daCliente = ['carrinho', 'checkout', 'pedido', 'pagamento-simulado', 'minha-conta']
   if (daCliente.includes(rota.pagina) && lerSessaoCliente() === null) {
     window.location.replace(rotaLoginCliente({ voltar: window.location.pathname }))
     return null
@@ -76,6 +82,7 @@ export default function App() {
   if (rota.pagina === 'checkout') return <Checkout />
   if (rota.pagina === 'pedido') return <PedidoRetorno id={rota.id} etapa={rota.etapa} />
   if (rota.pagina === 'pagamento-simulado') return <PagamentoSimulado id={rota.id} />
+  if (rota.pagina === 'minha-conta') return <MinhaConta aba={rota.aba} pedidoId={rota.pedidoId} />
   if (rota.pagina === 'entrar') return <Entrar />
   if (rota.pagina === 'cadastro') return <Cadastro />
   if (rota.pagina === 'admin-login') return <AdminLogin />
