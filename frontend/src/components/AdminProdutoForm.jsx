@@ -5,6 +5,13 @@ import './AdminProdutos.css'
 
 const TAMANHOS = ['P', 'M', 'G', 'GG']
 
+// Medidas da embalagem para o frete (#56), na ordem em que aparecem no formulário
+const MEDIDAS = [
+  { campo: 'alturaCm', rotulo: 'Altura' },
+  { campo: 'larguraCm', rotulo: 'Largura' },
+  { campo: 'comprimentoCm', rotulo: 'Comprimento' },
+]
+
 const VAZIO = {
   nome: '',
   categoriaId: '',
@@ -14,6 +21,7 @@ const VAZIO = {
   destaque: false,
   ativo: true,
   estoque: { P: '', M: '', G: '', GG: '' },
+  pacote: { pesoKg: '', alturaCm: '', larguraCm: '', comprimentoCm: '' },
 }
 
 // "189,90", "1.234,50" ou "R$ 189.90" → número; texto que não é preço → NaN
@@ -21,6 +29,19 @@ function lerPreco(texto) {
   let limpo = texto.replace(/R\$|\s/g, '')
   if (limpo.includes(',')) limpo = limpo.replace(/\./g, '').replace(',', '.')
   return limpo === '' ? null : Number(limpo)
+}
+
+// Peso em kg: "0,45" ou "0.45" → número; vazio → null; texto que não é número → NaN
+function lerPeso(texto) {
+  const limpo = texto.replace(/\s/g, '').replace(',', '.')
+  return limpo === '' ? null : Number(limpo)
+}
+
+// Medida em cm inteiros; vazio → null; decimal ou texto → NaN
+function lerMedida(texto) {
+  if (texto.trim() === '') return null
+  const numero = Number(texto)
+  return Number.isInteger(numero) ? numero : NaN
 }
 
 function mostrarPreco(valor) {
@@ -39,6 +60,12 @@ function doProduto(produto) {
     destaque: produto.destaque,
     ativo: produto.ativo,
     estoque,
+    pacote: {
+      pesoKg: produto.pacote.pesoKg == null ? '' : String(produto.pacote.pesoKg).replace('.', ','),
+      alturaCm: produto.pacote.alturaCm == null ? '' : String(produto.pacote.alturaCm),
+      larguraCm: produto.pacote.larguraCm == null ? '' : String(produto.pacote.larguraCm),
+      comprimentoCm: produto.pacote.comprimentoCm == null ? '' : String(produto.pacote.comprimentoCm),
+    },
   }
 }
 
@@ -93,11 +120,30 @@ export default function AdminProdutoForm({ id }) {
     setForm((atual) => ({ ...atual, estoque: { ...atual.estoque, [tamanho]: valor } }))
   }
 
+  function alterarPacote(campo, valor) {
+    setForm((atual) => ({ ...atual, pacote: { ...atual.pacote, [campo]: valor } }))
+  }
+
   async function salvar(evento) {
     evento.preventDefault()
     const preco = lerPreco(form.preco)
     if (Number.isNaN(preco)) {
       setErro('Preço inválido: use um valor como 189,90')
+      return
+    }
+    // Vai sempre inteiro: campo vazio (null) usa o pacote padrão do frete
+    const pacote = {
+      pesoKg: lerPeso(form.pacote.pesoKg),
+      alturaCm: lerMedida(form.pacote.alturaCm),
+      larguraCm: lerMedida(form.pacote.larguraCm),
+      comprimentoCm: lerMedida(form.pacote.comprimentoCm),
+    }
+    if (Number.isNaN(pacote.pesoKg)) {
+      setErro('Peso inválido: use um valor em kg como 0,45')
+      return
+    }
+    if (MEDIDAS.some(({ campo }) => Number.isNaN(pacote[campo]))) {
+      setErro('Medidas da embalagem inválidas: use centímetros inteiros, como 25')
       return
     }
 
@@ -108,6 +154,7 @@ export default function AdminProdutoForm({ id }) {
       preco,
       categoriaId: form.categoriaId === '' ? null : Number(form.categoriaId),
       destaque: form.destaque,
+      pacote,
     }
     // Na edição o estoque não vai junto (#47): ele muda só pela tela de estoque
     if (editando) {
@@ -291,6 +338,42 @@ export default function AdminProdutoForm({ id }) {
                 <p className="produto-form__dica">Deixe em branco os tamanhos que a peça não tem. 0 aparece como esgotado.</p>
               </fieldset>
             )}
+
+            <fieldset className="produto-form__grupo" disabled={salvando}>
+              <legend className="eyebrow">Peso e embalagem</legend>
+              <div className="produto-form__pacote">
+                <label className="produto-form__tamanho">
+                  <span className="eyebrow">Peso (kg)</span>
+                  <input
+                    name="pesoKg"
+                    inputMode="decimal"
+                    placeholder="Padrão"
+                    value={form.pacote.pesoKg}
+                    onChange={(e) => alterarPacote('pesoKg', e.target.value)}
+                  />
+                </label>
+                {MEDIDAS.map(({ campo, rotulo }) => (
+                  <label key={campo} className="produto-form__tamanho">
+                    <span className="eyebrow">{rotulo} (cm)</span>
+                    <input
+                      type="number"
+                      name={campo}
+                      min="1"
+                      max="100"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="Padrão"
+                      value={form.pacote[campo]}
+                      onChange={(e) => alterarPacote(campo, e.target.value)}
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="produto-form__dica">
+                Opcional, para o cálculo do frete: peso da peça já embalada e medidas da embalagem. Campo vazio usa o
+                pacote padrão da loja.
+              </p>
+            </fieldset>
 
             <label className="produto-form__opcao">
               <input
