@@ -90,6 +90,7 @@ class PagamentoServiceTests {
                 .email("cliente-pagamento@rosie.test")
                 .senhaHash("hash-irrelevante")
                 .role(Role.CLIENTE)
+                .privacidadeVersao(PoliticaPrivacidade.VERSAO)
                 .build());
         Endereco endereco = enderecoRepository.save(Endereco.builder()
                 .usuario(cliente).cep("03925050").logradouro("Rua das Flores").numero("120")

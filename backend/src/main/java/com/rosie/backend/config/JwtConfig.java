@@ -1,11 +1,18 @@
 package com.rosie.backend.config;
 
+import com.rosie.backend.repository.UsuarioRepository;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
@@ -41,14 +48,35 @@ public class JwtConfig {
         return NimbusJwtEncoder.withSecretKey(chave).build();
     }
 
+    // O repositório é opcional só para os testes de fatia (@WebMvcTest), que sobem a segurança sem o JPA
     @Bean
-    public JwtDecoder jwtDecoder() {
+    public JwtDecoder jwtDecoder(ObjectProvider<UsuarioRepository> usuarios) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(chave)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-        // Validade (exp) e emissor
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(EMISSOR));
+        // Validade (exp) e emissor; e conta não excluída (#31)
+        OAuth2TokenValidator<Jwt> padrao = JwtValidators.createDefaultWithIssuer(EMISSOR);
+        UsuarioRepository repositorio = usuarios.getIfAvailable();
+        decoder.setJwtValidator(repositorio == null ? padrao
+                : new DelegatingOAuth2TokenValidator<>(padrao, contaAtiva(repositorio)));
         return decoder;
+    }
+
+    // Cliente que excluiu a conta (#31) perde a sessão na hora, sem esperar o token de 2 horas vencer: o
+    // token vira inválido (401 NAO_AUTENTICADO). Uma consulta por id em cada requisição com token.
+    private static OAuth2TokenValidator<Jwt> contaAtiva(UsuarioRepository usuarios) {
+        OAuth2Error excluida = new OAuth2Error("invalid_token", "Conta excluída", null);
+        return jwt -> {
+            Long id;
+            try {
+                id = Long.valueOf(jwt.getSubject());
+            } catch (NumberFormatException e) {
+                return OAuth2TokenValidatorResult.failure(excluida);
+            }
+            return usuarios.existsByIdAndExcluidaEmIsNotNull(id)
+                    ? OAuth2TokenValidatorResult.failure(excluida)
+                    : OAuth2TokenValidatorResult.success();
+        };
     }
 
     @Bean
