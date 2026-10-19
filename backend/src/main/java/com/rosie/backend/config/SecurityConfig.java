@@ -66,6 +66,8 @@ public class SecurityConfig {
                         // Dados pessoais da Minha Conta (#26)
                         .requestMatchers("/conta", "/conta/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
+                        // Versão da política de privacidade em vigor (#31)
+                        .requestMatchers(HttpMethod.GET, "/privacidade").permitAll()
                         // Tabela de medidas da categoria, na Página de Produto (#20)
                         .requestMatchers(HttpMethod.GET, "/categorias/*/medidas").permitAll()
                         // Sem isso, exceções não tratadas viram 401 ao encaminhar para /error

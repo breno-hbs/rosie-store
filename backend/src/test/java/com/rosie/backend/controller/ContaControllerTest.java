@@ -1,6 +1,7 @@
 package com.rosie.backend.controller;
 
 import com.rosie.backend.model.Role;
+import com.rosie.backend.service.PoliticaPrivacidade;
 import com.rosie.backend.model.Usuario;
 import com.rosie.backend.repository.UsuarioRepository;
 import com.rosie.backend.service.TokenService;
@@ -26,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// GET/PUT /conta e PUT /conta/senha (#26) contra o MySQL, com token de cliente
+// GET/PUT /conta e PUT /conta/senha (#26), aceite da política e exclusão (#31) contra o MySQL, com token de cliente
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -161,6 +162,100 @@ class ContaControllerTest {
                 .andExpect(jsonPath("$.codigo").value("ACESSO_NEGADO"));
         mockMvc.perform(atualizar("{\"nome\":\"Roseane\",\"telefone\":\"11987654321\"}", tokenAdmin))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void versaoDaPoliticaEhPublicaEIgualAQueOCadastroGrava() throws Exception {
+        mockMvc.perform(get("/privacidade"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.versao").value(PoliticaPrivacidade.VERSAO))
+                .andExpect(jsonPath("$.vigencia").value(PoliticaPrivacidade.VIGENCIA.toString()));
+    }
+
+    @Test
+    void loginComPoliticaAntigaPedeONovoAceite() throws Exception {
+        cliente.setPrivacidadeVersao("2020-01-01");
+        entityManager.flush();
+
+        mockMvc.perform(login(SENHA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.privacidadePendente").value(true));
+
+        mockMvc.perform(post("/conta/privacidade").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aceitePrivacidade\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.privacidadeVersao").value(PoliticaPrivacidade.VERSAO))
+                .andExpect(jsonPath("$.privacidadeAceitaEm").isNotEmpty());
+        entityManager.flush();
+
+        mockMvc.perform(login(SENHA))
+                .andExpect(jsonPath("$.privacidadePendente").value(false));
+    }
+
+    @Test
+    void aceiteSemMarcarDa400() throws Exception {
+        mockMvc.perform(post("/conta/privacidade").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aceitePrivacidade\":false}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Aceite a política de privacidade para continuar"));
+    }
+
+    @Test
+    void exclusaoComASenhaCertaDerrubaOTokenEOLogin() throws Exception {
+        mockMvc.perform(excluir("{\"senha\":\"" + SENHA + "\"}", tokenCliente))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        // O token emitido antes da exclusão para de valer na hora
+        mockMvc.perform(get("/conta").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo").value("NAO_AUTENTICADO"));
+        mockMvc.perform(login(SENHA))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo").value("CREDENCIAIS_INVALIDAS"));
+
+        entityManager.clear();
+        Usuario excluida = usuarioRepository.findById(cliente.getId()).orElseThrow();
+        assertThat(excluida.getExcluidaEm()).isNotNull();
+        assertThat(excluida.getEmail()).isNotEqualTo(EMAIL);
+        // O e-mail fica livre para um cadastro novo
+        assertThat(usuarioRepository.existsByEmail(EMAIL)).isFalse();
+    }
+
+    @Test
+    void exclusaoComSenhaErradaDa400ENaoExclui() throws Exception {
+        mockMvc.perform(excluir("{\"senha\":\"errada-123\"}", tokenCliente))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("DADOS_INVALIDOS"))
+                .andExpect(jsonPath("$.erro").value("Senha incorreta"));
+        mockMvc.perform(excluir("{}", tokenCliente))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Informe a sua senha"));
+
+        mockMvc.perform(get("/conta").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(EMAIL));
+        mockMvc.perform(login(SENHA)).andExpect(status().isOk());
+    }
+
+    @Test
+    void exclusaoSemTokenDa401ETokenDeAdminDa403() throws Exception {
+        mockMvc.perform(post("/conta/exclusao").contentType(MediaType.APPLICATION_JSON).content("{\"senha\":\"x\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(excluir("{\"senha\":\"x\"}", tokenAdmin))
+                .andExpect(status().isForbidden());
+    }
+
+    private static MockHttpServletRequestBuilder login(String senha) {
+        return post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + EMAIL + "\",\"senha\":\"" + senha + "\"}");
+    }
+
+    private static MockHttpServletRequestBuilder excluir(String corpo, String token) {
+        return post("/conta/exclusao")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo);
     }
 
     private static MockHttpServletRequestBuilder atualizar(String corpo, String token) {

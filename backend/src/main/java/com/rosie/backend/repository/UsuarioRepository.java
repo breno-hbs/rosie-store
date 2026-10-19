@@ -15,4 +15,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     // Usado na criação do admin inicial
     boolean existsByRole(Role role);
+
+    // Token de conta excluída deixa de valer na hora (#31), sem esperar o JWT vencer
+    boolean existsByIdAndExcluidaEmIsNotNull(Long id);
 }

@@ -429,6 +429,52 @@
   padding: 24px 0;
 }
 
+/* Exclusão da conta (#31): caixa de borda fina com a explicação, a senha e a confirmação */
+.conta__exclusao {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--tinta);
+}
+
+.conta__exclusao-titulo {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--tinta);
+}
+
+.conta__exclusao-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.conta__exclusao-ciente {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--acento);
+  cursor: pointer;
+}
+
+.conta__exclusao-ciente input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--tinta);
+  cursor: pointer;
+}
+
 .conta__acoes {
   display: flex;
   flex-wrap: wrap;

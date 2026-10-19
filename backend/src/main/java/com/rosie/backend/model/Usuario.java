@@ -48,6 +48,11 @@ public class Usuario {
     @Column(name = "privacidade_versao", length = 20)
     private String privacidadeVersao;
 
+    // Conta excluída pela cliente na Minha Conta (#31): nome, e-mail, telefone e endereços foram
+    // anonimizados e o login não entra mais. Os pedidos ficam (obrigação fiscal). Nulo = conta ativa.
+    @Column(name = "excluida_em")
+    private LocalDateTime excluidaEm;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

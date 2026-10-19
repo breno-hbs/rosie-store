@@ -13,4 +13,7 @@ public interface EnderecoRepository extends JpaRepository<Endereco, Long> {
 
     // Endereço de outra cliente, ou arquivado, fica invisível (404 nas rotas, 400 no POST /pedidos)
     Optional<Endereco> findByIdAndUsuarioIdAndArquivadoFalse(Long id, Long usuarioId);
+
+    // Exclusão da conta (#31): todos, arquivados também
+    List<Endereco> findByUsuarioId(Long usuarioId);
 }

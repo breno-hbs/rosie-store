@@ -23,6 +23,7 @@ import com.rosie.backend.service.CalculadoraFreteFalsa;
 import com.rosie.backend.service.GatewayPagamento.StatusPagamento;
 import com.rosie.backend.service.GatewayPagamentoFalso;
 import com.rosie.backend.service.PedidoService;
+import com.rosie.backend.service.PoliticaPrivacidade;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -101,7 +102,7 @@ class PagamentoWebhookControllerTest {
 
         Usuario cliente = usuarioRepository.save(Usuario.builder()
                 .nome("Cliente Webhook").email("cliente-webhook@rosie.test").senhaHash("hash-irrelevante")
-                .role(Role.CLIENTE).build());
+                .role(Role.CLIENTE).privacidadeVersao(PoliticaPrivacidade.VERSAO).build());
         Endereco endereco = enderecoRepository.save(Endereco.builder()
                 .usuario(cliente).cep("03925050").logradouro("Rua das Flores").numero("120")
                 .bairro("Jardim Iva").cidade("São Paulo").estado("SP").build());

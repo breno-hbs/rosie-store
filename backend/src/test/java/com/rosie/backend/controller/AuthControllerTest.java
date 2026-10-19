@@ -94,6 +94,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.usuario.nome").value("Maria Teste"))
                 .andExpect(jsonPath("$.usuario.role").value("CLIENTE"))
                 .andExpect(jsonPath("$.usuario.senhaHash").doesNotExist())
+                // Quem acabou de aceitar a versão em vigor não precisa aceitar de novo (#31)
+                .andExpect(jsonPath("$.privacidadePendente").value(false))
                 .andReturn().getResponse().getContentAsString();
 
         Usuario salvo = usuarioRepository.findByEmail(EMAIL_NOVO).orElseThrow();

@@ -1,0 +1,52 @@
+/* Aceite da política nova (#31): caixa de borda fina, como os cartões do checkout */
+.aceite {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--tinta);
+}
+
+.aceite__titulo {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--tinta);
+}
+
+.aceite__texto,
+.aceite__erro {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+.aceite__caixa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--acento);
+  cursor: pointer;
+}
+
+.aceite__caixa input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--tinta);
+  cursor: pointer;
+}
+
+.aceite__caixa a {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.aceite__botao {
+  width: 100%;
+  white-space: normal;
+}

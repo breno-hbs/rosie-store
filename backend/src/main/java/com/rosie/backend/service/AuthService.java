@@ -73,7 +73,7 @@ public class AuthService {
             throw new ConflitoException(MENSAGEM_EMAIL_DUPLICADO, "EMAIL_JA_CADASTRADO");
         }
 
-        return new LoginResponseDTO(tokenService.gerar(usuario), UsuarioResumoDTO.from(usuario));
+        return resposta(usuario);
     }
 
     // Login da loja (RF08). Só entra CLIENTE: a Roseane entra pelo painel (/admin/auth/login),
@@ -87,7 +87,7 @@ public class AuthService {
         return login(requisicao, Role.ADMIN);
     }
 
-    // E-mail inexistente, senha errada ou usuário de outra role respondem igual,
+    // E-mail inexistente, senha errada, usuário de outra role ou conta excluída (#31) respondem igual,
     // sem dizer qual dos dois errou.
     private LoginResponseDTO login(LoginRequestDTO requisicao, Role roleExigida) {
         Optional<Usuario> encontrado = usuarioRepository.findByEmail(normalizarEmail(requisicao.email()));
@@ -95,10 +95,17 @@ public class AuthService {
         boolean senhaConfere = passwordEncoder.matches(requisicao.senha(), hash);
 
         Usuario usuario = encontrado
-                .filter(u -> senhaConfere && u.getRole() == roleExigida)
+                .filter(u -> senhaConfere && u.getRole() == roleExigida && u.getExcluidaEm() == null)
                 .orElseThrow(CredenciaisInvalidasException::new);
 
-        return new LoginResponseDTO(tokenService.gerar(usuario), UsuarioResumoDTO.from(usuario));
+        return resposta(usuario);
+    }
+
+    // Quem aceitou uma versão antiga da política de privacidade entra normalmente, mas a loja pede o aceite
+    // da nova antes de seguir (#31); o checkout também exige
+    private LoginResponseDTO resposta(Usuario usuario) {
+        return new LoginResponseDTO(tokenService.gerar(usuario), UsuarioResumoDTO.from(usuario),
+                PoliticaPrivacidade.aceitePendente(usuario));
     }
 
     public static String normalizarEmail(String email) {

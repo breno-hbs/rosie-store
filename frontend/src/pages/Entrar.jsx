@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ApiError, comVoltar, destinoSeguro, entrarNaLoja } from '../api.js'
+import { ApiError, comVoltar, destinoSeguro, entrarNaLoja, privacidadePendente } from '../api.js'
+import AceitePrivacidade from '../components/AceitePrivacidade.jsx'
 import LogoBadge from '../components/LogoBadge.jsx'
 import './AcessoCliente.css'
 
@@ -11,7 +12,8 @@ function mensagemDeErro(erro) {
   return erro.message
 }
 
-// Login do cliente (RF08). Depois de entrar, volta para a página de ?voltar= ou para a Home.
+// Login do cliente (RF08). Depois de entrar, volta para a página de ?voltar= ou para a Home. Quem aceitou
+// uma versão antiga da política de privacidade aceita a nova antes de seguir (#31).
 export default function Entrar() {
   const params = new URLSearchParams(window.location.search)
   const voltar = destinoSeguro(params.get('voltar'))
@@ -22,6 +24,7 @@ export default function Entrar() {
   const [senha, setSenha] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState(null)
+  const [pedirAceite, setPedirAceite] = useState(false)
 
   async function entrar(evento) {
     evento.preventDefault()
@@ -29,6 +32,10 @@ export default function Entrar() {
     setErro(null)
     try {
       await entrarNaLoja(email.trim(), senha)
+      if (privacidadePendente()) {
+        setPedirAceite(true)
+        return
+      }
       window.location.assign(voltar)
     } catch (e) {
       setErro(mensagemDeErro(e))
@@ -43,51 +50,57 @@ export default function Entrar() {
       </a>
       <h1 className="titulo-2 acesso__titulo">Entrar</h1>
 
-      <form className="acesso__form" onSubmit={entrar}>
-        <label className="campo">
-          <span className="eyebrow">E-mail</span>
-          <input
-            className="campo__caixa"
-            type="email"
-            name="email"
-            autoComplete="email"
-            placeholder="seu@email.com"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={carregando}
-          />
-        </label>
+      {pedirAceite ? (
+        <div className="acesso__form">
+          <AceitePrivacidade onAceito={() => window.location.assign(voltar)} />
+        </div>
+      ) : (
+        <form className="acesso__form" onSubmit={entrar}>
+          <label className="campo">
+            <span className="eyebrow">E-mail</span>
+            <input
+              className="campo__caixa"
+              type="email"
+              name="email"
+              autoComplete="email"
+              placeholder="seu@email.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={carregando}
+            />
+          </label>
 
-        <label className="campo">
-          <span className="eyebrow">Senha</span>
-          <input
-            className="campo__caixa"
-            type="password"
-            name="senha"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            required
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            disabled={carregando}
-          />
-        </label>
+          <label className="campo">
+            <span className="eyebrow">Senha</span>
+            <input
+              className="campo__caixa"
+              type="password"
+              name="senha"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              required
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              disabled={carregando}
+            />
+          </label>
 
-        {(erro || sessaoExpirou) && (
-          <p className="acesso__aviso" role="alert">
-            {erro ?? 'Sua sessão expirou. Entre de novo.'}
+          {(erro || sessaoExpirou) && (
+            <p className="acesso__aviso" role="alert">
+              {erro ?? 'Sua sessão expirou. Entre de novo.'}
+            </p>
+          )}
+
+          <button type="submit" className="botao botao--primario acesso__enviar" disabled={carregando}>
+            {carregando ? 'Entrando…' : 'Entrar'}
+          </button>
+
+          <p className="acesso__alternativa">
+            Ainda não tem conta? <a href={comVoltar('/cadastro', voltar)}>Cadastre-se</a>
           </p>
-        )}
-
-        <button type="submit" className="botao botao--primario acesso__enviar" disabled={carregando}>
-          {carregando ? 'Entrando…' : 'Entrar'}
-        </button>
-
-        <p className="acesso__alternativa">
-          Ainda não tem conta? <a href={comVoltar('/cadastro', voltar)}>Cadastre-se</a>
-        </p>
-      </form>
+        </form>
+      )}
     </main>
   )
 }

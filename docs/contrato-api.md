@@ -14,8 +14,9 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
 | `GET /categorias/{id}/medidas` | Implementado (público; `medidas` vazia se a categoria não tem tabela; 404) | `TabelaMedidasDTO` |
 | `POST /auth/registrar` | Implementado (público; 201; 400 `DADOS_INVALIDOS`; 409 com `EMAIL_JA_CADASTRADO`) | `LoginResponseDTO` |
-| `POST /auth/login` | Implementado (público; só `CLIENTE`; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
+| `POST /auth/login` | Implementado (público; só `CLIENTE`; 401 com `CREDENCIAIS_INVALIDAS`, também para conta excluída) | `LoginResponseDTO` |
 | `GET /auth/me` | Implementado (exige token `CLIENTE`) | `UsuarioResumoDTO` |
+| `GET /privacidade` | Implementado (público; versão e vigência da política de privacidade em vigor) | `PoliticaPrivacidadeDTO` |
 | `GET /carrinho` | Implementado (exige token `CLIENTE`; marca itens que ficaram indisponíveis sem apagá-los) | `CarrinhoDTO` |
 | `POST /carrinho/itens` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
 | `PUT /carrinho/itens/{itemId}` | Implementado (exige token `CLIENTE`; 400; 404; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
@@ -25,7 +26,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /enderecos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`) | `EnderecoDTO` |
 | `PUT /enderecos/{id}` | Implementado (exige token `CLIENTE`; 400; 404; endereço já usado em pedido volta com id novo) | `EnderecoDTO` |
 | `DELETE /enderecos/{id}` | Implementado (exige token `CLIENTE`; 204; 404; endereço já usado em pedido só é arquivado) | — |
-| `POST /pedidos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 `CARRINHO_VAZIO`/`ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`/`FRETE_ALTERADO`; 502 `FRETE_FALHOU`/`PAGAMENTO_FALHOU`; 503 `FRETE_INDISPONIVEL`/`PAGAMENTO_INDISPONIVEL`) | `PedidoCriadoDTO` |
+| `POST /pedidos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 `CARRINHO_VAZIO`/`ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`/`FRETE_ALTERADO`/`PRIVACIDADE_PENDENTE`; 502 `FRETE_FALHOU`/`PAGAMENTO_FALHOU`; 503 `FRETE_INDISPONIVEL`/`PAGAMENTO_INDISPONIVEL`) | `PedidoCriadoDTO` |
 | `GET /pedidos` | Implementado (exige token `CLIENTE`; só os pedidos da cliente do token, do mais recente ao mais antigo) | lista de `PedidoResumoDTO` |
 | `GET /pedidos/{id}` | Implementado (exige token `CLIENTE`; 404 também para pedido de outra cliente) | `PedidoDTO` |
 | `GET /conta` | Implementado (exige token `CLIENTE`) | `ContaDTO` |
@@ -33,6 +34,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /trocas` | Implementado (exige token `CLIENTE`; só as trocas da cliente do token, da mais recente à mais antiga) | lista de `TrocaDTO` |
 | `PUT /conta` | Implementado (exige token `CLIENTE`; nome e telefone; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
 | `PUT /conta/senha` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha atual errada) | — |
+| `POST /conta/privacidade` | Implementado (exige token `CLIENTE`; aceite da versão em vigor da política; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
+| `POST /conta/exclusao` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha errada; 409 `CONTA_COM_PEDIDO_EM_ANDAMENTO`) | — |
 | `POST /pagamentos/webhook` | Implementado (público, assinado pelo Mercado Pago; 200; 401 `ASSINATURA_INVALIDA`; 502/503 para o Mercado Pago tentar de novo) | — |
 | `POST /pedidos/{id}/pagamento-simulado` | Só desenvolvimento, com `PAGAMENTO_SIMULADO=true` (404 fora dele) | `PedidoDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
@@ -85,8 +88,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 |---|---|---|
 | `RECURSO_NAO_ENCONTRADO` | 404 | Recurso buscado por id não existe (ex.: `GET /produtos/{id}`) |
 | `DADOS_INVALIDOS` | 400 | Corpo ausente, JSON malformado ou campo inválido (ex.: e-mail vazio no login, preço zero, categoria inexistente ou tamanho repetido no cadastro de produto); `erro` traz a mensagem do primeiro campo |
-| `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada ou usuário sem permissão (mesma resposta nos três casos) |
-| `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado ou expirado |
+| `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada, usuário sem permissão ou conta excluída (mesma resposta em todos os casos) |
+| `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado, expirado ou de uma conta excluída |
 | `ACESSO_NEGADO` | 403 | Token válido, mas sem a role exigida (ex.: token de cliente em `/admin/**`) |
 | `FORMATO_NAO_SUPORTADO` | 400 | Upload de foto que não é JPG, PNG nem WEBP (conferido pelo conteúdo do arquivo, não pela extensão) |
 | `ARQUIVO_MUITO_GRANDE` | 400 | Upload de foto acima de 5 MB |
@@ -107,6 +110,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `PEDIDO_NAO_ENTREGUE` | 409 | Troca: o pedido ainda não foi marcado como entregue |
 | `TROCA_FORA_DO_PRAZO` | 409 | Troca: passou o prazo (7 dias corridos depois da entrega); `erro` traz o último dia |
 | `TROCA_JA_SOLICITADA` | 409 | Troca: já existe troca dessa peça do pedido que não foi recusada |
+| `PRIVACIDADE_PENDENTE` | 409 | Checkout: a cliente aceitou uma versão antiga da política de privacidade (ou nenhuma); aceita a nova em `POST /conta/privacidade` e tenta de novo |
+| `CONTA_COM_PEDIDO_EM_ANDAMENTO` | 409 | Exclusão da conta com pedido pago ainda não entregue (`PAGO`, `PAGO_COM_PENDENCIA`, `ENVIADO`) ou troca em aberto (`SOLICITADA`, `APROVADA`); `erro` diz qual |
 | `STATUS_TROCA_INVALIDO` | 409 | Painel: mudança de status da troca fora do caminho (ex.: concluir sem aprovar, mexer numa recusada) |
 
 ---
@@ -117,7 +122,7 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 
 | Rotas | Quem acessa |
 |---|---|
-| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias` | Público |
+| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias`, `GET /privacidade` | Público |
 | `POST /pagamentos/webhook` | Público, mas só processa aviso com a assinatura `x-signature` do Mercado Pago |
 | `/auth/**` (ex.: `GET /auth/me`), `/conta/**`, `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
@@ -140,7 +145,7 @@ Público. Cria a conta com role `CLIENTE` e já devolve o token, no mesmo format
   "aceitePrivacidade": true
 }
 // Response 201 — LoginResponseDTO
-{ "token": "eyJhbGc...", "usuario": { "id": 7, "nome": "Roseane Silva", "role": "CLIENTE" } }
+{ "token": "eyJhbGc...", "usuario": { "id": 7, "nome": "Roseane Silva", "role": "CLIENTE" }, "privacidadePendente": false }
 // Response 400
 { "erro": "Aceite a política de privacidade para criar a conta", "codigo": "DADOS_INVALIDOS" }
 // Response 409
@@ -159,7 +164,7 @@ Mensagens de 400 (`DADOS_INVALIDOS`): "Informe o nome", "Informe o e-mail", "E-m
 
 **Decisão (#21): o cadastro devolve `LoginResponseDTO`.** O rascunho deste contrato tinha `{ id, nome, email, token }`; trocamos pelo formato do login para o front guardar a sessão do mesmo jeito nos dois casos. O e-mail não volta na resposta (quem cadastrou já sabe qual é).
 
-**Consentimento (LGPD):** o cadastro grava em `usuario` a data e hora do aceite (`privacidade_aceita_em`) e a versão da política aceita (`privacidade_versao`, hoje `2026-10`, constante `PoliticaPrivacidade.VERSAO` no back-end). Quando o texto da política mudar (página da #31), suba a versão: os cadastros seguintes gravam a nova, e os antigos continuam mostrando qual versão aceitaram. Admin não tem aceite (nulo).
+**Consentimento (LGPD):** o cadastro grava em `usuario` a data e hora do aceite (`privacidade_aceita_em`) e a versão da política aceita (`privacidade_versao`). Admin não tem aceite (nulo). A versão vem de um lugar só: `PoliticaPrivacidade.VIGENCIA` no back-end (a versão é essa data, ex.: `2026-10-19`), que a página `/politica-de-privacidade` da loja lê em `GET /privacidade`. Quando o texto da política mudar, troque a vigência: os cadastros seguintes gravam a versão nova, e quem aceitou a antiga aceita a nova no próximo login (`privacidadePendente`) ou no checkout (409 `PRIVACIDADE_PENDENTE`); ver "Política de privacidade (LGPD, #31)".
 
 O 409 diz que o e-mail já tem conta, o que revela que ele está cadastrado. É aceito de propósito: o cadastro precisa avisar a pessoa para entrar em vez de criar outra conta. O login, ao contrário, não diz se o e-mail existe.
 
@@ -172,12 +177,14 @@ Público. Mesmas regras do login admin (e-mail sem diferenciar maiúsculas, mesm
 // Request
 { "email": "roseane@email.com", "senha": "senha123" }
 // Response 200 — LoginResponseDTO
-{ "token": "eyJhbGc...", "usuario": { "id": 7, "nome": "Roseane Silva", "role": "CLIENTE" } }
+{ "token": "eyJhbGc...", "usuario": { "id": 7, "nome": "Roseane Silva", "role": "CLIENTE" }, "privacidadePendente": false }
 // Response 401
 { "erro": "E-mail ou senha incorretos", "codigo": "CREDENCIAIS_INVALIDAS" }
 // Response 400 (e-mail ou senha vazios, e-mail mal formado)
 { "erro": "Informe o e-mail", "codigo": "DADOS_INVALIDOS" }
 ```
+
+`privacidadePendente` (#31) é `true` quando a cliente aceitou uma versão antiga da política de privacidade (ou nenhuma): ela entra normalmente, e a loja pede o aceite da versão em vigor (`POST /conta/privacidade`) antes de seguir. O cadastro e o login admin também devolvem o campo (sempre `false` nos dois). Conta excluída recebe o mesmo 401 de senha errada.
 
 ### Cliente do token
 `GET /auth/me`
@@ -198,7 +205,10 @@ Exigem token `CLIENTE` (401 sem token, 403 com token de admin). Sempre da client
 
 ```json
 // GET /conta → 200 — ContaDTO
-{ "id": 7, "nome": "Maria Silva", "email": "maria@email.com", "telefone": "11987654321" }
+{
+  "id": 7, "nome": "Maria Silva", "email": "maria@email.com", "telefone": "11987654321",
+  "privacidadeVersao": "2026-10-19", "privacidadeAceitaEm": "2026-10-19T14:30:00"
+}
 // PUT /conta — ContaRequestDTO → 200 com o ContaDTO atualizado
 { "nome": "Maria Souza", "telefone": "1134567890" }
 // PUT /conta/senha — SenhaRequestDTO → 204, sem corpo
@@ -220,6 +230,61 @@ Mensagens de 400 (`DADOS_INVALIDOS`): "Informe o nome", "O nome pode ter no máx
 **Senha atual errada é 400, não 401:** a sessão continua valendo, só o formulário está errado (um 401 faria a loja tirar a cliente da conta). Os tokens já emitidos continuam valendo até vencer (JWT sem estado, 2 horas).
 
 **O nome no token não muda:** o `nome` do JWT (e do `GET /auth/me`) é o do momento do login. A loja atualiza o nome da sessão guardada no navegador com a resposta do `PUT /conta`, e o próximo login já sai com o nome novo.
+
+`privacidadeVersao` e `privacidadeAceitaEm` (#31) dizem qual versão da política de privacidade a cliente aceitou e quando (nulos se não há registro). Só leitura: mudam pelo `POST /conta/privacidade`.
+
+### Política de privacidade (LGPD, #31)
+`GET /privacidade`, `POST /conta/privacidade`
+
+`GET /privacidade` é público e devolve a versão em vigor, a mesma que o cadastro e o aceite gravam. A página `/politica-de-privacidade` da loja mostra essa versão e a vigência; o texto da política fica no front (`pages/PoliticaPrivacidade.jsx`).
+
+```json
+// GET /privacidade → 200 — PoliticaPrivacidadeDTO
+{ "versao": "2026-10-19", "vigencia": "2026-10-19" }
+// POST /conta/privacidade — AceitePrivacidadeRequestDTO → 200 com o ContaDTO (privacidadeVersao = versão em vigor)
+{ "aceitePrivacidade": true }
+// Response 400
+{ "erro": "Aceite a política de privacidade para continuar", "codigo": "DADOS_INVALIDOS" }
+```
+
+`POST /conta/privacidade` exige token `CLIENTE` e `aceitePrivacidade: true` (ausente ou `false` → 400). Grava a data e hora de agora e a versão em vigor. A loja chama depois do login com `privacidadePendente: true` e no checkout quando o `POST /pedidos` responde 409 `PRIVACIDADE_PENDENTE`.
+
+### Exclusão da conta (LGPD, #31)
+`POST /conta/exclusao`
+
+Exige token `CLIENTE`. A senha atual confirma que é a dona da conta. É `POST` com corpo (e não `DELETE`) porque `DELETE` com corpo nem sempre passa por proxies.
+
+```json
+// Request — ExclusaoContaRequestDTO → 204, sem corpo
+{ "senha": "senha123" }
+// Response 400
+{ "erro": "Senha incorreta", "codigo": "DADOS_INVALIDOS" }
+// Response 409
+{ "erro": "Você tem um pedido a caminho. A conta pode ser excluída depois que ele for entregue.", "codigo": "CONTA_COM_PEDIDO_EM_ANDAMENTO" }
+```
+
+Mensagens de 400 (`DADOS_INVALIDOS`): "Informe a sua senha", "Senha incorreta".
+
+**Regra: anonimiza, não apaga a linha.** Os pedidos e os valores ficam (obrigação fiscal), sem dono identificável:
+
+| Dado | O que acontece |
+|---|---|
+| `usuario.nome` | Vira `Conta excluída` |
+| `usuario.email` | Vira `excluida-{id}@conta-excluida.invalid`: o e-mail original fica livre para um cadastro novo |
+| `usuario.telefone` | Apagado (nulo) |
+| `usuario.senha_hash` | Trocado pelo hash de uma senha aleatória que ninguém sabe |
+| `usuario.excluida_em` | Data e hora da exclusão. Preenchida, o login responde 401 `CREDENCIAIS_INVALIDAS` e todo token já emitido para a conta passa a responder 401 `NAO_AUTENTICADO` na hora (sem esperar as 2 horas) |
+| `usuario.privacidade_*` | Ficam, como registro do consentimento dado |
+| Endereços | Os usados em pedido ficam só com cidade e UF (CEP `00000000`, logradouro `Endereço removido`, número e bairro `-`, sem complemento) e arquivados; os outros são apagados |
+| Sacola | Apagada |
+| Trocas | Ficam, sem a `observacao` escrita pela cliente |
+| Pedidos | Ficam, com peças, valores, frete, rastreio e pagamento. Os ainda não pagos (`AGUARDANDO_PAGAMENTO`, `PAGAMENTO_RECUSADO`) viram `CANCELADO` |
+
+**Quando não exclui (409 `CONTA_COM_PEDIDO_EM_ANDAMENTO`):** pedido pago ainda não entregue (`PAGO`, `PAGO_COM_PENDENCIA`, `ENVIADO`), porque a etiqueta e a transportadora ainda usam o nome, o telefone e o endereço; ou troca em aberto (`SOLICITADA`, `APROVADA`). A cliente exclui depois da entrega ou da troca.
+
+**Pagamento aprovado depois da exclusão** (um link de pagamento que ficou aberto): o pedido vai para `PAGO_COM_PENDENCIA`, sem baixar estoque, com a pendência dizendo para a Roseane devolver o pagamento pelo Mercado Pago.
+
+O Mercado Pago e o Melhor Envio guardam as próprias cópias dos dados dos pedidos, conforme as políticas deles.
 
 ### Login admin
 `POST /admin/auth/login`
@@ -265,6 +330,7 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `ROSIE_API_URL` | Não (faltando qualquer uma, o checkout responde 503) | Pagamento pelo Mercado Pago; ver "Finalizar pedido" |
 | `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago |
 | `TROCA_PRAZO_DIAS` | Não (padrão `7`) | Prazo para pedir troca, em dias corridos depois da entrega; ver "Troca e devolução" |
+| `JPA_SHOW_SQL` | Não (padrão `false`) | `true` mostra no log os comandos SQL (com `?` no lugar dos valores), para depurar. Desligado para não encher o log da hospedagem |
 
 O admin inicial é criado na subida da API só enquanto não existir nenhum usuário `ADMIN`; depois as três variáveis `ROSIE_ADMIN_*` são ignoradas.
 
@@ -590,6 +656,8 @@ Exige token `CLIENTE`. Fecha o pedido com **o carrinho inteiro** da cliente do t
 | `servicoFreteId` | Obrigatório. O `id` de uma opção do `POST /frete/calcular` |
 | `formaPagamento` | Obrigatório: `CARTAO` (cartão de crédito, com parcelas) ou `PIX`. A página do Mercado Pago só mostra os meios dessa forma (boleto e lotérica nunca) |
 
+**Política de privacidade em dia (#31):** cliente que aceitou uma versão antiga da política (ou nenhuma) recebe 409 `PRIVACIDADE_PENDENTE` antes de qualquer outra conferência; a loja mostra o aceite da versão nova (`POST /conta/privacidade`) e a cliente finaliza de novo.
+
 **O servidor refaz tudo; do front só vêm escolhas.** Itens, quantidades e preços saem do carrinho (o preço é o atual do produto e fica guardado em `pedido_item.preco_unitario`: mudar o preço depois não altera o pedido). Toda peça precisa estar disponível agora: produto desativado → 409 `PRODUTO_INDISPONIVEL`; tamanho esgotado ou estoque menor que a quantidade → 409 `ESTOQUE_INSUFICIENTE` (a cliente ajusta na sacola). O frete é **cotado de novo** no Melhor Envio para o CEP do endereço escolhido, e o preço e o prazo usados são os dessa cotação (nunca os que a tela mostrou); se o `servicoFreteId` não voltar nela → 409 `FRETE_ALTERADO`. Erros do frete são os do `POST /frete/calcular` (502 `FRETE_FALHOU`, 503 `FRETE_INDISPONIVEL`).
 
 **O estoque não baixa aqui** e a sacola fica como está: os dois só mudam quando o Mercado Pago confirmar o pagamento (ver "Webhook do Mercado Pago"). Se o Mercado Pago falhar (502 `PAGAMENTO_FALHOU`, 503 `PAGAMENTO_INDISPONIVEL`), nenhum pedido fica gravado.
@@ -623,7 +691,7 @@ Público (sem token), chamado pelo Mercado Pago a cada mudança de um pagamento.
 
 | Pagamento no Mercado Pago | Pedido |
 |---|---|
-| `approved` | `PAGO`: baixa o estoque de todas as peças e tira da sacola as quantidades compradas (o que a cliente pôs depois do checkout fica), tudo na mesma transação. Falta de estoque ou valor diferente → `PAGO_COM_PENDENCIA`, sem baixar nada |
+| `approved` | `PAGO`: baixa o estoque de todas as peças e tira da sacola as quantidades compradas (o que a cliente pôs depois do checkout fica), tudo na mesma transação. Falta de estoque, valor diferente ou conta excluída pela cliente (#31) → `PAGO_COM_PENDENCIA`, sem baixar nada |
 | `rejected` | `PAGAMENTO_RECUSADO` |
 | `cancelled` | `CANCELADO` |
 | `pending`, `in_process`, `authorized`, `in_mediation` | Continua como está |

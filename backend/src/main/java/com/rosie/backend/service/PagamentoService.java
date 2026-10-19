@@ -92,6 +92,14 @@ public class PagamentoService {
         pedido.setPagamentoId(pagamento.id());
         pedido.setPagoEm(LocalDateTime.now());
 
+        // A cliente excluiu a conta (#31) e pagou depois um link que tinha ficado aberto: sem dados para a
+        // entrega, quem resolve é a Roseane (devolver o dinheiro pelo Mercado Pago)
+        if (pedido.getUsuario().getExcluidaEm() != null) {
+            marcarPendencia(pedido, "A cliente excluiu a conta antes de o pagamento " + pagamento.id()
+                    + " ser aprovado: não há dados de entrega. Devolva o pagamento pelo Mercado Pago.");
+            return;
+        }
+
         if (pagamento.valor() == null || pagamento.valor().compareTo(pedido.getValorTotal()) != 0) {
             marcarPendencia(pedido, "Valor pago (" + pagamento.valor() + ") diferente do total do pedido ("
                     + pedido.getValorTotal() + "). Confira o pagamento " + pagamento.id() + " no Mercado Pago.");

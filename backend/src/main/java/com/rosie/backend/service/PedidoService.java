@@ -49,6 +49,11 @@ public class PedidoService {
 
     // Se o Mercado Pago falhar, a exceção desfaz o pedido inteiro (nada fica gravado sem link de pagamento)
     public PedidoCriadoDTO criar(Long clienteId, PedidoRequestDTO requisicao) {
+        // Política de privacidade mudou depois do último aceite (#31): a loja mostra a nova e pede o aceite
+        if (PoliticaPrivacidade.aceitePendente(usuarioRepository.getReferenceById(clienteId))) {
+            throw new ConflitoException("Atualizamos a política de privacidade. Leia e aceite a nova versão para "
+                    + "finalizar o pedido.", "PRIVACIDADE_PENDENTE");
+        }
         Endereco endereco = enderecoRepository.findByIdAndUsuarioIdAndArquivadoFalse(requisicao.enderecoId(), clienteId)
                 .orElseThrow(() -> new DadosInvalidosException("Endereço de entrega não encontrado"));
 
