@@ -1,7 +1,7 @@
 package com.rosie.backend.model;
 
 // Ciclo do pedido. Quem muda o status do pagamento é o webhook do Mercado Pago (#24), nunca o retorno
-// do navegador. ENVIADO e ENTREGUE ficam para a etiqueta e o rastreio (#25).
+// do navegador. ENVIADO vem da etiqueta (#25).
 public enum StatusPedido {
     // Criado no checkout, esperando a cliente pagar no Mercado Pago (PIX pendente também fica aqui)
     AGUARDANDO_PAGAMENTO,
@@ -12,7 +12,10 @@ public enum StatusPedido {
     // Pagamento aprovado, mas algo impediu de fechar sozinho (estoque acabou entre o checkout e a
     // aprovação, ou valor pago diferente do total): o estoque não baixou e a Roseane resolve (campo pendencia)
     PAGO_COM_PENDENCIA,
+    // Etiqueta comprada e gerada no Melhor Envio pelo painel (#25): tem codigoRastreio (assim que o
+    // Melhor Envio devolver) e a peça segue para a postagem
     ENVIADO,
+    // Ainda sem quem marque: fica para quando o rastreio for acompanhado
     ENTREGUE,
     // Pagamento cancelado ou expirado no Mercado Pago (ex.: PIX não pago no prazo)
     CANCELADO

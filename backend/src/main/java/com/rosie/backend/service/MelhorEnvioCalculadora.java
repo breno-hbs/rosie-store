@@ -7,7 +7,6 @@ import com.rosie.backend.exception.FreteFalhouException;
 import com.rosie.backend.exception.FreteIndisponivelException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -31,13 +30,7 @@ public class MelhorEnvioCalculadora implements CalculadoraFrete {
 
     public MelhorEnvioCalculadora(RestClient.Builder builder, String urlBase, String token, String userAgent,
                                   String cepOrigem) {
-        this.restClient = builder
-                .baseUrl(urlBase)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                // O Melhor Envio exige User-Agent com o nome da aplicação e um e-mail de contato
-                .defaultHeader(HttpHeaders.USER_AGENT, userAgent)
-                .build();
+        this.restClient = MelhorEnvioApi.cliente(builder, urlBase, token, userAgent);
         this.cepOrigem = cepOrigem;
     }
 

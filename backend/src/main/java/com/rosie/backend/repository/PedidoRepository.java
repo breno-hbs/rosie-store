@@ -2,6 +2,7 @@ package com.rosie.backend.repository;
 
 import com.rosie.backend.model.Pedido;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +20,10 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     // Endereço usado num pedido não pode ser apagado nem alterado (EnderecoService)
     boolean existsByEnderecoId(Long enderecoId);
+
+    // Painel (#25): todos os pedidos, do mais recente para o mais antigo, já com a cliente e as peças
+    @EntityGraph(attributePaths = {"usuario", "itens"})
+    List<Pedido> findAllByOrderByCreatedAtDescIdDesc();
 
     // Webhook (#24): trava a linha do pedido até o fim da transação, para dois avisos do mesmo pagamento
     // chegando juntos não baixarem o estoque duas vezes (o segundo espera e já encontra o pedido pago)

@@ -3,15 +3,18 @@ import { buscarUsuarioAdmin, lerSessaoAdmin, sairDoPainel } from '../api.js'
 import AdminCategorias from '../components/AdminCategorias.jsx'
 import AdminEstoque from '../components/AdminEstoque.jsx'
 import AdminMedidas from '../components/AdminMedidas.jsx'
+import AdminPedidoDetalhe from '../components/AdminPedidoDetalhe.jsx'
+import AdminPedidos from '../components/AdminPedidos.jsx'
 import AdminProdutoForm from '../components/AdminProdutoForm.jsx'
 import AdminProdutos from '../components/AdminProdutos.jsx'
 import AdminSidebar from '../components/AdminSidebar.jsx'
 import { SECOES_ADMIN } from '../components/adminSecoes.js'
 import './Admin.css'
 
-// Casca do painel: produtos (#14), estoque (#16), categorias (#17) e tabela de medidas (#20).
-// produtoId: 'novo' ou o id do produto em edição; categoriaId: categoria com a tabela de medidas aberta.
-export default function Admin({ secao, produtoId, categoriaId }) {
+// Casca do painel: produtos (#14), estoque (#16), categorias (#17), tabela de medidas (#20) e pedidos (#25).
+// produtoId: 'novo' ou o id do produto em edição; categoriaId: categoria com a tabela de medidas aberta;
+// pedidoId: pedido aberto no detalhe.
+export default function Admin({ secao, produtoId, categoriaId, pedidoId }) {
   const [usuario, setUsuario] = useState(() => lerSessaoAdmin()?.usuario ?? null)
   const nomeSecao = SECOES_ADMIN.find((s) => s.id === secao)?.nome
 
@@ -33,6 +36,10 @@ export default function Admin({ secao, produtoId, categoriaId }) {
     conteudo = <AdminEstoque />
   } else if (secao === 'categorias' && categoriaId) {
     conteudo = <AdminMedidas categoriaId={categoriaId} />
+  } else if (secao === 'pedidos' && pedidoId) {
+    conteudo = <AdminPedidoDetalhe id={pedidoId} />
+  } else if (secao === 'pedidos') {
+    conteudo = <AdminPedidos />
   } else if (secao === 'categorias') {
     conteudo = (
       <>

@@ -478,3 +478,25 @@ export function salvarTabelaMedidas(categoriaId, medidas, opcoes) {
 export function removerTabelaMedidas(categoriaId, opcoes) {
   return deleteAdmin(`/admin/categorias/${categoriaId}/medidas`, opcoes)
 }
+
+// ----- Pedidos no painel (#25) -----
+
+// GET /admin/pedidos → [{ id, status, cliente: { id, nome, email, telefone }, quantidadePecas, valorTotal,
+// codigoRastreio, createdAt }], do mais recente para o mais antigo, de todas as clientes
+export function listarPedidosAdmin(opcoes) {
+  return getAdmin('/admin/pedidos', opcoes)
+}
+
+// GET /admin/pedidos/{id} → o PedidoDTO da cliente + { cliente, pagamentoId, pagoEm, pendencia, envioId,
+// urlEtiqueta, etiquetaGeradaEm }
+export function buscarPedidoAdmin(id, opcoes) {
+  return getAdmin(`/admin/pedidos/${id}`, opcoes)
+}
+
+// POST /admin/pedidos/{id}/etiqueta → o pedido atualizado (ENVIADO, com urlEtiqueta e codigoRastreio).
+// Compra a etiqueta no Melhor Envio (debita o saldo da conta); repetir não compra outra e, sem rastreio
+// ainda, só busca o rastreio de novo. Erros: PEDIDO_NAO_PAGO, PEDIDO_COM_PENDENCIA, ETIQUETA_CANCELADA e
+// ETIQUETA_EM_ANDAMENTO (409, mensagem pronta); ETIQUETA_FALHOU (502); ETIQUETA_INDISPONIVEL (503)
+export function gerarEtiqueta(id, opcoes) {
+  return postAdmin(`/admin/pedidos/${id}/etiqueta`, undefined, opcoes)
+}

@@ -1,0 +1,335 @@
+/* Pedidos do painel (#25). Sem tela no Figma: mesma tabela e mesmos tons de "Admin — Lista de Produtos". */
+
+.admin-pedidos,
+.admin-pedido {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.admin-pedidos__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.admin-pedidos__resumo {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-pedidos__estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+}
+
+/* Tabela: no celular cada pedido vira um bloco; a partir de 768px, colunas */
+.admin-pedidos__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid var(--linha);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-pedidos__tabela thead {
+  display: none;
+}
+
+.admin-pedidos__tabela tr {
+  display: block;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.admin-pedidos__tabela th,
+.admin-pedidos__tabela td {
+  display: block;
+  padding: 0;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.admin-pedidos__tabela td[data-rotulo]::before {
+  content: attr(data-rotulo) ': ';
+  color: var(--fumaca);
+}
+
+.admin-pedidos__numero {
+  color: var(--tinta);
+}
+
+.admin-pedidos__data {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--fumaca);
+}
+
+/* Selo do status: contorno, e preenchido quando o pedido pede ação (pago sem etiqueta, pendência) */
+.admin-pedidos__status {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid var(--linha);
+  color: var(--acento);
+}
+
+.admin-pedidos__status[data-status='PAGO'],
+.admin-pedidos__status[data-status='PAGO_COM_PENDENCIA'] {
+  border-color: var(--tinta);
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.admin-pedidos__status[data-status='CANCELADO'],
+.admin-pedidos__status[data-status='PAGAMENTO_RECUSADO'] {
+  color: var(--fumaca);
+}
+
+.admin-pedidos__acoes {
+  margin-top: 8px;
+}
+
+.admin-pedidos__acao {
+  color: var(--acento);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+
+.admin-pedidos__acao:hover {
+  color: var(--tinta);
+  text-decoration-color: currentColor;
+}
+
+/* ---------- Detalhe ---------- */
+
+.admin-pedido__voltar {
+  align-self: flex-start;
+  color: var(--fumaca);
+}
+
+.admin-pedido__voltar:hover {
+  color: var(--tinta);
+}
+
+.admin-pedido__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.admin-pedido__data {
+  flex-basis: 100%;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+}
+
+.admin-pedido__grade {
+  display: grid;
+  gap: 32px;
+}
+
+.admin-pedido__bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--linha);
+}
+
+.admin-pedido__bloco .rotulo {
+  color: var(--fumaca);
+}
+
+.admin-pedido__texto,
+.admin-pedido__dica {
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-pedido__dica {
+  font-size: 12px;
+  color: var(--fumaca);
+}
+
+.admin-pedido__alerta {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+.admin-pedido__etiqueta {
+  padding: 20px;
+  border: 1px solid var(--tinta);
+}
+
+.admin-pedido__rastreio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-pedido__codigo {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--tinta);
+  user-select: all;
+}
+
+.admin-pedido__botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-pedido__botoes .botao {
+  min-height: 48px;
+}
+
+.admin-pedido__confirmar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-pedido__itens {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-pedido__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--linha);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+.admin-pedido__foto {
+  flex-shrink: 0;
+  width: 48px;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  background: var(--foto-vazia);
+}
+
+.admin-pedido__item-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-pedido__item-nome {
+  color: var(--tinta);
+}
+
+.admin-pedido__item-valor {
+  color: var(--tinta);
+  white-space: nowrap;
+}
+
+.admin-pedido__valores {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-pedido__valores div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.admin-pedido__valores dd {
+  margin: 0;
+}
+
+.admin-pedido__total {
+  font-weight: 500;
+  color: var(--tinta);
+}
+
+@media (min-width: 768px) {
+  .admin-pedidos,
+  .admin-pedido {
+    margin-top: 0;
+  }
+
+  .admin-pedidos__tabela {
+    display: table;
+    table-layout: fixed;
+  }
+
+  .admin-pedidos__tabela thead {
+    display: table-header-group;
+  }
+
+  .admin-pedidos__tabela tr {
+    display: table-row;
+    padding: 0;
+  }
+
+  .admin-pedidos__tabela th,
+  .admin-pedidos__tabela td {
+    display: table-cell;
+    padding: 16px 16px 16px 0;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .admin-pedidos__tabela th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .admin-pedidos__tabela th:nth-child(1) { width: 22%; }
+  .admin-pedidos__tabela th:nth-child(2) { width: 24%; }
+  .admin-pedidos__tabela th:nth-child(3) { width: 9%; }
+  .admin-pedidos__tabela th:nth-child(4) { width: 13%; }
+  .admin-pedidos__tabela th:nth-child(5) { width: 18%; }
+  .admin-pedidos__tabela th:nth-child(6) { width: 14%; }
+
+  .admin-pedidos__tabela td[data-rotulo]::before {
+    content: none;
+  }
+
+  .admin-pedidos__data {
+    display: block;
+    margin-left: 0;
+  }
+
+  .admin-pedidos__acoes {
+    margin-top: 0;
+  }
+
+  .admin-pedido__grade {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-pedido__etiqueta {
+    grid-column: 1 / -1;
+  }
+}

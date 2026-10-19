@@ -35,7 +35,9 @@ function rotaAtual() {
   }
   const medidasAdmin = caminho.match(/^\/admin\/categorias\/(\d+)\/medidas\/?$/)
   if (medidasAdmin) return { pagina: 'admin', secao: 'categorias', categoriaId: Number(medidasAdmin[1]) }
-  const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias))?\/?$/)
+  const pedidoAdmin = caminho.match(/^\/admin\/pedidos\/(\d+)\/?$/)
+  if (pedidoAdmin) return { pagina: 'admin', secao: 'pedidos', pedidoId: Number(pedidoAdmin[1]) }
+  const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias|pedidos))?\/?$/)
   if (admin) return { pagina: 'admin', secao: admin[1] ?? 'produtos' }
   return { pagina: 'home' }
 }
@@ -78,7 +80,14 @@ export default function App() {
   if (rota.pagina === 'cadastro') return <Cadastro />
   if (rota.pagina === 'admin-login') return <AdminLogin />
   if (rota.pagina === 'admin') {
-    return <Admin secao={rota.secao} produtoId={rota.produtoId} categoriaId={rota.categoriaId} />
+    return (
+      <Admin
+        secao={rota.secao}
+        produtoId={rota.produtoId}
+        categoriaId={rota.categoriaId}
+        pedidoId={rota.pedidoId}
+      />
+    )
   }
   return <Home />
 }
