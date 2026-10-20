@@ -120,7 +120,9 @@ macOS/Linux:
 cp backend/src/main/resources/application-example.properties backend/src/main/resources/application-local.properties
 ```
 
-O `application.properties` importa esse arquivo automaticamente quando ele existe; não é preciso ativar perfil. Quem já tinha o arquivo antes do login admin precisa acrescentar a linha `rosie.jwt.segredo=...` (copie do exemplo), senão a API não sobe.
+O `application.properties` importa esse arquivo automaticamente quando ele existe; não é preciso ativar perfil (o perfil `prod` é só para o deploy).
+
+**Banco (Flyway).** As tabelas são criadas e atualizadas pelas migrações em `backend/src/main/resources/db/migration`, aplicadas na subida da API; o Hibernate só confere se as entidades batem com elas. Um `rosie_db` criado antes do Flyway é marcado como já estando na V1 na primeira subida, sem perder dados. Mudou uma entidade, crie a migração seguinte (`V2__...sql`). Detalhes em [`docs/deploy.md`](docs/deploy.md#esquema-do-banco-flyway). Quem já tinha o arquivo antes do login admin precisa acrescentar a linha `rosie.jwt.segredo=...` (copie do exemplo), senão a API não sobe.
 
 **2. Variáveis de ambiente.** O `application.properties` lê:
 
@@ -280,6 +282,10 @@ cd frontend
 npm run lint
 npm run build
 ```
+
+## Deploy
+
+API e MySQL no Railway, front no Netlify, domínio no Registro.br. O passo a passo, o DNS e a tabela com **todas** as variáveis de ambiente de produção estão em [`docs/deploy.md`](docs/deploy.md).
 
 ## Fluxo de trabalho
 
