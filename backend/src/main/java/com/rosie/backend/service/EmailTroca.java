@@ -194,7 +194,7 @@ public class EmailTroca {
         };
     }
 
-    private static String primeiroNome(String nome) {
+    static String primeiroNome(String nome) {
         return nome == null || nome.isBlank() ? "" : nome.strip().split("\\s+")[0];
     }
 }

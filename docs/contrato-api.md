@@ -29,13 +29,15 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /pedidos` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 `CARRINHO_VAZIO`/`ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`/`FRETE_ALTERADO`/`PRIVACIDADE_PENDENTE`; 502 `FRETE_FALHOU`/`PAGAMENTO_FALHOU`; 503 `FRETE_INDISPONIVEL`/`PAGAMENTO_INDISPONIVEL`) | `PedidoCriadoDTO` |
 | `GET /pedidos` | Implementado (exige token `CLIENTE`; só os pedidos da cliente do token, do mais recente ao mais antigo) | lista de `PedidoResumoDTO` |
 | `GET /pedidos/{id}` | Implementado (exige token `CLIENTE`; 404 também para pedido de outra cliente) | `PedidoDTO` |
-| `GET /conta` | Implementado (exige token `CLIENTE`) | `ContaDTO` |
+| `GET /conta` | Implementado (exige token `CLIENTE`; com a troca de e-mail pendente em `emailPendente`) | `ContaDTO` |
 | `POST /trocas` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 404 também para pedido de outra cliente; 409 `PEDIDO_NAO_ENTREGUE`/`TROCA_FORA_DO_PRAZO`/`TROCA_JA_SOLICITADA`) | `TrocaDTO` |
 | `GET /trocas` | Implementado (exige token `CLIENTE`; só as trocas da cliente do token, da mais recente à mais antiga; com a etiqueta de volta ou o endereço de devolução, #63) | lista de `TrocaDTO` |
 | `PUT /conta` | Implementado (exige token `CLIENTE`; nome e telefone; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
 | `PUT /conta/senha` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha atual errada) | — |
 | `POST /conta/privacidade` | Implementado (exige token `CLIENTE`; aceite da versão em vigor da política; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
 | `POST /conta/exclusao` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha errada; 409 `CONTA_COM_PEDIDO_EM_ANDAMENTO`) | — |
+| `PUT /conta/email` | Implementado (exige token `CLIENTE`; 202, a troca fica pendente até a confirmação; 400 `DADOS_INVALIDOS`; 403 `SENHA_INCORRETA`; 409 `EMAIL_JA_CADASTRADO`; 502 `EMAIL_FALHOU`) | `EmailPendenteDTO` |
+| `POST /conta/email/confirmar` | Implementado (público, pelo token do link; 400 `TOKEN_INVALIDO`/`TOKEN_EXPIRADO`; 409 `EMAIL_JA_CADASTRADO`) | `EmailConfirmadoDTO` |
 | `POST /pagamentos/webhook` | Implementado (público, assinado pelo Mercado Pago; 200; 401 `ASSINATURA_INVALIDA`; 502/503 para o Mercado Pago tentar de novo) | — |
 | `POST /pedidos/{id}/pagamento-simulado` | Só desenvolvimento, com `PAGAMENTO_SIMULADO=true` (404 fora dele) | `PedidoDTO` |
 | `POST /admin/auth/login` | Implementado (público; 401 com `CREDENCIAIS_INVALIDAS`) | `LoginResponseDTO` |
@@ -97,7 +99,11 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `ARMAZENAMENTO_INDISPONIVEL` | 503 | Upload de foto sem `CLOUDINARY_URL` configurada no servidor, ou com o Cloudinary fora do ar |
 | `CATEGORIA_DUPLICADA` | 409 | Criar ou renomear categoria com um nome que já existe (sem diferenciar maiúsculas) |
 | `CATEGORIA_EM_USO` | 409 | Remover categoria que ainda tem produtos (ativos ou inativos); `erro` diz quantos |
-| `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
+| `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente, ou troca de e-mail na Minha Conta (no pedido e de novo na confirmação), com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
+| `SENHA_INCORRETA` | 403 | Troca de e-mail com a senha atual errada. Não é 401: a sessão continua valendo |
+| `TOKEN_INVALIDO` | 400 | Confirmação da troca de e-mail com um token que não existe, já foi usado ou foi substituído por um pedido mais novo (ou sem token) |
+| `TOKEN_EXPIRADO` | 400 | Confirmação da troca de e-mail depois do prazo do link (`ROSIE_TROCA_EMAIL_VALIDADE`, padrão 24 horas); a cliente pede de novo |
+| `EMAIL_FALHOU` | 502 | Troca de e-mail: o Resend não aceitou o link de confirmação (fora do ar, recusa, tempo esgotado). Nada fica pendente; a cliente pode tentar de novo |
 | `ESTOQUE_INSUFICIENTE` | 409 | Carrinho: a quantidade pedida (somada à que já está na sacola, no POST) passa do estoque do tamanho, ou o tamanho está esgotado; `erro` traz a mensagem pronta ("Só temos 3 no tamanho P") |
 | `PRODUTO_INDISPONIVEL` | 409 | Carrinho: adicionar ou mudar a quantidade de um produto desativado pela Roseane |
 | `CARRINHO_VAZIO` | 409 | Frete: o carrinho não tem nenhuma peça disponível para cotar. Checkout: a sacola está vazia |
@@ -125,9 +131,9 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 
 | Rotas | Quem acessa |
 |---|---|
-| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias`, `GET /privacidade` | Público |
+| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias`, `GET /privacidade`, `POST /conta/email/confirmar` | Público |
 | `POST /pagamentos/webhook` | Público, mas só processa aviso com a assinatura `x-signature` do Mercado Pago |
-| `/auth/**` (ex.: `GET /auth/me`), `/conta/**`, `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
+| `/auth/**` (ex.: `GET /auth/me`), `/conta/**` (menos a confirmação da troca de e-mail), `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
 | Qualquer outra | Qualquer token válido |
 
@@ -210,7 +216,8 @@ Exigem token `CLIENTE` (401 sem token, 403 com token de admin). Sempre da client
 // GET /conta → 200 — ContaDTO
 {
   "id": 7, "nome": "Maria Silva", "email": "maria@email.com", "telefone": "11987654321",
-  "privacidadeVersao": "2026-10-19", "privacidadeAceitaEm": "2026-10-19T14:30:00"
+  "privacidadeVersao": "2026-10-19", "privacidadeAceitaEm": "2026-10-19T14:30:00",
+  "emailPendente": { "novoEmail": "maria.nova@email.com", "expiraEm": "2026-10-20T14:30:00" }
 }
 // PUT /conta — ContaRequestDTO → 200 com o ContaDTO atualizado
 { "nome": "Maria Souza", "telefone": "1134567890" }
@@ -224,7 +231,7 @@ Exigem token `CLIENTE` (401 sem token, 403 com token de admin). Sempre da client
 |---|---|
 | `nome` | Obrigatório, até 150 caracteres (espaços nas pontas são removidos), como no cadastro |
 | `telefone` | Obrigatório, só dígitos com DDD: 10 ou 11 dígitos, como no cadastro. O front tira a máscara |
-| `email` | Só leitura: é o login e não muda por aqui (trocar exigiria confirmar o endereço novo) |
+| `email` | Só leitura: é o login e não muda pelo `PUT /conta`. A troca é pelo `PUT /conta/email`, com confirmação pelo endereço novo (ver "Troca de e-mail") |
 | `senhaAtual` | Obrigatória e precisa conferir com a senha da conta |
 | `novaSenha` | Obrigatória, de 8 a 72 caracteres (e até 72 bytes, como no cadastro). Guardada só como hash BCrypt |
 
@@ -235,6 +242,50 @@ Mensagens de 400 (`DADOS_INVALIDOS`): "Informe o nome", "O nome pode ter no máx
 **O nome no token não muda:** o `nome` do JWT (e do `GET /auth/me`) é o do momento do login. A loja atualiza o nome da sessão guardada no navegador com a resposta do `PUT /conta`, e o próximo login já sai com o nome novo.
 
 `privacidadeVersao` e `privacidadeAceitaEm` (#31) dizem qual versão da política de privacidade a cliente aceitou e quando (nulos se não há registro). Só leitura: mudam pelo `POST /conta/privacidade`.
+
+`emailPendente` (#61) é a troca de e-mail esperando a confirmação pelo link: o endereço novo e até quando o link vale. `null` sem troca pendente ou com o link já vencido.
+
+### Troca de e-mail (Minha Conta, #61)
+`PUT /conta/email`, `POST /conta/email/confirmar`
+
+O e-mail é o login, então o novo **não vale na hora**: a cliente pede a troca com a senha atual, a API guarda a troca pendente e manda ao endereço novo um link de confirmação; só a confirmação pelo link troca o login. Até lá a cliente continua entrando com o e-mail antigo (e o novo não entra). Assim uma digitação errada não deixa ninguém sem acesso à conta.
+
+```json
+// PUT /conta/email (token CLIENTE) — EmailRequestDTO → 202 — EmailPendenteDTO
+{ "novoEmail": "maria.nova@email.com", "senhaAtual": "senha123" }
+{ "novoEmail": "maria.nova@email.com", "expiraEm": "2026-10-20T14:30:00" }
+// Response 403
+{ "erro": "Senha atual incorreta", "codigo": "SENHA_INCORRETA" }
+// Response 409
+{ "erro": "Este e-mail já está cadastrado. Entre com ele ou use outro.", "codigo": "EMAIL_JA_CADASTRADO" }
+
+// POST /conta/email/confirmar (público) — ConfirmacaoEmailRequestDTO → 200 — EmailConfirmadoDTO
+{ "token": "q3Vx...43 caracteres" }
+{ "email": "maria.nova@email.com" }
+// Response 400
+{ "erro": "Este link não é válido ou já foi usado", "codigo": "TOKEN_INVALIDO" }
+{ "erro": "Este link expirou. Peça a troca de e-mail de novo", "codigo": "TOKEN_EXPIRADO" }
+```
+
+| Campo | Regra |
+|---|---|
+| `novoEmail` | Obrigatório, como no cadastro: e-mail com ponto no domínio, até 150 caracteres, guardado sem espaços nas pontas e em minúsculas. Igual ao atual (sem diferenciar maiúsculas) → 400 "O novo e-mail é igual ao atual" |
+| `senhaAtual` | Obrigatória e precisa conferir com a senha da conta. Errada → **403 `SENHA_INCORRETA`** (não 401: a sessão continua valendo, e um 401 faria a loja tirar a cliente da conta), sem pedir a troca nem mandar e-mail |
+| `token` | O do link. Ausente, vazio, inexistente, já usado ou substituído por um pedido mais novo → 400 `TOKEN_INVALIDO`; vencido → 400 `TOKEN_EXPIRADO` |
+
+Mensagens de 400 (`DADOS_INVALIDOS`) do pedido: "Informe o novo e-mail", "E-mail inválido", "O e-mail pode ter no máximo 150 caracteres", "Informe a senha atual", "O novo e-mail é igual ao atual".
+
+**Ordem das conferências no pedido:** formato dos campos (400), senha (403), e-mail igual ao atual (400) e e-mail já cadastrado (409). A senha vem antes do 409, então só a dona da conta descobre se um e-mail está cadastrado, e o 409 não revela mais do que o cadastro já revela (mesma mensagem). Nenhuma outra resposta diz se o endereço novo pertence a alguém.
+
+**Troca pendente:** uma por cliente (tabela `email_pendente`: `usuario_id` único, `novo_email`, `token_hash`, `expira_em`, `solicitado_em`). Um pedido novo substitui o anterior, e o link anterior deixa de valer (`TOKEN_INVALIDO`). O token tem 256 bits aleatórios (Base64 para URL, 43 caracteres) e **só o hash SHA-256 fica no banco**, nunca o token. Prazo: `ROSIE_TROCA_EMAIL_VALIDADE` (padrão 24 horas). Datas no horário de Brasília. A exclusão da conta (#31) apaga a troca pendente.
+
+**O link:** `ROSIE_LOJA_URL` + `/minha-conta/confirmar-email?token=...`, uma página pública da loja (o link pode ser aberto em outro aparelho, sem a cliente logada). A página tira o token da barra de endereço assim que o lê e chama o `POST /conta/email/confirmar` com ele no corpo (o token nunca vai na URL de uma chamada à API).
+
+**O e-mail com o link sai na hora**, dentro da requisição (não pela fila dos avisos): a resposta 202 só volta depois que o Resend aceitou o e-mail, para a loja não dizer "enviamos um link" quando ele não saiu. Se o Resend falhar, a troca pendente é desfeita e a resposta é 502 `EMAIL_FALHOU`. Sem `RESEND_API_KEY` (dev, CI), o link não sai; o log registra só o destinatário mascarado e o assunto, e o texto do e-mail (com o link) só com `logging.level.com.rosie.backend.service.EmailSoNoLog=DEBUG`, para testar no dev.
+
+**Confirmação:** numa transação, com a linha da troca pendente travada (o mesmo token não confirma duas vezes ao mesmo tempo): confere o token e o prazo, **confere de novo se o e-mail novo já tem conta** (alguém pode ter se cadastrado com ele nesse meio-tempo: 409 `EMAIL_JA_CADASTRADO`, e o login continua o antigo), troca o e-mail e apaga a troca pendente (o token não serve mais). Depois do commit, o **endereço antigo recebe um aviso** de que o login foi trocado, com o novo e-mail mascarado (`ma***@email.com`), a data e hora e os contatos da loja para o caso de não ter sido a dona da conta. O aviso sai pela fila dos e-mails: uma falha no envio não desfaz a troca.
+
+**Sessão depois da troca:** o JWT não leva o e-mail (`sub` é o id do usuário; as claims são `role` e `nome`), então os tokens já emitidos continuam valendo e a cliente segue logada, como na troca de senha. O próximo login já é com o e-mail novo. A proteção contra uma troca feita por outra pessoa é a senha exigida no pedido e o aviso ao endereço antigo.
 
 ### Política de privacidade (LGPD, #31)
 `GET /privacidade`, `POST /conta/privacidade`
@@ -331,7 +382,8 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `ROSIE_ADMIN_NOME` | Não (padrão `Roseane`) | Nome do admin inicial |
 | `CLOUDINARY_URL` | Não (sem ela, o upload de fotos responde 503) | Credencial do Cloudinary, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`; ver "Upload de imagem" |
 | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `ROSIE_API_URL` | Não (faltando qualquer uma, o checkout responde 503) | Pagamento pelo Mercado Pago; ver "Finalizar pedido" |
-| `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago |
+| `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago e o link de confirmação da troca de e-mail |
+| `ROSIE_TROCA_EMAIL_VALIDADE` | Não (padrão `24h`) | Prazo do link de confirmação da troca de e-mail (ex.: `30m`, `24h`, `2d`); ver "Troca de e-mail" |
 | `TROCA_PRAZO_DIAS` | Não (padrão `7`) | Prazo para pedir troca, em dias corridos depois da entrega; ver "Troca e devolução" |
 | `ROSIE_REMETENTE_NOME`, `_LOGRADOURO`, `_NUMERO`, `_COMPLEMENTO`, `_BAIRRO`, `_CIDADE`, `_UF` e `ROSIE_CEP_ORIGEM` | Não (faltando um obrigatório, a cliente vê "a Rosie vai te passar o endereço") | Além de remetente da etiqueta de ida e destino da de volta, é o endereço de devolução que a cliente vê na troca "não serviu" aprovada (`enderecoDevolucao`, #63); ver "Devolução da peça" |
 | `ROSIE_RASTREIO_ATIVO`, `ROSIE_RASTREIO_INTERVALO`, `ROSIE_RASTREIO_LOTE`, `ROSIE_RASTREIO_PAUSA` | Não (padrões `true`, `6h`, `50`, `1s`) | Entrega pelo rastreio: liga/desliga, intervalo entre as rodadas, pedidos por rodada e pausa entre as consultas ao Melhor Envio; ver "Entrega pelo rastreio". Só roda com `MELHOR_ENVIO_TOKEN` |
@@ -1401,6 +1453,8 @@ Compra e gera no Melhor Envio a etiqueta de volta (logística reversa, #63) de u
 **Trade-off aceito:** JWT não tem "logout forte" fácil (sem lista negra de tokens). Solução simples adotada: token com validade curta (2 horas), sem controle de logout forçado por enquanto — suficiente pro escopo atual.
 
 **Implementação (#13):** suporte nativo do Spring Security (`spring-boot-starter-security-oauth2-resource-server`, `NimbusJwtEncoder`/`NimbusJwtDecoder`), sem biblioteca extra. A claim `role` vira a authority `ROLE_ADMIN`/`ROLE_CLIENTE`. No front, o token fica no `sessionStorage` e o `api.js` só o envia nas chamadas do painel: as rotas públicas do catálogo não recebem `Authorization`, porque um token vencido faria a API responder 401 mesmo nelas.
+
+**Troca de e-mail (#61):** o token identifica o usuário pelo id, não pelo e-mail, então trocar o e-mail não derruba a sessão (ver "Troca de e-mail").
 
 **Cliente (#21):** mesmo token e mesma validade, com `role` `CLIENTE`. No front, a sessão do cliente fica no `localStorage` (`rosie.cliente.sessao`), separada da do painel (`rosie.admin.sessao`, no `sessionStorage`): o cliente continua logado entre abas e ao reabrir o navegador, até o token vencer em 2 horas. O `api.js` só manda o token de cliente nas rotas de cliente, e um 401 nelas limpa a sessão e leva a `/entrar?voltar=<página atual>`.
 

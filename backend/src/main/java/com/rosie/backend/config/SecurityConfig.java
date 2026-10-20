@@ -63,6 +63,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/pagamentos/webhook").permitAll()
                         // Endereços de entrega (#24)
                         .requestMatchers("/enderecos/**").hasRole("CLIENTE")
+                        // Confirmação da troca de e-mail (#61): pública, o token do link é a prova
+                        .requestMatchers(HttpMethod.POST, "/conta/email/confirmar").permitAll()
                         // Dados pessoais da Minha Conta (#26)
                         .requestMatchers("/conta", "/conta/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()

@@ -11,6 +11,7 @@ import com.rosie.backend.model.StatusPedido;
 import com.rosie.backend.model.StatusTroca;
 import com.rosie.backend.model.Usuario;
 import com.rosie.backend.repository.CarrinhoItemRepository;
+import com.rosie.backend.repository.EmailPendenteRepository;
 import com.rosie.backend.repository.EnderecoRepository;
 import com.rosie.backend.repository.PedidoRepository;
 import com.rosie.backend.repository.TrocaRepository;
@@ -26,7 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 
 // Dados pessoais da Minha Conta (#26): nome, telefone e troca de senha da cliente do token.
-// O e-mail não muda por aqui (é o login; trocar exigiria confirmar o novo endereço).
+// O e-mail não muda por aqui (é o login): a troca, com confirmação pelo novo endereço, fica no MudancaEmailService (#61).
 // Direitos do titular (LGPD, #31): reaceite da política em vigor e exclusão da conta.
 @Service
 @RequiredArgsConstructor
@@ -54,18 +55,20 @@ public class ContaService {
     private final CarrinhoItemRepository carrinhoItemRepository;
     private final PedidoRepository pedidoRepository;
     private final TrocaRepository trocaRepository;
+    private final EmailPendenteRepository emailPendenteRepository;
+    private final MudancaEmailService mudancaEmailService;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public ContaDTO buscar(Long clienteId) {
-        return ContaDTO.from(cliente(clienteId));
+        return conta(cliente(clienteId));
     }
 
     public ContaDTO atualizar(Long clienteId, ContaRequestDTO requisicao) {
         Usuario usuario = cliente(clienteId);
         usuario.setNome(requisicao.nome().trim());
         usuario.setTelefone(requisicao.telefone());
-        return ContaDTO.from(usuario);
+        return conta(usuario);
     }
 
     // Senha atual errada é 400 (não 401): a sessão continua valendo, só o formulário está errado.
@@ -86,7 +89,7 @@ public class ContaService {
         Usuario usuario = cliente(clienteId);
         usuario.setPrivacidadeAceitaEm(LocalDateTime.now());
         usuario.setPrivacidadeVersao(PoliticaPrivacidade.VERSAO);
-        return ContaDTO.from(usuario);
+        return conta(usuario);
     }
 
     // Exclusão da conta a pedido da cliente (LGPD, art. 18, VI). Não apaga a linha: anonimiza o que
@@ -114,6 +117,8 @@ public class ContaService {
                 .forEach(pedido -> pedido.setStatus(StatusPedido.CANCELADO));
 
         carrinhoItemRepository.deleteByUsuarioId(clienteId);
+        // Troca de e-mail pendente (#61): o link deixa de valer
+        emailPendenteRepository.apagarDaCliente(clienteId);
         for (Endereco endereco : enderecoRepository.findByUsuarioId(clienteId)) {
             if (pedidoRepository.existsByEnderecoId(endereco.getId())) {
                 anonimizar(endereco);
@@ -140,6 +145,10 @@ public class ContaService {
         endereco.setComplemento(null);
         endereco.setBairro("-");
         endereco.setArquivado(true);
+    }
+
+    private ContaDTO conta(Usuario usuario) {
+        return ContaDTO.from(usuario, mudancaEmailService.pendente(usuario.getId()).orElse(null));
     }
 
     private Usuario cliente(Long clienteId) {

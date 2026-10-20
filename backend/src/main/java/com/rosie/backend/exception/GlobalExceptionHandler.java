@@ -41,6 +41,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erro);
     }
 
+    // Senha atual errada na troca de e-mail (#61): 403, não 401, para a loja não encerrar a sessão
+    @ExceptionHandler(SenhaIncorretaException.class)
+    public ResponseEntity<ErroResponseDTO> handleSenhaIncorreta(SenhaIncorretaException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErroResponseDTO(ex.getMessage(), "SENHA_INCORRETA"));
+    }
+
+    // Link de confirmação da troca de e-mail (#61): TOKEN_INVALIDO ou TOKEN_EXPIRADO
+    @ExceptionHandler(TokenInvalidoException.class)
+    public ResponseEntity<ErroResponseDTO> handleTokenInvalido(TokenInvalidoException ex) {
+        return ResponseEntity.badRequest().body(new ErroResponseDTO(ex.getMessage(), ex.getCodigo()));
+    }
+
     // Regra de negócio que impede a operação (ex.: CATEGORIA_DUPLICADA, CATEGORIA_EM_USO)
     @ExceptionHandler(ConflitoException.class)
     public ResponseEntity<ErroResponseDTO> handleConflito(ConflitoException ex) {
@@ -157,6 +169,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponseDTO> handlePagamentoFalhou(PagamentoFalhouException ex) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(new ErroResponseDTO(ex.getMessage(), "PAGAMENTO_FALHOU"));
+    }
+
+    // Link de confirmação da troca de e-mail que o Resend não aceitou (#61). Os outros e-mails saem pela
+    // FilaEmail, que só registra a falha no log, e nunca chegam aqui.
+    @ExceptionHandler(EmailFalhouException.class)
+    public ResponseEntity<ErroResponseDTO> handleEmailFalhou(EmailFalhouException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(new ErroResponseDTO(
+                "Não foi possível enviar o e-mail agora. Tente de novo em instantes.", "EMAIL_FALHOU"));
     }
 
     // Webhook com assinatura que não confere: a mensagem não diz o motivo

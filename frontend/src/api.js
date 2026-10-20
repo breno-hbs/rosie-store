@@ -235,7 +235,8 @@ export function buscarCliente(opcoes) {
 }
 
 // Dados pessoais da Minha Conta (#26). GET /conta → { id, nome, email, telefone (só dígitos),
-// privacidadeVersao, privacidadeAceitaEm } (as duas últimas: o aceite da política, #31)
+// privacidadeVersao, privacidadeAceitaEm, emailPendente } (o aceite da política, #31, e a troca de e-mail
+// esperando confirmação, #61: { novoEmail, expiraEm } ou null)
 export function buscarConta(opcoes) {
   return getCliente('/conta', opcoes)
 }
@@ -262,6 +263,21 @@ export async function atualizarConta(dados, opcoes) {
 // caracteres: ApiError com codigo DADOS_INVALIDOS (400) e a mensagem pronta
 export function trocarSenha(senhaAtual, novaSenha, opcoes) {
   return putCliente('/conta/senha', { senhaAtual, novaSenha }, opcoes)
+}
+
+// Troca de e-mail (#61). PUT /conta/email; { novoEmail, senhaAtual } → { novoEmail, expiraEm }: o e-mail novo
+// só vale depois da confirmação pelo link mandado a ele; até lá o login continua com o antigo e o GET /conta
+// traz a troca em emailPendente. Senha errada: SENHA_INCORRETA (403, a sessão continua); e-mail já cadastrado:
+// EMAIL_JA_CADASTRADO (409); igual ao atual ou inválido: DADOS_INVALIDOS (400); falha no envio: EMAIL_FALHOU (502)
+export function solicitarTrocaEmail(novoEmail, senhaAtual, opcoes) {
+  return putCliente('/conta/email', { novoEmail, senhaAtual }, opcoes)
+}
+
+// POST /conta/email/confirmar; { token } → { email }. Pública (sem token de sessão): o link pode ser aberto em
+// outro aparelho. Link que não existe ou já foi usado: TOKEN_INVALIDO; vencido: TOKEN_EXPIRADO (os dois 400);
+// alguém se cadastrou com o e-mail novo nesse meio-tempo: EMAIL_JA_CADASTRADO (409)
+export function confirmarTrocaEmail(token, opcoes) {
+  return requisicao('/conta/email/confirmar', { ...opcoes, metodo: 'POST', corpo: { token } })
 }
 
 // Política de privacidade (LGPD, #31). GET /privacidade → { versao, vigencia } da política em vigor (público):
