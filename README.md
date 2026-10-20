@@ -287,6 +287,16 @@ npm run build
 
 API e MySQL no Railway, front no Netlify, domínio no Registro.br. O passo a passo, o DNS e a tabela com **todas** as variáveis de ambiente de produção estão em [`docs/deploy.md`](docs/deploy.md).
 
+## Demonstração
+
+Para mostrar a loja inteira sem hospedagem nem credenciais reais (pagamento, frete e etiqueta simulados, e-mail só no log, banco `rosie_demo` separado), com um link temporário para o celular pelo Cloudflare Quick Tunnel:
+
+```powershell
+.\scripts\demo.ps1 -Tunel
+```
+
+Passo a passo, roteiro da apresentação, o que pedir à Roseane e os cuidados de segurança em [`docs/demonstracao.md`](docs/demonstracao.md).
+
 ## Fluxo de trabalho
 
 - **Tarefas:** [Issues](https://github.com/breno-hbs/rosie-store/issues) no Project "Rosie", agrupadas nos milestones **v0.1 — Vitrine**, **v0.2 — Painel Admin**, **v0.3 — Compra** e **v1.0 — Lançamento**. O histórico anterior está em [`docs/kanban.md`](docs/kanban.md).
