@@ -4,6 +4,7 @@ import AdminLogin from './pages/AdminLogin.jsx'
 import Cadastro from './pages/Cadastro.jsx'
 import Carrinho from './pages/Carrinho.jsx'
 import Checkout from './pages/Checkout.jsx'
+import ConfirmarEmail from './pages/ConfirmarEmail.jsx'
 import Entrar from './pages/Entrar.jsx'
 import Home from './pages/Home.jsx'
 import MinhaConta from './pages/MinhaConta.jsx'
@@ -35,6 +36,8 @@ function rotaAtual() {
     if (pedido[2] === 'pagamento-simulado') return { pagina: 'pagamento-simulado', id }
     return { pagina: 'pedido', id, etapa: pedido[2] }
   }
+  // Volta do link de troca de e-mail (#61): pública (o link pode ser aberto sem a cliente logada)
+  if (/^\/minha-conta\/confirmar-email\/?$/.test(caminho)) return { pagina: 'confirmar-email' }
   // Minha Conta (#26): uma aba por caminho; o detalhe do pedido fica dentro de Meus Pedidos
   const pedidoConta = caminho.match(/^\/minha-conta\/pedidos\/(\d+)\/?$/)
   if (pedidoConta) return { pagina: 'minha-conta', aba: 'pedidos', pedidoId: Number(pedidoConta[1]) }
@@ -94,6 +97,7 @@ export default function App() {
   if (rota.pagina === 'trocas') return <SolicitarTroca />
   if (rota.pagina === 'minha-conta') return <MinhaConta aba={rota.aba} pedidoId={rota.pedidoId} />
   if (rota.pagina === 'privacidade') return <PoliticaPrivacidade />
+  if (rota.pagina === 'confirmar-email') return <ConfirmarEmail />
   if (rota.pagina === 'entrar') return <Entrar />
   if (rota.pagina === 'cadastro') return <Cadastro />
   if (rota.pagina === 'admin-login') return <AdminLogin />

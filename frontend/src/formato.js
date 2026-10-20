@@ -11,6 +11,11 @@ export function formatarData(dataIso) {
   return `${dia}/${mes}/${ano}`
 }
 
+// "2026-08-20T14:30:00" → "20/08/2026 às 14:30" (horário da loja, como a API manda)
+export function formatarDataHora(dataIso) {
+  return `${formatarData(dataIso)} às ${dataIso.slice(11, 16)}`
+}
+
 // Status do pedido (StatusPedido no back-end) como a cliente lê. Status novo que ainda não esteja
 // aqui aparece com o nome do enum em minúsculas ("EM_SEPARACAO" → "Em separacao").
 const STATUS_PEDIDO = {
