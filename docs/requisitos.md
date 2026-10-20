@@ -8,7 +8,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 
 ### Catálogo
 - **RF01** — O sistema deve exibir a Home com produtos em destaque e categorias.
-- **RF02** — O sistema deve listar produtos por categoria (Vestido, Armarinho, Calça, Camiseta, Cropped/Body).
+- **RF02** — O sistema deve listar produtos por categoria. Categorias iniciais: Vestido, Calça, Camiseta, Cropped/Body; outras, como Armarinho, a Roseane cria pelo painel (decisão de 19/10/2026, issue #29).
 - **RF03** — O sistema deve exibir página de produto individual (fotos, descrição, tamanho, preço).
 - **RF04** — O sistema deve permitir filtrar/navegar produtos por categoria.
 - **RF05** — O sistema deve ser responsivo (mobile-first).
