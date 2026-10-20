@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "watchPatterns": ["/backend/**"]
+  },
+  "deploy": {
+    "startCommand": "java -XX:MaxRAMPercentage=75 -Duser.timezone=America/Sao_Paulo -Dspring.profiles.active=prod -jar /app/app.jar",
+    "healthcheckPath": "/actuator/health",
+    "healthcheckTimeout": 180,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5
+  }
+}
