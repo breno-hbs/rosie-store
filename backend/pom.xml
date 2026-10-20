@@ -105,6 +105,11 @@
 				<configuration>
 					<systemPropertyVariables>
 						<rosie.rastreio.ativo>false</rosie.rastreio.ativo>
+						<!-- Cada configuração de teste diferente fica com um contexto em cache, cada um com o seu
+						     pool: com o padrão do Hikari (10 conexões abertas por pool), vinte e poucos contextos
+						     passam do max_connections do MySQL (151). Os testes de concorrência usam 2 threads. -->
+						<spring.datasource.hikari.maximum-pool-size>4</spring.datasource.hikari.maximum-pool-size>
+						<spring.datasource.hikari.minimum-idle>1</spring.datasource.hikari.minimum-idle>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>
