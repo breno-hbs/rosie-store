@@ -17,7 +17,7 @@ class EmailTrocaTest {
 
     private static final String LOJA = "https://rosiestore.com.br";
 
-    private final EmailTroca emailTroca = new EmailTroca(null, LOJA + "/", "", "");
+    private final EmailTroca emailTroca = new EmailTroca(null, LOJA + "/", "", "", null);
 
     @Test
     void aprovadaPorDefeitoDizQueOFreteEDaRosieEOProximoPasso() {
@@ -47,12 +47,63 @@ class EmailTrocaTest {
 
         assertThat(email.texto())
                 .contains("Como a peça não serviu, o frete de devolução é por sua conta.")
+                // Sem o endereço da loja configurado
+                .contains("A Rosie vai te passar o endereço para mandá-la de volta.")
                 .doesNotContain("Recado da Rosie");
     }
 
     @Test
+    void aprovadaPorqueNaoServiuTrazOEnderecoDaLojaParaDevolver() {
+        EnderecoLoja loja = new EnderecoLoja("Rosie Store", "Avenida Paulista", "1000", "", "Bela Vista",
+                "São Paulo", "sp", "01310100");
+        EmailTroca comEndereco = new EmailTroca(null, LOJA, "", "", loja);
+
+        Email email = comEndereco.montar(troca(StatusTroca.APROVADA, MotivoTroca.NAO_SERVIU), null);
+
+        assertThat(email.texto())
+                .contains("mande pelos Correios ou pela transportadora que preferir para: Rosie Store, "
+                        + "Avenida Paulista, 1000, Bela Vista, São Paulo/SP, CEP 01310-100.")
+                .contains("Guarde o comprovante e mande o código de rastreio para a Rosie.");
+    }
+
+    @Test
+    void aprovadaPorDefeitoAvisaQueAEtiquetaVemEmOutroEmail() {
+        Email email = emailTroca.montar(troca(StatusTroca.APROVADA, MotivoTroca.DEFEITO), null);
+
+        assertThat(email.texto()).contains("A Rosie vai gerar a etiqueta de devolução")
+                .doesNotContain("Avenida Paulista");
+    }
+
+    @Test
+    void etiquetaDeVoltaTrazOLinkORastreioEComoPostar() {
+        Troca troca = troca(StatusTroca.APROVADA, MotivoTroca.DEFEITO);
+        troca.setUrlEtiquetaVolta("https://melhorenvio.com.br/imprimir/publico-1");
+        troca.setCodigoRastreioVolta("ME123BR");
+
+        Email email = emailTroca.montarEtiquetaVolta(troca);
+
+        assertThat(email.chave()).isEqualTo("troca-33-etiqueta-volta");
+        assertThat(email.assunto()).isEqualTo("Etiqueta de devolução da troca do pedido #270");
+        assertThat(email.texto())
+                .contains("Olá, Maria!", "Sua etiqueta de devolução está pronta", "frete pago pela Rosie")
+                .contains("Pedido: #270", "Peça: Conjunto Serpente", "Tamanho: M")
+                .contains("Código de rastreio:\nME123BR")
+                .contains("Não precisa pagar nada na postagem.")
+                .contains("Imprimir etiqueta de devolução: https://melhorenvio.com.br/imprimir/publico-1");
+        assertThat(email.html()).contains("href=\"https://melhorenvio.com.br/imprimir/publico-1\"");
+    }
+
+    @Test
+    void etiquetaDeVoltaSemRastreioAindaNaoTemDestaque() {
+        Troca troca = troca(StatusTroca.APROVADA, MotivoTroca.DEFEITO);
+        troca.setUrlEtiquetaVolta("https://melhorenvio.com.br/imprimir/publico-1");
+
+        assertThat(emailTroca.montarEtiquetaVolta(troca).texto()).doesNotContain("Código de rastreio");
+    }
+
+    @Test
     void recusadaTrazOMotivoEComoFalarComALoja() {
-        EmailTroca comWhatsapp = new EmailTroca(null, LOJA, "+55 (11) 99999-0000", "rosie@rosie.test");
+        EmailTroca comWhatsapp = new EmailTroca(null, LOJA, "+55 (11) 99999-0000", "rosie@rosie.test", null);
 
         Email email = comWhatsapp.montar(troca(StatusTroca.RECUSADA, MotivoTroca.NAO_SERVIU), "A peça foi usada");
 

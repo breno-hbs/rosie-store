@@ -31,7 +31,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /pedidos/{id}` | Implementado (exige token `CLIENTE`; 404 também para pedido de outra cliente) | `PedidoDTO` |
 | `GET /conta` | Implementado (exige token `CLIENTE`; com a troca de e-mail pendente em `emailPendente`) | `ContaDTO` |
 | `POST /trocas` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 404 também para pedido de outra cliente; 409 `PEDIDO_NAO_ENTREGUE`/`TROCA_FORA_DO_PRAZO`/`TROCA_JA_SOLICITADA`) | `TrocaDTO` |
-| `GET /trocas` | Implementado (exige token `CLIENTE`; só as trocas da cliente do token, da mais recente à mais antiga) | lista de `TrocaDTO` |
+| `GET /trocas` | Implementado (exige token `CLIENTE`; só as trocas da cliente do token, da mais recente à mais antiga; com a etiqueta de volta ou o endereço de devolução, #63) | lista de `TrocaDTO` |
 | `PUT /conta` | Implementado (exige token `CLIENTE`; nome e telefone; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
 | `PUT /conta/senha` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha atual errada) | — |
 | `POST /conta/privacidade` | Implementado (exige token `CLIENTE`; aceite da versão em vigor da política; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
@@ -64,6 +64,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /admin/pedidos/{id}/entregue` | Implementado (exige token `ADMIN`; corpo opcional com `dataEntrega`; 400 `DADOS_INVALIDOS`; 404; 409 `PEDIDO_NAO_ENVIADO`) | `PedidoAdminDTO` |
 | `GET /admin/trocas` | Implementado (exige token `ADMIN`; todas as trocas) | lista de `TrocaAdminDTO` |
 | `PUT /admin/trocas/{id}/status` | Implementado (exige token `ADMIN`; 400 `DADOS_INVALIDOS`; 404; 409 `STATUS_TROCA_INVALIDO`) | `TrocaAdminDTO` |
+| `POST /admin/trocas/{id}/etiqueta-volta` | Implementado (exige token `ADMIN`; ver "Gerar etiqueta de volta", #63) | `TrocaAdminDTO` |
 | Demais endpoints | Não implementados | — |
 
 ---
@@ -119,6 +120,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `PRIVACIDADE_PENDENTE` | 409 | Checkout: a cliente aceitou uma versão antiga da política de privacidade (ou nenhuma); aceita a nova em `POST /conta/privacidade` e tenta de novo |
 | `CONTA_COM_PEDIDO_EM_ANDAMENTO` | 409 | Exclusão da conta com pedido pago ainda não entregue (`PAGO`, `PAGO_COM_PENDENCIA`, `ENVIADO`) ou troca em aberto (`SOLICITADA`, `APROVADA`); `erro` diz qual |
 | `STATUS_TROCA_INVALIDO` | 409 | Painel: mudança de status da troca fora do caminho (ex.: concluir sem aprovar, mexer numa recusada) |
+| `TROCA_NAO_APROVADA` | 409 | Painel: gerar a etiqueta de volta de uma troca que não está `APROVADA` (#63) |
+| `TROCA_FRETE_DA_CLIENTE` | 409 | Painel: gerar a etiqueta de volta de uma troca "não serviu" (`freteConta = CLIENTE`): a loja não compra essa etiqueta (#63) |
 
 ---
 
@@ -382,6 +385,7 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago e o link de confirmação da troca de e-mail |
 | `ROSIE_TROCA_EMAIL_VALIDADE` | Não (padrão `24h`) | Prazo do link de confirmação da troca de e-mail (ex.: `30m`, `24h`, `2d`); ver "Troca de e-mail" |
 | `TROCA_PRAZO_DIAS` | Não (padrão `7`) | Prazo para pedir troca, em dias corridos depois da entrega; ver "Troca e devolução" |
+| `ROSIE_REMETENTE_NOME`, `_LOGRADOURO`, `_NUMERO`, `_COMPLEMENTO`, `_BAIRRO`, `_CIDADE`, `_UF` e `ROSIE_CEP_ORIGEM` | Não (faltando um obrigatório, a cliente vê "a Rosie vai te passar o endereço") | Além de remetente da etiqueta de ida e destino da de volta, é o endereço de devolução que a cliente vê na troca "não serviu" aprovada (`enderecoDevolucao`, #63); ver "Devolução da peça" |
 | `ROSIE_RASTREIO_ATIVO`, `ROSIE_RASTREIO_INTERVALO`, `ROSIE_RASTREIO_LOTE`, `ROSIE_RASTREIO_PAUSA` | Não (padrões `true`, `6h`, `50`, `1s`) | Entrega pelo rastreio: liga/desliga, intervalo entre as rodadas, pedidos por rodada e pausa entre as consultas ao Melhor Envio; ver "Entrega pelo rastreio". Só roda com `MELHOR_ENVIO_TOKEN` |
 | `JPA_SHOW_SQL` | Não (padrão `false`) | `true` mostra no log os comandos SQL (com `?` no lugar dos valores), para depurar. Desligado para não encher o log da hospedagem |
 
@@ -843,6 +847,8 @@ A cliente pede a troca (ou devolução) de **uma peça** de um pedido dela: o pr
   "status": "SOLICITADA",
   "observacao": "A costura da manga abriu na primeira lavagem",
   "resposta": null,
+  "etiquetaVolta": { "situacao": "SEM_ETIQUETA", "urlEtiqueta": null, "codigoRastreio": null, "geradaEm": null },
+  "enderecoDevolucao": null,
   "createdAt": "2026-08-22T10:00:00",
   "updatedAt": "2026-08-22T10:00:00"
 }
@@ -858,7 +864,7 @@ A cliente pede a troca (ou devolução) de **uma peça** de um pedido dela: o pr
 
 **Uma troca por peça:** cada produto + tamanho do pedido tem no máximo uma troca `SOLICITADA`, `APROVADA` ou `CONCLUIDA`; só uma `RECUSADA` libera pedir de novo (dentro do prazo). Peças diferentes do mesmo pedido têm cada uma a sua. A linha do pedido fica travada durante o POST, então dois cliques seguidos criam uma troca só (o segundo recebe 409 `TROCA_JA_SOLICITADA`).
 
-**Estoque e dinheiro ficam com a Roseane:** a troca não mexe no estoque nem estorna o pagamento. Quando a peça volta, a Roseane ajusta o estoque na Gestão de Estoque e, se for devolução, devolve o dinheiro pelo Mercado Pago. A etiqueta de volta (logística reversa) também ainda é combinada fora da loja.
+**Estoque e dinheiro ficam com a Roseane:** a troca não mexe no estoque nem estorna o pagamento. Quando a peça volta, a Roseane ajusta o estoque na Gestão de Estoque e, se for devolução, devolve o dinheiro pelo Mercado Pago. Como a peça volta está em "Devolução da peça".
 
 ### Minhas trocas
 `GET /trocas`
@@ -875,6 +881,31 @@ Lista de `TrocaDTO` da cliente do token, **da mais recente à mais antiga**. Sem
 | `CONCLUIDA` | A peça voltou e a troca (ou a devolução do dinheiro) foi resolvida. Final |
 
 Caminhos possíveis: `SOLICITADA` → `APROVADA` ou `RECUSADA`; `APROVADA` → `CONCLUIDA`. `resposta` é o recado da Roseane que a cliente lê na Minha Conta.
+
+### Devolução da peça (logística reversa, #63)
+
+Quem paga a volta segue o RNF08 (`freteConta`), e cada caso tem um jeito de devolver:
+
+- **`ROSIE` (defeito): etiqueta de volta paga pela loja.** Depois de aprovar, a Roseane gera a etiqueta no painel ("Gerar etiqueta de volta"), comprada com o saldo do Melhor Envio. A cliente só imprime, cola e posta, sem pagar nada. `etiquetaVolta` mostra o andamento.
+- **`CLIENTE` (não serviu): a cliente manda por conta própria.** **Decisão (#63): a loja não compra etiqueta nem cobra a cliente pelo site.** Na troca aprovada, `enderecoDevolucao` traz o endereço da loja (o mesmo remetente da etiqueta de ida, `ROSIE_REMETENTE_*` e `ROSIE_CEP_ORIGEM`), e a cliente manda a peça pelos Correios ou pela transportadora que preferir, pagando lá, e passa o rastreio para a Roseane. Cobrar a etiqueta pelo site (link de pagamento, desconto no estorno) fica para uma issue própria, se a Roseane quiser.
+
+```json
+// etiquetaVolta — EtiquetaVoltaDTO (sempre presente)
+{
+  "situacao": "GERADA",        // SEM_ETIQUETA | GERADA | POR_CONTA_DA_CLIENTE
+  "urlEtiqueta": "https://melhorenvio.com.br/...", // link público para imprimir (null até gerar)
+  "codigoRastreio": "AA123456789BR",               // pode vir null logo depois de gerar
+  "geradaEm": "2026-08-23T15:00:00"
+}
+// enderecoDevolucao — EnderecoDevolucaoDTO, só com status APROVADA e freteConta CLIENTE (senão null);
+// também null se o endereço da loja não estiver configurado
+{
+  "nome": "Rosie Store", "logradouro": "Avenida Paulista", "numero": "1000", "complemento": null,
+  "bairro": "Bela Vista", "cidade": "São Paulo", "uf": "SP", "cep": "01310-100"
+}
+```
+
+Uma falha ao gerar a etiqueta é assunto do painel: para a cliente, a troca continua `SEM_ETIQUETA` até a Roseane tentar de novo. O rastreio da volta e a conclusão da troca continuam com a Roseane: quando a peça chega, ela muda a troca para `CONCLUIDA` no painel.
 
 ---
 
@@ -1352,25 +1383,63 @@ Todas as trocas de todas as clientes, da mais recente para a mais antiga, sem pa
     "tamanho": "M", "quantidade": 1,
     "motivo": "DEFEITO", "freteConta": "ROSIE", "status": "SOLICITADA",
     "observacao": "A costura da manga abriu na primeira lavagem", "resposta": null,
+    "etiquetaVolta": {
+      "situacao": "SEM_ETIQUETA", "envioId": null, "urlEtiqueta": null, "codigoRastreio": null,
+      "geradaEm": null, "erro": null, "valorEstimado": 22.90
+    },
     "createdAt": "2026-08-22T10:00:00", "updatedAt": "2026-08-22T10:00:00"
   }
 ]
 ```
+
+`etiquetaVolta` no painel (`EtiquetaVoltaAdminDTO`) é o da cliente mais: `situacao` `FALHOU` quando a última tentativa de gerar falhou, com o motivo em `erro` (some quando a etiqueta sai); `envioId`, o id do envio no Melhor Envio (gravado assim que entra no carrinho); e `valorEstimado`, o frete que a cliente pagou na ida (mesmo serviço, mesmos CEPs), para a Roseane saber quanto vai sair do saldo antes de comprar. A `TrocaAdminDTO` não traz `enderecoDevolucao`.
 
 ### Mudar o status da troca
 `PUT /admin/trocas/{id}/status`
 
 ```json
 // Request — TrocaStatusRequestDTO
-{ "status": "APROVADA", "resposta": "Pode mandar pelos Correios, a etiqueta vai pelo WhatsApp" } // resposta opcional, até 1000 caracteres
+{ "status": "APROVADA", "resposta": "Pode mandar na mesma embalagem" } // resposta opcional, até 1000 caracteres
 // Response 200 — TrocaAdminDTO atualizado
 ```
 
 Só pelos caminhos de "Status da troca" (`SOLICITADA` → `APROVADA`/`RECUSADA`; `APROVADA` → `CONCLUIDA`); fora deles, 409 `STATUS_TROCA_INVALIDO`. Mandar o status atual de novo só troca o recado. Sem `resposta` (ou com ela em branco), fica o recado anterior. Status ausente ou desconhecido: 400 `DADOS_INVALIDOS`.
 
-**E-mail à cliente (#65).** Quando o status **muda** (para `APROVADA`, `RECUSADA` ou `CONCLUIDA`), a cliente recebe um e-mail no endereço da conta com o número do pedido, a peça, o tamanho, a quantidade, o novo status em linguagem simples e a `resposta` mandada **nesta** requisição, quando houver (o recado de uma mudança anterior não se repete). Na aprovação, o e-mail diz quem paga o frete de devolução (`freteConta`) e o próximo passo; na recusa, traz a `resposta` como motivo e os contatos da loja (WhatsApp, se `ROSIE_WHATSAPP_NUMERO` estiver definido, e Instagram). Mandar o status atual de novo **não** reenvia o e-mail. Conta excluída (LGPD, #31) não recebe e-mail.
+**E-mail à cliente (#65).** Quando o status **muda** (para `APROVADA`, `RECUSADA` ou `CONCLUIDA`), a cliente recebe um e-mail no endereço da conta com o número do pedido, a peça, o tamanho, a quantidade, o novo status em linguagem simples e a `resposta` mandada **nesta** requisição, quando houver (o recado de uma mudança anterior não se repete). Na aprovação, o e-mail diz quem paga o frete de devolução (`freteConta`) e o próximo passo (#63): no defeito, que a Rosie vai gerar a etiqueta de devolução e que outro e-mail chega quando ela estiver pronta; no "não serviu", o endereço da loja para mandar a peça (ou, sem ele configurado, que a Rosie vai passar o endereço); na recusa, traz a `resposta` como motivo e os contatos da loja (WhatsApp, se `ROSIE_WHATSAPP_NUMERO` estiver definido, e Instagram). Mandar o status atual de novo **não** reenvia o e-mail. Conta excluída (LGPD, #31) não recebe e-mail.
 
 O e-mail é um efeito colateral que não muda a resposta: sai **depois do commit**, numa fila própria da API, e a resposta não espera o envio. Se o envio falhar (Resend fora do ar, domínio não verificado, chave inválida), o status continua mudado, a resposta é a mesma 200 e o erro só vai para o log da API; não há nova tentativa. Sem `RESEND_API_KEY` (dev local, CI), o e-mail não sai e o log registra só o destinatário mascarado e o assunto.
+
+### Gerar etiqueta de volta
+`POST /admin/trocas/{id}/etiqueta-volta` (sem corpo)
+
+Compra e gera no Melhor Envio a etiqueta de volta (logística reversa, #63) de uma troca `APROVADA` com `freteConta = ROSIE` e devolve a `TrocaAdminDTO` atualizada, com `etiquetaVolta.situacao` `GERADA`, `urlEtiqueta`, `geradaEm` e `codigoRastreio`. A troca continua `APROVADA`. A cliente passa a ver a etiqueta em `GET /trocas` e recebe um e-mail com o link e como postar.
+
+```json
+// Response 200 — TrocaAdminDTO (como na lista)
+// Response 409
+{ "erro": "Só troca aprovada tem etiqueta de volta: esta está SOLICITADA.", "codigo": "TROCA_NAO_APROVADA" }
+{ "erro": "Nesta troca o frete de volta é por conta da cliente (a peça não serviu): ela manda a peça pelo endereço da loja que aparece na Minha Conta.", "codigo": "TROCA_FRETE_DA_CLIENTE" }
+{ "erro": "O envio de volta desta troca foi cancelado no Melhor Envio. Clique em \"Gerar etiqueta de volta\" de novo para comprar outra.", "codigo": "ETIQUETA_CANCELADA" }
+{ "erro": "A etiqueta desta troca já está sendo gerada. Aguarde e atualize a página.", "codigo": "ETIQUETA_EM_ANDAMENTO" }
+// Response 502 / 503: os mesmos ETIQUETA_FALHOU e ETIQUETA_INDISPONIVEL de "Gerar etiqueta"
+```
+
+**Decisão (#63): pelo botão da Roseane, não sozinha na aprovação.** Como na ida, comprar a etiqueta debita o saldo do Melhor Envio: a Roseane aprova (o que nunca depende do Melhor Envio), confere e gera. Assim uma falha ou indisponibilidade do Melhor Envio não impede aprovar: a troca fica `APROVADA` sem etiqueta e o painel mostra "Gerar etiqueta de volta" para tentar quando quiser.
+
+**Mesmos passos e garantias da etiqueta de ida** (ver "Gerar etiqueta"): carrinho → compra → geração → impressão → rastreio, cada passo gravado na troca (`envio_volta_id`, `url_etiqueta_volta`, `codigo_rastreio_volta`, `etiqueta_volta_gerada_em`), retomada de onde parou, consulta antes de comprar, envio cancelado lá → 409 `ETIQUETA_CANCELADA` e um novo no próximo clique, dois cliques juntos compram uma etiqueta só (trava por troca na memória da API) e, com etiqueta e rastreio já na troca, 200 sem chamar o Melhor Envio. Etiqueta pronta sem rastreio: repetir o POST só busca o rastreio ("Buscar rastreio" no painel). Falha do Melhor Envio (502/503): o motivo fica em `etiquetaVolta.erro` com `situacao` `FALHOU`, até a próxima tentativa dar certo.
+
+**O envio de volta**, montado no servidor a partir da troca e do pedido:
+
+- **Reverso, com os endereços invertidos:** `options.reverse: true`, `from` = a cliente (nome, telefone e e-mail da conta e o endereço de entrega do pedido) e `to` = a loja (`ROSIE_REMETENTE_*` e `ROSIE_CEP_ORIGEM`), como o Melhor Envio monta a logística reversa no painel dele. Tag "Troca {id} (pedido {pedidoId})".
+- **Serviço:** o mesmo da ida (`pedido.servicoFreteId`). Pedido sem serviço do Melhor Envio → 409 `PEDIDO_SEM_FRETE`.
+- **Conteúdo e pacote:** só a peça da troca, "Vestido Aurora (M)" × `quantidade`, pelo preço pago no pedido; valor declarado = preço pago × quantidade; volume pelo mesmo pacote da cotação e da ida (#56), vezes a quantidade.
+- **Link público** (`mode: public` em `/shipment/print`): quem imprime é a cliente, sem a conta da loja no Melhor Envio. Na etiqueta só vão o endereço dela e o da loja, e o link só chega a ela (`GET /trocas` com o token dela e o e-mail).
+
+**Pendente de conferir na sandbox** (sem token até agora, testado só com o emissor falso): se o Melhor Envio exige o CPF de quem manda (`from.document`) no envio reverso. A loja não pede CPF à cliente; se exigir, a geração volta 502 `ETIQUETA_FALHOU` com a mensagem de lá, e o CPF no cadastro vira issue própria (o mesmo ponto já aberto para o `to.document` da ida).
+
+**E-mail à cliente:** na primeira vez que a etiqueta fica pronta, depois do commit, com o link "Imprimir etiqueta de devolução", o rastreio (quando já existe) e como postar. Repetir o POST (ou só buscar o rastreio) não reenvia. Conta excluída não recebe.
+
+**Modo de desenvolvimento:** com `FRETE_SIMULADO=true`, o link abre `/etiqueta-simulada.html?envio=…&volta=1` da loja, com o título "Etiqueta de volta simulada".
 
 ---
 

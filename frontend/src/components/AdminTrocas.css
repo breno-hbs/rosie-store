@@ -54,6 +54,22 @@
   text-decoration-color: currentColor;
 }
 
+/* Etiqueta de volta (#63): abaixo do status e das ações */
+.admin-trocas__volta {
+  margin-top: 8px;
+}
+
+.admin-trocas__rastreio {
+  display: block;
+  color: var(--tinta);
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+
+.admin-trocas__volta[data-situacao='FALHOU'] {
+  color: var(--tinta);
+}
+
 /* Recado e confirmação logo abaixo da troca */
 .admin-pedidos__tabela tr.admin-trocas__confirmar {
   padding-top: 0;

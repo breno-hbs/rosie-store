@@ -48,4 +48,9 @@ public class EtiquetaSimulada implements EmissorEtiqueta {
     public String linkImpressao(String envioId) {
         return urlLoja + "/etiqueta-simulada.html?envio=" + envioId;
     }
+
+    @Override
+    public String linkImpressaoPublico(String envioId) {
+        return linkImpressao(envioId) + "&volta=1";
+    }
 }

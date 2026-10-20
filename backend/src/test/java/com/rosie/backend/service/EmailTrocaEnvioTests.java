@@ -35,13 +35,19 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 // E-mail da troca (#65) de ponta a ponta, sem a transação do teste: o e-mail só sai depois do commit, então
-// a mudança de status precisa ser confirmada no MySQL de verdade. Apaga tudo no fim.
+// a mudança de status precisa ser confirmada no MySQL de verdade. Também a etiqueta de volta (#63), com o
+// Melhor Envio falso: cada passo é confirmado no banco e dois cliques juntos compram uma etiqueta só.
+// Apaga tudo no fim.
 @SpringBootTest
-@Import(EnviadorEmailFalso.Config.class)
+@Import({EnviadorEmailFalso.Config.class, EmissorEtiquetaFalso.Config.class})
 class EmailTrocaEnvioTests {
 
     @Autowired
@@ -74,6 +80,12 @@ class EmailTrocaEnvioTests {
     @Autowired
     private TransactionTemplate transacao;
 
+    @Autowired
+    private EtiquetaService etiquetaService;
+
+    @Autowired
+    private EmissorEtiquetaFalso emissor;
+
     private Usuario cliente;
     private Endereco endereco;
     private Categoria categoria;
@@ -84,6 +96,7 @@ class EmailTrocaEnvioTests {
     @BeforeEach
     void setUp() {
         enviador.limpar();
+        emissor.limpar();
         cliente = usuarioRepository.save(Usuario.builder()
                 .nome("Maria Cliente").email("email-troca-" + System.nanoTime() + "@rosie.test")
                 .senhaHash("hash-irrelevante").role(Role.CLIENTE).build());
@@ -206,6 +219,53 @@ class EmailTrocaEnvioTests {
         assertThat(aprovada.status()).isEqualTo("APROVADA");
         Thread.sleep(300);
         assertThat(enviador.tentativas()).isZero();
+    }
+
+    @Test
+    void etiquetaDeVoltaProntaAvisaAClienteUmaVezSo() throws InterruptedException {
+        mudar(StatusTroca.APROVADA, null);
+        assertThat(enviador.aguardar(1)).singleElement().satisfies(email ->
+                assertThat(email.texto()).contains("você recebe outro e-mail quando ela estiver pronta"));
+
+        TrocaAdminDTO comEtiqueta = etiquetaService.gerarVolta(trocaId);
+        // Repetir (ou só buscar o rastreio) não reenvia; a conclusão vem depois, na ordem da fila
+        etiquetaService.gerarVolta(trocaId);
+        mudar(StatusTroca.CONCLUIDA, null);
+
+        List<Email> enviados = enviador.aguardar(3);
+        assertThat(enviados).extracting(Email::chave).containsExactly("troca-" + trocaId + "-APROVADA",
+                "troca-" + trocaId + "-etiqueta-volta", "troca-" + trocaId + "-CONCLUIDA");
+        Email etiqueta = enviados.get(1);
+        assertThat(etiqueta.para()).isEqualTo(cliente.getEmail());
+        assertThat(etiqueta.assunto()).isEqualTo("Etiqueta de devolução da troca do pedido #" + pedido.getId());
+        assertThat(etiqueta.texto())
+                .contains("Sua etiqueta de devolução está pronta")
+                .contains("Código de rastreio:\nME123456789BR")
+                .contains("Imprimir etiqueta de devolução: " + comEtiqueta.etiquetaVolta().urlEtiqueta());
+    }
+
+    @Test
+    void doisCliquesJuntosCompramUmaEtiquetaDeVoltaSo() throws Exception {
+        mudar(StatusTroca.APROVADA, null);
+        emissor.demoraNoCarrinhoMs = 300;
+
+        ExecutorService cliques = Executors.newFixedThreadPool(2);
+        try {
+            Future<TrocaAdminDTO> primeiro = cliques.submit(() -> etiquetaService.gerarVolta(trocaId));
+            Future<TrocaAdminDTO> segundo = cliques.submit(() -> etiquetaService.gerarVolta(trocaId));
+
+            assertThat(primeiro.get(10, TimeUnit.SECONDS).etiquetaVolta().envioId()).isEqualTo("envio-1");
+            assertThat(segundo.get(10, TimeUnit.SECONDS).etiquetaVolta().envioId()).isEqualTo("envio-1");
+        } finally {
+            cliques.shutdownNow();
+        }
+        assertThat(emissor.enviosNoCarrinho).hasSize(1);
+        assertThat(emissor.compras).containsExactly("envio-1");
+        assertThat(trocaRepository.findById(trocaId).orElseThrow().getUrlEtiquetaVolta())
+                .isEqualTo(EmissorEtiquetaFalso.LINK_PUBLICO + "envio-1");
+        // Aprovação + uma etiqueta
+        assertThat(enviador.aguardar(2)).extracting(Email::chave)
+                .containsExactly("troca-" + trocaId + "-APROVADA", "troca-" + trocaId + "-etiqueta-volta");
     }
 
     private TrocaAdminDTO mudar(StatusTroca status, String recado) {

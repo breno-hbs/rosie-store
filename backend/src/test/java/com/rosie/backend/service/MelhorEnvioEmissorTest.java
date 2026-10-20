@@ -98,6 +98,55 @@ class MelhorEnvioEmissorTest {
     }
 
     @Test
+    void voltaDaTrocaEReversaComAClienteNoFromEALojaNoTo() {
+        servidor.expect(requestTo(BASE + MelhorEnvioEmissor.CARRINHO))
+                .andExpect(content().json("""
+                        {
+                          "service": 1,
+                          "from": {
+                            "name": "Maria Cliente", "phone": "11988887777", "email": "maria@rosie.test",
+                            "address": "Rua das Flores", "number": "120", "district": "Jardim Iva",
+                            "city": "São Paulo", "country_id": "BR", "postal_code": "03925050", "state_abbr": "SP"
+                          },
+                          "to": {
+                            "name": "Rosie Store", "phone": "11999990000", "email": "contato@rosie.test",
+                            "document": "12345678909", "address": "Avenida Paulista", "complement": "Sala 5",
+                            "number": "1000", "district": "Bela Vista", "city": "São Paulo", "country_id": "BR",
+                            "postal_code": "01310100", "state_abbr": "SP"
+                          },
+                          "products": [ { "name": "Vestido Aurora (M)", "quantity": "1", "unitary_value": "159.90" } ],
+                          "volumes": [ { "height": 5, "width": 20, "length": 30, "weight": 0.3 } ],
+                          "options": {
+                            "insurance_value": 159.90, "receipt": false, "own_hand": false, "reverse": true,
+                            "non_commercial": true, "tags": [ { "tag": "Troca 7 (pedido 42)" } ]
+                          }
+                        }
+                        """, true))
+                .andRespond(withSuccess("{ \"id\": \"%s\" }".formatted(ID), MediaType.APPLICATION_JSON));
+
+        String id = emissor.adicionarAoCarrinho(new NovoEnvio(42L, 1,
+                new Destinatario("Maria Cliente", "11988887777", "maria@rosie.test", "03925050", "Rua das Flores",
+                        "120", null, "Jardim Iva", "São Paulo", "SP"),
+                List.of(new Item("Vestido Aurora (M)", 1, new BigDecimal("159.90"))),
+                new Volume(5, 20, 30, new BigDecimal("0.3")),
+                new BigDecimal("159.90"), 7L));
+
+        assertThat(id).isEqualTo(ID);
+        servidor.verify();
+    }
+
+    @Test
+    void linkDaEtiquetaDeVoltaEPublico() {
+        servidor.expect(requestTo(BASE + MelhorEnvioEmissor.IMPRESSAO))
+                .andExpect(content().json("{ \"mode\": \"public\", \"orders\": [\"%s\"] }".formatted(ID), true))
+                .andRespond(withSuccess("{ \"url\": \"https://melhorenvio.com.br/imprimir/publico\" }",
+                        MediaType.APPLICATION_JSON));
+
+        assertThat(emissor.linkImpressaoPublico(ID)).isEqualTo("https://melhorenvio.com.br/imprimir/publico");
+        servidor.verify();
+    }
+
+    @Test
     void remetenteComCnpjVaiEmCompanyDocument() {
         Remetente empresa = new Remetente("Rosie Store LTDA", "11999990000", null, "12345678000195", "123456789",
                 "01310100", "Avenida Paulista", "1000", null, "Bela Vista", "São Paulo", "SP");

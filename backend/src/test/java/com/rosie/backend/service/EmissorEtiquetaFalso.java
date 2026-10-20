@@ -15,6 +15,8 @@ import java.util.Map;
 public class EmissorEtiquetaFalso implements EmissorEtiqueta {
 
     public static final String LINK = "https://sandbox.melhorenvio.com.br/imprimir/falso-";
+    // Link público, o da etiqueta de volta da troca (#63)
+    public static final String LINK_PUBLICO = "https://sandbox.melhorenvio.com.br/imprimir/publico-";
 
     public final List<NovoEnvio> enviosNoCarrinho = new ArrayList<>();
     public final List<String> compras = new ArrayList<>();
@@ -73,6 +75,12 @@ public class EmissorEtiquetaFalso implements EmissorEtiqueta {
     public synchronized String linkImpressao(String envioId) {
         falharSe("link");
         return LINK + envioId;
+    }
+
+    @Override
+    public synchronized String linkImpressaoPublico(String envioId) {
+        falharSe("link");
+        return LINK_PUBLICO + envioId;
     }
 
     // O rastreio saiu depois (o Melhor Envio às vezes demora a devolver o código)

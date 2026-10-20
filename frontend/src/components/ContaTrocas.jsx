@@ -5,7 +5,8 @@ import { formatarData } from '../formato.js'
 import { nomeMotivo, rotuloStatusTroca, textoFrete, textoStatusTroca } from '../troca.js'
 
 // Aba "Trocas" da Minha Conta (#27): as trocas pedidas, com o status, quem paga o frete de volta e o
-// recado da Rosie. Pedir uma nova é na tela "Solicitação de Troca" (/trocas).
+// recado da Rosie. Pedir uma nova é na tela "Solicitação de Troca" (/trocas). Na troca aprovada, como mandar a
+// peça de volta (#63): a etiqueta de devolução paga pela Rosie (defeito) ou o endereço da loja (não serviu).
 export default function ContaTrocas() {
   const { carregando, dados: trocas, erro, tentarDeNovo } = useCarregar(listarTrocas)
 
@@ -66,6 +67,7 @@ export default function ContaTrocas() {
                   {nomeMotivo(troca.motivo)} · {textoFrete(troca.freteConta)}
                 </span>
                 <p className="conta__texto">{textoStatusTroca(troca)}</p>
+                <Devolucao troca={troca} />
                 {troca.resposta && (
                   <p className="conta__troca-resposta">
                     <span className="eyebrow">Resposta da Rosie</span>
@@ -79,4 +81,64 @@ export default function ContaTrocas() {
       )}
     </section>
   )
+}
+
+// Como mandar a peça de volta numa troca aprovada (#63)
+function Devolucao({ troca }) {
+  if (troca.status !== 'APROVADA') return null
+  const etiqueta = troca.etiquetaVolta
+
+  if (etiqueta?.situacao === 'GERADA') {
+    return (
+      <div className="conta__devolucao">
+        <span className="eyebrow">Etiqueta de devolução</span>
+        {etiqueta.codigoRastreio && (
+          <p className="conta__devolucao-codigo">
+            <span className="conta__nota">Código de rastreio</span>
+            <span className="conta__codigo">{etiqueta.codigoRastreio}</span>
+          </p>
+        )}
+        <ol className="conta__passos">
+          <li>Imprima a etiqueta e cole do lado de fora da embalagem (de preferência a mesma em que a peça chegou).</li>
+          <li>Entregue o pacote numa agência dos Correios ou no ponto da transportadora que está na etiqueta.</li>
+          <li>Não precisa pagar nada na postagem: o frete é da Rosie. Guarde o comprovante.</li>
+        </ol>
+        <a className="botao botao--contorno" href={etiqueta.urlEtiqueta} target="_blank" rel="noopener noreferrer">
+          Imprimir etiqueta
+        </a>
+      </div>
+    )
+  }
+
+  if (troca.freteConta === 'CLIENTE') {
+    const endereco = troca.enderecoDevolucao
+    return (
+      <div className="conta__devolucao">
+        <span className="eyebrow">Endereço para devolução</span>
+        {endereco ? (
+          <>
+            <address className="conta__endereco">
+              {endereco.nome}
+              <br />
+              {endereco.logradouro}, {endereco.numero}
+              {endereco.complemento && ` · ${endereco.complemento}`}
+              <br />
+              {endereco.bairro} · {endereco.cidade}/{endereco.uf}
+              <br />
+              CEP {endereco.cep}
+            </address>
+            <ol className="conta__passos">
+              <li>Embale a peça, de preferência na embalagem em que ela chegou.</li>
+              <li>Mande pelos Correios ou pela transportadora que preferir, com o frete por sua conta.</li>
+              <li>Guarde o comprovante e mande o código de rastreio para a Rosie.</li>
+            </ol>
+          </>
+        ) : (
+          <p className="conta__texto">A Rosie vai te passar o endereço para mandar a peça de volta.</p>
+        )}
+      </div>
+    )
+  }
+
+  return null
 }

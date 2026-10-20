@@ -34,14 +34,17 @@
   </head>
   <body>
     <!-- Só no desenvolvimento (FRETE_SIMULADO=true, #25): o link de impressão da etiqueta de mentira
-         aponta para cá no lugar da etiqueta do Melhor Envio -->
+         aponta para cá no lugar da etiqueta do Melhor Envio (com volta=1 na etiqueta de volta da troca, #63) -->
     <main>
-      <h1>Etiqueta simulada</h1>
+      <h1 id="titulo">Etiqueta simulada</h1>
       <p>Esta etiqueta é de mentira: a API está com FRETE_SIMULADO ligado e não chamou o Melhor Envio.</p>
       <p>Envio: <code id="envio"></code></p>
     </main>
     <script>
-      document.getElementById('envio').textContent = new URLSearchParams(location.search).get('envio') || '—'
+      const parametros = new URLSearchParams(location.search)
+      document.getElementById('envio').textContent = parametros.get('envio') || '—'
+      // Etiqueta de volta da troca (#63): da cliente para a loja
+      if (parametros.get('volta')) document.getElementById('titulo').textContent = 'Etiqueta de volta simulada'
     </script>
   </body>
 </html>

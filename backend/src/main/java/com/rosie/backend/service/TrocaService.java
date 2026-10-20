@@ -36,6 +36,7 @@ public class TrocaService {
     private final PedidoRepository pedidoRepository;
     private final PrazoTroca prazoTroca;
     private final EmailTroca emailTroca;
+    private final EnderecoLoja enderecoLoja;
 
     public TrocaDTO solicitar(Long clienteId, TrocaRequestDTO requisicao) {
         // A trava na linha do pedido faz dois cliques seguidos virarem uma troca só (o segundo espera e
@@ -83,13 +84,13 @@ public class TrocaService {
                 .motivo(requisicao.motivo())
                 .observacao(textoOuNulo(requisicao.observacao()))
                 .build());
-        return TrocaDTO.from(troca);
+        return TrocaDTO.from(troca, enderecoLoja.endereco());
     }
 
     @Transactional(readOnly = true)
     public List<TrocaDTO> listar(Long clienteId) {
         return trocaRepository.findByPedidoUsuarioIdOrderByCreatedAtDescIdDesc(clienteId).stream()
-                .map(TrocaDTO::from)
+                .map(troca -> TrocaDTO.from(troca, enderecoLoja.endereco()))
                 .toList();
     }
 

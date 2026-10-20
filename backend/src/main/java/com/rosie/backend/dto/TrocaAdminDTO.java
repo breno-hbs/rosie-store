@@ -4,7 +4,8 @@ import com.rosie.backend.model.Troca;
 
 import java.time.LocalDateTime;
 
-// Troca no painel (GET /admin/trocas, #27): o mesmo que a cliente vê, mais quem pediu
+// Troca no painel (GET /admin/trocas, #27): o mesmo que a cliente vê, mais quem pediu e a etiqueta de volta
+// com o que só o painel precisa (#63)
 public record TrocaAdminDTO(
         Long id,
         Long pedidoId,
@@ -19,12 +20,13 @@ public record TrocaAdminDTO(
         String status,
         String observacao,
         String resposta,
+        EtiquetaVoltaAdminDTO etiquetaVolta,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
 
     public static TrocaAdminDTO from(Troca troca) {
-        TrocaDTO dados = TrocaDTO.from(troca);
+        TrocaDTO dados = TrocaDTO.from(troca, null);
         return new TrocaAdminDTO(
                 dados.id(),
                 dados.pedidoId(),
@@ -39,6 +41,7 @@ public record TrocaAdminDTO(
                 dados.status(),
                 dados.observacao(),
                 dados.resposta(),
+                EtiquetaVoltaAdminDTO.from(troca),
                 dados.createdAt(),
                 dados.updatedAt()
         );
