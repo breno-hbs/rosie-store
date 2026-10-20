@@ -16,7 +16,7 @@ import SolicitarTroca from './pages/SolicitarTroca.jsx'
 import { ROTA_POLITICA_PRIVACIDADE } from './privacidade.js'
 
 // Rotas pelo caminho da URL; os links recarregam a página, sem roteador por enquanto.
-// Em produção o Netlify serve o index.html para qualquer caminho (public/_redirects).
+// Em produção o Netlify serve o index.html para qualquer caminho (redirect da SPA no netlify.toml).
 function rotaAtual() {
   const caminho = window.location.pathname
   const produto = caminho.match(/^\/produtos\/(\d+)\/?$/)

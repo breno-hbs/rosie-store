@@ -51,6 +51,21 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+		<!-- Esquema do banco versionado (#74): migrações em src/main/resources/db/migration.
+		     Versão do Flyway gerenciada pelo Spring Boot; o MySQL fica num módulo à parte. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+		</dependency>
+		<!-- Health check do Railway (#74): só /actuator/health fica exposto, sem detalhes -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
 		<!-- Fotos dos produtos (#15): SDK oficial do Cloudinary, atrás de ArmazenamentoImagens -->
 		<dependency>
 			<groupId>com.cloudinary</groupId>

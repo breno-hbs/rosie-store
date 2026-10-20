@@ -72,6 +72,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/privacidade").permitAll()
                         // Tabela de medidas da categoria, na Página de Produto (#20)
                         .requestMatchers(HttpMethod.GET, "/categorias/*/medidas").permitAll()
+                        // Health check do Railway (#74): só o status UP/DOWN, sem detalhes. Os outros endpoints do
+                        // Actuator não são expostos (management.endpoints.web.exposure.include=health)
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         // Sem isso, exceções não tratadas viram 401 ao encaminhar para /error
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()

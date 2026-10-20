@@ -1,0 +1,6 @@
+# Fora da imagem: build local e credenciais (o application-local.properties nunca pode ir para o jar)
+target/
+.idea/
+*.iml
+src/main/resources/application-local.properties
+src/main/resources/application-local.yml

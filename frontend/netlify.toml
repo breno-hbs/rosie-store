@@ -1,0 +1,33 @@
+# Deploy do front no Netlify (#74). No painel, o Base directory do site é "frontend"; o resto vem daqui.
+# As variáveis VITE_* (VITE_API_URL, VITE_WHATSAPP_NUMERO) ficam no painel do Netlify e entram no build:
+# mudou alguma, é preciso um novo deploy. Lista completa em docs/deploy.md.
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # A mesma versão do CI (o Vite 8 pede Node 20.19+ ou 22.12+)
+  NODE_VERSION = "22"
+
+# Rotas da SPA: qualquer caminho que não seja um arquivo do build (ex.: /produtos/12, /minha-conta) abre o
+# index.html e o React decide a tela. Arquivos que existem (assets, /etiqueta-simulada.html) são servidos antes.
+# Substitui o antigo public/_redirects, para a regra ficar num lugar só.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Arquivos do Vite levam o hash no nome: podem ficar em cache para sempre
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

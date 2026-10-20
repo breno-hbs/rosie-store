@@ -735,7 +735,7 @@ Exige token `CLIENTE`. Fecha o pedido com **o carrinho inteiro** da cliente do t
 | `ENTREGUE` | A peça chegou, com a data da entrega (`dataEntrega`): confirmada sozinha pelo rastreio do Melhor Envio (ver "Entrega pelo rastreio") ou marcada pela Roseane no painel (ver "Marcar como entregue"). Daí conta o prazo de troca |
 | `CANCELADO` | Pagamento cancelado ou expirado no Mercado Pago (ex.: PIX não pago no prazo). Se mesmo assim chegar um pagamento aprovado depois, ele é processado como qualquer aprovação |
 
-Na tabela `pedido` a coluna `status` é `VARCHAR(30)`. **Banco criado antes da #24** (o `ddl-auto=update` não muda o tipo de coluna que já existe, e a coluna era `ENUM` sem os status novos): rode uma vez `ALTER TABLE pedido MODIFY status VARCHAR(30) NOT NULL;`.
+Na tabela `pedido` a coluna `status` é `VARCHAR(30)`. **Banco criado antes da #24** (o `ddl-auto=update` não muda o tipo de coluna que já existe, e a coluna era `ENUM` sem os status novos): rode uma vez `ALTER TABLE pedido MODIFY status VARCHAR(30) NOT NULL;`. Banco novo já nasce com `VARCHAR(30)` pela migração V1 do Flyway (#74).
 
 ### Webhook do Mercado Pago
 `POST /pagamentos/webhook?data.id={id do pagamento}&type=payment`
