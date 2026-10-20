@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { atualizarConta, buscarConta, excluirConta, trocarSenha } from '../api.js'
-import { formatarData, linkWhatsApp, mascararTelefone, somenteDigitos } from '../formato.js'
+import { atualizarConta, buscarConta, excluirConta, solicitarTrocaEmail, trocarSenha } from '../api.js'
+import { formatarData, formatarDataHora, mascararTelefone, somenteDigitos } from '../formato.js'
 import { ROTA_POLITICA_PRIVACIDADE } from '../privacidade.js'
 import useCarregar from '../useCarregar.js'
 import ContaAviso from './ContaAviso.jsx'
 
-// Aba "Dados Pessoais" da Minha Conta (#26): nome e telefone editáveis, e-mail só leitura (é o login)
-// e troca de senha pedindo a atual. No fim, os direitos do titular (LGPD, #31): o aceite da política, onde
+// Aba "Dados Pessoais" da Minha Conta (#26): nome e telefone editáveis, troca do e-mail de acesso com
+// confirmação pelo endereço novo (#61) e troca de senha, as duas pedindo a senha atual. No fim, os direitos do titular (LGPD, #31): o aceite da política, onde
 // ver cada dado guardado e a exclusão da conta.
 export default function ContaDados() {
   const { carregando, dados: conta, erro, tentarDeNovo } = useCarregar(buscarConta)
@@ -35,6 +35,7 @@ export default function ContaDados() {
       ) : (
         <>
           <FormularioDados conta={conta} />
+          <EmailAcesso conta={conta} />
           <FormularioSenha />
           <Privacidade conta={conta} onExcluida={mostrarExcluida} />
         </>
@@ -54,7 +55,6 @@ function FormularioDados({ conta }) {
   const [nome, setNome] = useState(conta.nome)
   const [telefone, setTelefone] = useState(mascararTelefone(conta.telefone ?? ''))
   const [envio, setEnvio] = useState({ enviando: false, erro: null, salvo: false })
-  const whatsapp = linkWhatsApp('Olá! Quero trocar o e-mail da minha conta na Rosie.')
 
   async function salvar(evento) {
     evento.preventDefault()
@@ -97,22 +97,6 @@ function FormularioDados({ conta }) {
           onChange={(e) => setTelefone(mascararTelefone(e.target.value))}
         />
       </label>
-      <label className="campo">
-        <span className="eyebrow">E-mail</span>
-        <input className="campo__caixa" type="email" value={conta.email} disabled aria-describedby="nota-email" />
-        <span className="conta__nota" id="nota-email">
-          O e-mail é o seu login e não muda por aqui.{' '}
-          {whatsapp ? (
-            <a className="conta__link" href={whatsapp} target="_blank" rel="noopener noreferrer">
-              Fale com a gente
-            </a>
-          ) : (
-            'Fale com a gente'
-          )}{' '}
-          para trocar.
-        </span>
-      </label>
-
       <div className="conta__acoes">
         <button type="submit" className="botao botao--primario" disabled={envio.enviando}>
           {envio.enviando ? 'Salvando…' : 'Salvar dados'}
@@ -128,6 +112,118 @@ function FormularioDados({ conta }) {
       )}
     </form>
   )
+}
+
+// E-mail de acesso (#61). O novo só vale depois que a cliente abre o link mandado a ele: até lá ela continua
+// entrando com o atual, e a aba mostra para onde foi o link e até quando vale. Pedir de novo troca o link.
+function EmailAcesso({ conta }) {
+  const [pendente, setPendente] = useState(conta.emailPendente)
+  const [aberto, setAberto] = useState(false)
+  const [novoEmail, setNovoEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [envio, setEnvio] = useState({ enviando: false, erro: null })
+
+  async function enviar(evento) {
+    evento.preventDefault()
+    setEnvio({ enviando: true, erro: null })
+    try {
+      setPendente(await solicitarTrocaEmail(novoEmail.trim(), senha))
+      fechar()
+    } catch (erro) {
+      setEnvio({ enviando: false, erro })
+    }
+  }
+
+  function fechar() {
+    setAberto(false)
+    setNovoEmail('')
+    setSenha('')
+    setEnvio({ enviando: false, erro: null })
+  }
+
+  return (
+    <section className="conta__formulario" aria-labelledby="titulo-email">
+      <h2 className="titulo-3" id="titulo-email">
+        E-mail de acesso
+      </h2>
+      <p className="conta__texto">
+        Você entra na loja com <span className="conta__destaque">{conta.email}</span>.
+      </p>
+      {pendente && (
+        <p className="conta__pendente" role="status">
+          Enviamos um link para <span className="conta__destaque">{pendente.novoEmail}</span>. Abra o e-mail e confirme
+          até {formatarDataHora(pendente.expiraEm)}; até lá, você continua entrando com o e-mail atual. Não chegou?
+          Confira o spam ou peça de novo.
+        </p>
+      )}
+
+      {aberto ? (
+        <form className="conta__subformulario" onSubmit={enviar} noValidate aria-label="Trocar e-mail">
+          <label className="campo">
+            <span className="eyebrow">Novo e-mail</span>
+            <input
+              className="campo__caixa"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              maxLength={150}
+              required
+              value={novoEmail}
+              onChange={(e) => setNovoEmail(e.target.value)}
+              disabled={envio.enviando}
+            />
+          </label>
+          <label className="campo">
+            <span className="eyebrow">Senha atual</span>
+            <input
+              className="campo__caixa"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              disabled={envio.enviando}
+              aria-describedby="nota-troca-email"
+            />
+            <span className="conta__nota" id="nota-troca-email">
+              Mandamos um link de confirmação para o novo e-mail. A troca só vale depois que você abrir o link.
+            </span>
+          </label>
+          {envio.erro && (
+            <p className="conta__erro" role="alert">
+              {erroTrocaEmail(envio.erro)}
+            </p>
+          )}
+          <div className="conta__acoes">
+            <button
+              type="submit"
+              className="botao botao--contorno"
+              disabled={envio.enviando || !novoEmail.trim() || !senha}
+            >
+              {envio.enviando ? 'Enviando…' : 'Enviar link'}
+            </button>
+            <button type="button" className="conta__link" onClick={fechar} disabled={envio.enviando}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="conta__acoes">
+          <button type="button" className="botao botao--contorno" onClick={() => setAberto(true)}>
+            {pendente ? 'Pedir de novo' : 'Trocar e-mail'}
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+// Senha errada (403), e-mail já cadastrado (409), dado inválido (400) e falha no envio (502) trazem a mensagem
+// pronta da API
+function erroTrocaEmail(erro) {
+  if (erro.codigo === 'SENHA_INCORRETA') return 'Senha atual incorreta.'
+  if ([400, 409, 502].includes(erro.status)) return erro.message
+  return mensagemErro(erro, 'Não foi possível pedir a troca agora. Tente de novo em instantes.')
 }
 
 const SENHAS_VAZIAS = { atual: '', nova: '', confirmacao: '' }

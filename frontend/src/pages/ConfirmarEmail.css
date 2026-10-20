@@ -1,0 +1,34 @@
+/* Volta do link de troca de e-mail (#61). Sem tela no Figma: os mesmos tokens e títulos das páginas de volta
+   do pagamento (PedidoRetorno). Mobile-first: uma coluna, até 560px de largura. */
+
+.confirmar-email {
+  display: flex;
+  flex-direction: column;
+  padding: 40px var(--margem) 60px;
+}
+
+.confirmar-email__situacao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.confirmar-email__texto {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.confirmar-email__destaque {
+  color: var(--tinta);
+  overflow-wrap: anywhere;
+}
+
+.confirmar-email__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}

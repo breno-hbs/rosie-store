@@ -429,6 +429,27 @@
   padding: 24px 0;
 }
 
+/* E-mail de acesso (#61): o formulário de troca abre dentro da seção, e a troca pendente fica numa caixa de
+   borda fina até a cliente confirmar pelo link */
+.conta__subformulario {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.conta__destaque {
+  color: var(--tinta);
+  overflow-wrap: anywhere;
+}
+
+.conta__pendente {
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--acento);
+  border: 1px solid var(--linha);
+}
+
 /* Exclusão da conta (#31): caixa de borda fina com a explicação, a senha e a confirmação */
 .conta__exclusao {
   display: flex;
