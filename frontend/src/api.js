@@ -594,8 +594,11 @@ export function marcarEntregue(id, dataEntrega, opcoes) {
 // POST /trocas; { pedidoId, produtoId, tamanho, quantidade?, motivo: 'DEFEITO' | 'NAO_SERVIU',
 // observacao? } → a troca: { id, pedidoId, produtoId, nome, imagemPrincipal, tamanho, quantidade, motivo,
 // freteConta: 'ROSIE' | 'CLIENTE' (sai do motivo, no servidor), status, observacao, resposta, createdAt,
-// updatedAt }. Erros com mensagem pronta: PEDIDO_NAO_ENTREGUE, TROCA_FORA_DO_PRAZO e TROCA_JA_SOLICITADA
-// (409); DADOS_INVALIDOS (400); pedido de outra cliente: 404
+// etiquetaVolta, enderecoDevolucao, updatedAt }. Erros com mensagem pronta: PEDIDO_NAO_ENTREGUE,
+// TROCA_FORA_DO_PRAZO e TROCA_JA_SOLICITADA (409); DADOS_INVALIDOS (400); pedido de outra cliente: 404.
+// Como a peça volta (#63): etiquetaVolta: { situacao: 'SEM_ETIQUETA' | 'GERADA' | 'POR_CONTA_DA_CLIENTE',
+// urlEtiqueta, codigoRastreio, geradaEm }; enderecoDevolucao: { nome, logradouro, numero, complemento,
+// bairro, cidade, uf, cep } só na troca aprovada com o frete por conta da cliente (senão null)
 export function solicitarTroca(dados, opcoes) {
   return postCliente('/trocas', dados, opcoes)
 }
@@ -605,7 +608,9 @@ export function listarTrocas(opcoes) {
   return getCliente('/trocas', opcoes)
 }
 
-// GET /admin/trocas → as trocas de todas as clientes (cada uma com cliente: { id, nome, email, telefone })
+// GET /admin/trocas → as trocas de todas as clientes (cada uma com cliente: { id, nome, email, telefone } e
+// etiquetaVolta: { situacao: 'SEM_ETIQUETA' | 'FALHOU' | 'GERADA' | 'POR_CONTA_DA_CLIENTE', envioId,
+// urlEtiqueta, codigoRastreio, geradaEm, erro, valorEstimado }, #63)
 export function listarTrocasAdmin(opcoes) {
   return getAdmin('/admin/trocas', opcoes)
 }
@@ -614,4 +619,12 @@ export function listarTrocasAdmin(opcoes) {
 // resposta (recado para a cliente) opcional → a troca atualizada. Fora do caminho: STATUS_TROCA_INVALIDO (409)
 export function atualizarStatusTroca(id, status, resposta, opcoes) {
   return putAdmin(`/admin/trocas/${id}/status`, { status, resposta }, opcoes)
+}
+
+// POST /admin/trocas/{id}/etiqueta-volta → a troca atualizada, com etiquetaVolta GERADA (#63). Compra a
+// etiqueta de volta no Melhor Envio (debita o saldo da conta); repetir não compra outra e, sem rastreio ainda,
+// só busca o rastreio. Erros com mensagem pronta: TROCA_NAO_APROVADA, TROCA_FRETE_DA_CLIENTE,
+// ETIQUETA_CANCELADA e ETIQUETA_EM_ANDAMENTO (409); ETIQUETA_FALHOU (502); ETIQUETA_INDISPONIVEL (503)
+export function gerarEtiquetaVolta(id, opcoes) {
+  return postAdmin(`/admin/trocas/${id}/etiqueta-volta`, undefined, opcoes)
 }

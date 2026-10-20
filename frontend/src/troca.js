@@ -40,9 +40,12 @@ export function textoStatusTroca(troca) {
     case 'SOLICITADA':
       return 'A Rosie vai analisar o pedido e responder por aqui.'
     case 'APROVADA':
-      return troca.freteConta === 'ROSIE'
-        ? 'Troca aprovada. A Rosie vai combinar com você o envio da peça, com o frete por conta dela.'
-        : 'Troca aprovada. A Rosie vai combinar com você o envio da peça; o frete de volta é por sua conta.'
+      if (troca.freteConta !== 'ROSIE') {
+        return 'Troca aprovada. Mande a peça de volta para a Rosie; o frete é por sua conta.'
+      }
+      return troca.etiquetaVolta?.situacao === 'GERADA'
+        ? 'Troca aprovada. A etiqueta de devolução está pronta, com o frete pago pela Rosie.'
+        : 'Troca aprovada. A Rosie vai gerar a etiqueta de devolução, com o frete por conta dela; ela aparece aqui e no seu e-mail.'
     case 'RECUSADA':
       return 'A troca não foi aprovada.'
     case 'CONCLUIDA':

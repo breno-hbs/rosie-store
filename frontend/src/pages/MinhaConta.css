@@ -662,3 +662,55 @@
   color: var(--tinta);
   border: 1px solid var(--linha);
 }
+
+/* Como devolver a peça da troca aprovada (#63): etiqueta pronta ou endereço da loja, num bloco com borda como
+   o recado da Rosie */
+.conta__devolucao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid var(--tinta);
+}
+
+.conta__devolucao-codigo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.conta__codigo {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--tinta);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.conta__endereco {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--tinta);
+}
+
+.conta__passos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.conta__devolucao .botao {
+  min-height: 44px;
+}

@@ -54,12 +54,19 @@ public class MelhorEnvioEmissor implements EmissorEtiqueta {
                             String cidade, String uf) {
     }
 
+    // Volta da troca (#63): envio reverso, com a cliente como remetente e a loja como destinatária, como o
+    // Melhor Envio monta a logística reversa no painel dele
     @Override
     public String adicionarAoCarrinho(NovoEnvio envio) {
+        Endereco loja = Endereco.doRemetente(remetente);
+        Endereco cliente = Endereco.doDestinatario(envio.destinatario());
+        String tag = envio.reverso()
+                ? "Troca " + envio.trocaId() + " (pedido " + envio.pedidoId() + ")"
+                : "Pedido " + envio.pedidoId();
         Carrinho carrinho = new Carrinho(
                 envio.servicoId(),
-                Endereco.doRemetente(remetente),
-                Endereco.doDestinatario(envio.destinatario()),
+                envio.reverso() ? cliente : loja,
+                envio.reverso() ? loja : cliente,
                 envio.itens().stream()
                         .map(item -> new Produto(item.nome(), String.valueOf(item.quantidade()),
                                 item.valorUnitario().toPlainString()))
@@ -67,8 +74,7 @@ public class MelhorEnvioEmissor implements EmissorEtiqueta {
                 List.of(new Volume(envio.volume().alturaCm(), envio.volume().larguraCm(),
                         envio.volume().comprimentoCm(), envio.volume().pesoKg())),
                 // Sem nota fiscal: vai com declaração de conteúdo (non_commercial), montada a partir de products
-                new Opcoes(envio.valorDeclarado(), false, false, false, true,
-                        List.of(new Tag("Pedido " + envio.pedidoId()))));
+                new Opcoes(envio.valorDeclarado(), false, false, envio.reverso(), true, List.of(new Tag(tag))));
 
         EnvioCriado criado = chamar(() -> restClient.post().uri(CARRINHO)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -136,9 +142,20 @@ public class MelhorEnvioEmissor implements EmissorEtiqueta {
     // da cliente na etiqueta não ficarem abertos a quem tiver o link
     @Override
     public String linkImpressao(String envioId) {
+        return linkImpressao(envioId, "private");
+    }
+
+    // Link público (#63): a etiqueta de volta é impressa pela cliente, que não tem a conta da loja. Na etiqueta
+    // só estão o endereço dela e o da loja, e o link só chega a ela (GET /trocas, com o token dela).
+    @Override
+    public String linkImpressaoPublico(String envioId) {
+        return linkImpressao(envioId, "public");
+    }
+
+    private String linkImpressao(String envioId, String modo) {
         Impressao impressao = chamar(() -> restClient.post().uri(IMPRESSAO)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new PedidoImpressao("private", List.of(envioId)))
+                .body(new PedidoImpressao(modo, List.of(envioId)))
                 .retrieve()
                 .body(Impressao.class));
         if (impressao == null || impressao.url() == null || impressao.url().isBlank()) {

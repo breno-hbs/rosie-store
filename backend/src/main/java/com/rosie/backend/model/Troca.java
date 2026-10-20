@@ -63,6 +63,25 @@ public class Troca {
     @Column(length = 1000)
     private String resposta;
 
+    // Etiqueta de volta do Melhor Envio (logística reversa, #63), só quando o frete é da Rosie (defeito): o id
+    // do envio lá (gravado assim que entra no carrinho, para nunca comprar duas vezes), o link público para a
+    // cliente imprimir, o rastreio e quando ficou pronta. erroEtiquetaVolta guarda o motivo da última
+    // tentativa que falhou, para o painel mostrar; some quando a etiqueta sai.
+    @Column(name = "envio_volta_id", length = 50)
+    private String envioVoltaId;
+
+    @Column(name = "url_etiqueta_volta", length = 500)
+    private String urlEtiquetaVolta;
+
+    @Column(name = "codigo_rastreio_volta", length = 50)
+    private String codigoRastreioVolta;
+
+    @Column(name = "etiqueta_volta_gerada_em")
+    private LocalDateTime etiquetaVoltaGeradaEm;
+
+    @Column(name = "erro_etiqueta_volta", length = 500)
+    private String erroEtiquetaVolta;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -74,5 +93,12 @@ public class Troca {
     // RNF08: sai sempre do motivo, nunca do que o front-end mandar
     public FreteConta getFreteConta() {
         return FreteConta.para(motivo);
+    }
+
+    // Em que pé está a etiqueta de volta (#63), como o painel mostra
+    public SituacaoEtiquetaVolta getSituacaoEtiquetaVolta() {
+        if (urlEtiquetaVolta != null) return SituacaoEtiquetaVolta.GERADA;
+        if (getFreteConta() == FreteConta.CLIENTE) return SituacaoEtiquetaVolta.POR_CONTA_DA_CLIENTE;
+        return erroEtiquetaVolta != null ? SituacaoEtiquetaVolta.FALHOU : SituacaoEtiquetaVolta.SEM_ETIQUETA;
     }
 }

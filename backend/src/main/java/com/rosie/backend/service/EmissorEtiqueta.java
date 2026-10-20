@@ -25,8 +25,11 @@ public interface EmissorEtiqueta {
     // Gera a etiqueta de um envio já pago
     void gerar(String envioId);
 
-    // Link para abrir e imprimir a etiqueta gerada
+    // Link para abrir e imprimir a etiqueta gerada, só com a conta da loja logada no Melhor Envio
     String linkImpressao(String envioId);
+
+    // Link que abre para qualquer pessoa: o da etiqueta de volta da troca (#63), que a cliente imprime
+    String linkImpressaoPublico(String envioId);
 
     // false quando o servidor não tem o Melhor Envio configurado (sem MELHOR_ENVIO_TOKEN): a rotina do rastreio
     // (#64) nem tenta consultar
@@ -34,18 +37,31 @@ public interface EmissorEtiqueta {
         return true;
     }
 
-    // servicoId é o id do serviço no Melhor Envio escolhido no checkout (pedido.servicoFreteId)
+    // servicoId é o id do serviço no Melhor Envio escolhido no checkout (pedido.servicoFreteId).
+    // trocaId só vem na etiqueta de volta da troca (logística reversa, #63): aí o envio é reverso, a cliente
+    // é quem manda (remetente) e a loja quem recebe.
     record NovoEnvio(
             Long pedidoId,
             Integer servicoId,
             Destinatario destinatario,
             List<Item> itens,
             Volume volume,
-            BigDecimal valorDeclarado
+            BigDecimal valorDeclarado,
+            Long trocaId
     ) {
+
+        // Etiqueta de ida (#25): da loja para a cliente
+        public NovoEnvio(Long pedidoId, Integer servicoId, Destinatario destinatario, List<Item> itens,
+                         Volume volume, BigDecimal valorDeclarado) {
+            this(pedidoId, servicoId, destinatario, itens, volume, valorDeclarado, null);
+        }
+
+        public boolean reverso() {
+            return trocaId != null;
+        }
     }
 
-    // cep só com os 8 dígitos; uf é a sigla do estado
+    // A cliente: destinatária na ida, remetente na volta (#63). cep só com os 8 dígitos; uf é a sigla do estado
     record Destinatario(String nome, String telefone, String email, String cep, String logradouro, String numero,
                         String complemento, String bairro, String cidade, String uf) {
     }
