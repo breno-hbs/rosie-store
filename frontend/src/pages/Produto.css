@@ -150,12 +150,21 @@
   text-decoration: line-through;
 }
 
+/* Clicou sem tamanho (#79): os tamanhos disponíveis ganham a borda de tinta, junto do aviso */
+.produto__opcoes[data-pedir] .produto__tamanho:not(:disabled) {
+  border-color: var(--tinta);
+}
+
 .produto__esgotado,
 .produto__alerta {
   font-size: 13px;
   font-weight: 400;
   line-height: 1.5;
   color: var(--tinta);
+}
+
+.produto__alerta::before {
+  content: '— ';
 }
 
 /* Link do Figma, como botão que abre a tabela (#20). O padding dá 36px de toque sem mexer no texto. */
@@ -190,9 +199,18 @@
   min-height: 60px;
 }
 
-/* Confirmação ou erro de "Adicionar à sacola", entre os dois botões */
+/* "Adicionando…": desabilitado, mas sem apagar o botão como os outros desabilitados */
+.produto__acoes .botao[aria-busy='true'] {
+  opacity: 1;
+  cursor: progress;
+}
+
+/* Erro de "Adicionar à sacola" (#79), entre os dois botões: caixa de linha de tinta para não passar
+   despercebido; a confirmação é o painel AvisoSacola */
 .produto__retorno {
-  padding: 12px 0 14px;
+  margin: 10px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--tinta);
   font-size: 13px;
   font-weight: 400;
   line-height: 1.5;
