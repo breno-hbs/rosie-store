@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { listarCategorias, listarDestaques, listarProdutos } from '../api.js'
+import { listarBanners, listarCategorias, listarDestaques, listarProdutos } from '../api.js'
 import Nav from '../components/Nav.jsx'
 import HeroCarousel from '../components/HeroCarousel.jsx'
 import CategoryTiles from '../components/CategoryTiles.jsx'
@@ -19,6 +19,8 @@ function categoriaDaUrl() {
 
 export default function Home() {
   const [categorias, setCategorias] = useState([])
+  // Banners da Home (#89): null enquanto carrega; [] sem nenhum no ar (ou com erro): o carrossel usa os destaques
+  const [banners, setBanners] = useState(null)
   // null enquanto carrega; [] quando não há destaques marcados ou a chamada falhou
   const [destaques, setDestaques] = useState(null)
   const [slidesReserva, setSlidesReserva] = useState([])
@@ -45,6 +47,11 @@ export default function Home() {
     listarCategorias({ signal: controle.signal })
       .then(setCategorias)
       .catch(() => {}) // Sem categorias a Home segue só com a listagem
+    listarBanners({ signal: controle.signal })
+      .then(setBanners)
+      .catch((erro) => {
+        if (erro.name !== 'AbortError') setBanners([])
+      })
     listarDestaques({ limite: TAMANHO_PAGINA }, { signal: controle.signal })
       .then(setDestaques)
       .catch((erro) => {
@@ -146,7 +153,8 @@ export default function Home() {
       />
 
       <main>
-        <HeroCarousel produtos={slides} />
+        {/* Enquanto os banners carregam, o carrossel fica vazio (sem piscar os destaques antes) */}
+        <HeroCarousel banners={banners ?? []} produtos={banners === null ? [] : slides} />
 
         <CategoryTiles
           categorias={categorias}

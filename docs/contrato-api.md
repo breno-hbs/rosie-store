@@ -11,6 +11,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /produtos` | Implementado (filtros opcionais `categoriaId` e `busca`) | `ProdutoListaResponseDTO` |
 | `GET /produtos/destaques` | Implementado (público, só ativos com `destaque = true`) | lista de `ProdutoResumoDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
+| `GET /banners` | Implementado (público; só os ativos dentro do período, na ordem; #89) | lista de `BannerDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
 | `GET /categorias/{id}/medidas` | Implementado (público; `medidas` vazia se a categoria não tem tabela; 404) | `TabelaMedidasDTO` |
 | `POST /auth/registrar` | Implementado (público; 201; 400 `DADOS_INVALIDOS`; 409 com `EMAIL_JA_CADASTRADO`) | `LoginResponseDTO` |
@@ -58,6 +59,12 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; 404) | `TabelaMedidasDTO` |
 | `PUT /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; troca a tabela inteira; 400 com `DADOS_INVALIDOS`; 404) | `TabelaMedidasDTO` |
 | `DELETE /admin/categorias/{id}/medidas` | Implementado (exige token `ADMIN`; 204; 404) | — |
+| `GET /admin/banners` | Implementado (exige token `ADMIN`; todos, na ordem, com a situação de agora) | lista de `BannerAdminDTO` |
+| `POST /admin/banners` | Implementado (exige token `ADMIN`; multipart; 201; 400 `DADOS_INVALIDOS`/`FORMATO_NAO_SUPORTADO`/`ARQUIVO_MUITO_GRANDE`; 503 `ARMAZENAMENTO_INDISPONIVEL`) | `BannerAdminDTO` |
+| `PUT /admin/banners/{id}` | Implementado (exige token `ADMIN`; multipart, imagens opcionais; mesmos erros do POST; 404) | `BannerAdminDTO` |
+| `PUT /admin/banners/{id}/ativo` | Implementado (exige token `ADMIN`; 400; 404) | `BannerAdminDTO` |
+| `PUT /admin/banners/ordem` | Implementado (exige token `ADMIN`; 400 se faltar ou repetir banner) | lista de `BannerAdminDTO` |
+| `DELETE /admin/banners/{id}` | Implementado (exige token `ADMIN`; 204; 404; as imagens saem do Cloudinary depois) | — |
 | `GET /admin/pedidos` | Implementado (exige token `ADMIN`; todos os pedidos) | lista de `PedidoAdminResumoDTO` |
 | `GET /admin/pedidos/{id}` | Implementado (exige token `ADMIN`; 404) | `PedidoAdminDTO` |
 | `POST /admin/pedidos/{id}/etiqueta` | Implementado (exige token `ADMIN`; ver "Gerar etiqueta") | `PedidoAdminDTO` |
@@ -72,7 +79,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 ## Convenções gerais
 
 - **Base URL (dev):** `http://localhost:8080`
-- **Formato:** JSON em todas as requisições e respostas (exceção: o upload de foto do produto é `multipart/form-data`)
+- **Formato:** JSON em todas as requisições e respostas (exceções: o upload de foto do produto e o cadastro de banner são `multipart/form-data`)
 - **Autenticação:** JWT via header `Authorization: Bearer {token}` — obtido no login
 - **Tamanhos:** sempre um dos valores `P`, `M`, `G`, `GG`
 - **Datas:** formato ISO 8601 (`2026-08-25T14:30:00`); campos só de dia, como `dataEntrega` e `prazoTroca`, vêm sem hora (`2026-08-25`)
@@ -382,7 +389,7 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `ROSIE_ADMIN_NOME` | Não (padrão `Roseane`) | Nome do admin inicial |
 | `CLOUDINARY_URL` | Não (sem ela, o upload de fotos responde 503) | Credencial do Cloudinary, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`; ver "Upload de imagem" |
 | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `ROSIE_API_URL` | Não (faltando qualquer uma, o checkout responde 503) | Pagamento pelo Mercado Pago; ver "Finalizar pedido" |
-| `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago e o link de confirmação da troca de e-mail |
+| `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago e o link de confirmação da troca de e-mail; link de banner com o endereço completo da loja vira caminho (#89) |
 | `ROSIE_TROCA_EMAIL_VALIDADE` | Não (padrão `24h`) | Prazo do link de confirmação da troca de e-mail (ex.: `30m`, `24h`, `2d`); ver "Troca de e-mail" |
 | `TROCA_PRAZO_DIAS` | Não (padrão `7`) | Prazo para pedir troca, em dias corridos depois da entrega; ver "Troca e devolução" |
 | `ROSIE_REMETENTE_NOME`, `_LOGRADOURO`, `_NUMERO`, `_COMPLEMENTO`, `_BAIRRO`, `_CIDADE`, `_UF` e `ROSIE_CEP_ORIGEM` | Não (faltando um obrigatório, a cliente vê "a Rosie vai te passar o endereço") | Além de remetente da etiqueta de ida e destino da de volta, é o endereço de devolução que a cliente vê na troca "não serviu" aprovada (`enderecoDevolucao`, #63); ver "Devolução da peça" |
@@ -480,6 +487,42 @@ Cada item tem o mesmo formato de um item de `conteudo` em `GET /produtos` (`Prod
     "categoria": { "id": 1, "nome": "Vestido" },
     "imagemPrincipal": "https://.../conjunto-serpente-1.jpg",
     "disponivel": true
+  }
+]
+```
+
+### Banners da Home
+`GET /banners`
+
+Pública (sem token). Os banners do carrossel da Home (#89), cadastrados no painel: só os **ativos e dentro do período** (`inicio <= agora < fim`, no horário de São Paulo; início ou fim vazio = sem limite daquele lado), na ordem do painel. Lista vazia: a Home volta a mostrar os destaques (`GET /produtos/destaques`) no carrossel.
+
+As imagens já vêm cortadas para cada tela pelo Cloudinary (mesma ideia do "Corte 4:5 na entrega"), com `url` (versão padrão) e `srcset` (larguras para o navegador escolher):
+
+| Campo | Proporção | Larguras do `srcset` | Uso |
+|---|---|---|---|
+| `imagemDesktop` | 3:1 (`c_fill,ar_3:1,g_auto`) | 768, 1280 (a `url`), 1920 | Telas a partir de 768 px (`<source media="(min-width: 768px)">`) |
+| `imagemCelular` | 4:5 (`c_fill,ar_4:5,g_auto`) | 480, 750 (a `url`), 1080 | Celular. Sem imagem de celular cadastrada, é a de desktop com corte central (`g_center`) |
+
+Imagem fora do Cloudinary (sem `public_id`) sai como foi salva, com `srcset: null`. `titulo`, `texto`, `textoBotao` e `link` vêm `null` quando não foram preenchidos; `link` é sempre um caminho da própria loja (ver "Painel admin — Banners da Home"). `textoAlternativo` é o `alt` da imagem.
+
+```json
+// Response 200 — lista de BannerDTO
+[
+  {
+    "id": 3,
+    "titulo": "Coleção de verão",
+    "texto": "Peças leves para os dias quentes",
+    "textoBotao": "Ver coleção",
+    "link": "/categoria/vestido",
+    "textoAlternativo": "Modelo com vestido florido de linho",
+    "imagemDesktop": {
+      "url": "https://res.cloudinary.com/<cloud>/image/upload/c_fill,ar_3:1,g_auto/c_limit,w_1280/f_auto,q_auto/v1/rosie/banners/abc.jpg",
+      "srcset": "https://.../c_limit,w_768/... 768w, https://.../c_limit,w_1280/... 1280w, https://.../c_limit,w_1920/... 1920w"
+    },
+    "imagemCelular": {
+      "url": "https://res.cloudinary.com/<cloud>/image/upload/c_fill,ar_4:5,g_auto/c_limit,w_750/f_auto,q_auto/v1/rosie/banners/def.jpg",
+      "srcset": "https://.../c_limit,w_480/... 480w, https://.../c_limit,w_750/... 750w, https://.../c_limit,w_1080/... 1080w"
+    }
   }
 ]
 ```
@@ -1215,6 +1258,119 @@ Uma tabela por categoria, que a Roseane preenche no painel (`/admin/categorias/{
 // Response 204 — sem corpo
 // Response 404 — RECURSO_NAO_ENCONTRADO
 ```
+
+---
+
+## Painel admin — Banners da Home (#89) — requer autenticação ADMIN
+
+A Roseane troca o banner da Home sozinha (RF01, RF15). Fora do escopo: banners em outras páginas.
+
+### Listar banners
+`GET /admin/banners`
+
+Todos os banners (ativos ou não, de qualquer período), na ordem do carrossel. Além do que a Home recebe (`BannerDTO`), cada um traz `ativo`, `inicio`, `fim`, `ordem` (0, 1, 2... sem buracos), `situacao` e as imagens inteiras, sem corte, para a prévia do painel (`previaDesktop`; `previaCelular` é `null` sem imagem de celular).
+
+`situacao`, calculada na hora pelo relógio da loja (São Paulo): `DESATIVADO` (`ativo: false`), `AGENDADO` (o início ainda não chegou), `ENCERRADO` (o fim já passou) ou `NO_AR`.
+
+```json
+// Response 200 — lista de BannerAdminDTO
+[
+  {
+    "id": 3,
+    "titulo": "Coleção de verão",
+    "texto": "Peças leves para os dias quentes",
+    "textoBotao": "Ver coleção",
+    "link": "/categoria/vestido",
+    "textoAlternativo": "Modelo com vestido florido de linho",
+    "ativo": true,
+    "inicio": "2026-11-01T00:00:00",
+    "fim": null,
+    "ordem": 0,
+    "situacao": "AGENDADO",
+    "imagemDesktop": { "url": "https://...", "srcset": "https://... 768w, ..." },
+    "imagemCelular": { "url": "https://...", "srcset": "https://... 480w, ..." },
+    "previaDesktop": "https://res.cloudinary.com/<cloud>/image/upload/c_limit,w_1600/f_auto,q_auto/v1/rosie/banners/abc.jpg",
+    "previaCelular": "https://res.cloudinary.com/<cloud>/image/upload/c_limit,w_1600/f_auto,q_auto/v1/rosie/banners/def.jpg"
+  }
+]
+```
+
+### Criar banner
+`POST /admin/banners` — multipart/form-data com as partes:
+
+| Parte | Obrigatória | Conteúdo |
+|---|---|---|
+| `dados` | Sim | JSON (`Content-Type: application/json`), ver abaixo |
+| `imagemDesktop` | Sim | Imagem para computador. Referência: 1920 x 640 px (3:1) |
+| `imagemCelular` | Não | Imagem para celular. Referência: 1080 x 1350 px (4:5). Sem ela, o celular recebe a de desktop com corte central |
+
+```json
+// Parte "dados" — BannerRequestDTO
+{
+  "titulo": "Coleção de verão",
+  "texto": "Peças leves para os dias quentes",
+  "textoBotao": "Ver coleção",
+  "link": "/categoria/vestido",
+  "textoAlternativo": "Modelo com vestido florido de linho",
+  "ativo": true,
+  "inicio": "2026-11-01T00:00",
+  "fim": "2026-12-31T23:59"
+}
+// Response 201 — BannerAdminDTO, sempre no fim do carrossel
+// Response 400
+{ "erro": "Descreva a imagem do banner (texto alternativo)", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "Envie a imagem para computador no campo imagemDesktop", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "Envie o campo dados", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "O link do banner precisa ser uma página da loja, como /categoria/vestido, /produtos/12 ou /busca?q=linho", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "Informe o link do botão, ou deixe o texto do botão vazio", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "O fim da exibição precisa ser depois do início", "codigo": "DADOS_INVALIDOS" }
+{ "erro": "Formato não aceito: envie a foto em JPG, PNG ou WEBP", "codigo": "FORMATO_NAO_SUPORTADO" }
+// Response 503 (sem CLOUDINARY_URL no servidor, ou Cloudinary fora do ar)
+{ "erro": "O envio de fotos não está configurado no servidor (falta CLOUDINARY_URL)", "codigo": "ARMAZENAMENTO_INDISPONIVEL" }
+```
+
+| Campo | Regra |
+|---|---|
+| `textoAlternativo` | Obrigatório, até 200 caracteres: o `alt` da imagem (acessibilidade) |
+| `titulo`, `texto`, `textoBotao` | Opcionais, até 80, 200 e 30 caracteres. Vazios (ou só espaços) viram `null`. `textoBotao` exige `link`; na Home, sem botão, a imagem inteira leva ao link |
+| `link` | Opcional, até 300 caracteres. **Só páginas da própria loja** (o banner nunca leva para fora sem aviso): um caminho começando por uma barra (`/categoria/{slug}`, `/produtos/{id}`, `/busca?q=linho`, `/politica-de-privacidade`...), com acentos e espaços codificados (`%20`), ou o endereço completo da loja (`ROSIE_LOJA_URL`, com ou sem `www.`), gravado como caminho. URL de outro site, `//outro.site`, `javascript:`, `data:`, `mailto:` e afins: 400 |
+| `inicio`, `fim` | Opcionais, data e hora **no horário de São Paulo**, sem fuso (`2026-11-01T00:00`). O banner aparece de `inicio` (inclusive) até `fim` (exclusive). `fim` precisa ser depois de `inicio` |
+| `ativo` | Opcional (padrão `true`). `false` tira da Home sem apagar |
+| Imagens | JPG, PNG ou WEBP de até 5 MB cada (a requisição inteira até 12 MB), conferidos pelo conteúdo como no upload de foto do produto. Ficam no Cloudinary na pasta `rosie/banners`; o original é guardado e o corte de cada tela sai na URL (ver "Banners da Home") |
+
+Os dados e os arquivos são conferidos antes de qualquer envio ao Cloudinary. Se a gravação falhar depois do envio (ex.: a segunda imagem não subiu), as imagens já enviadas são apagadas de lá.
+
+### Editar banner
+`PUT /admin/banners/{id}` — mesmo multipart do POST, com as imagens **opcionais**: imagem enviada substitui a anterior; sem imagem, fica a atual. A parte `dados` vem completa (mesmas regras) e aceita `"removerImagemCelular": true` para voltar a usar a de desktop no celular (ignorado quando vem `imagemCelular`). Response 200 com o `BannerAdminDTO`; 404 `RECURSO_NAO_ENCONTRADO`.
+
+As imagens substituídas ou removidas saem do Cloudinary **depois do commit**: se a edição for desfeita, o banner continua com as de antes. Falha do Cloudinary nessa hora não desfaz nada (o arquivo órfão fica registrado no log).
+
+### Ativar ou desativar
+`PUT /admin/banners/{id}/ativo`
+
+```json
+// Request
+{ "ativo": false }
+// Response 200 — BannerAdminDTO com "situacao": "DESATIVADO"
+```
+
+### Reordenar banners
+`PUT /admin/banners/ordem`
+
+```json
+// Request: os ids de TODOS os banners, na nova ordem; o primeiro abre o carrossel
+{ "banners": [5, 3, 4] }
+// Response 200 — lista de BannerAdminDTO na nova ordem (ordem 0, 1, 2)
+// Response 400
+{ "erro": "Envie todos os banners, cada um uma vez", "codigo": "DADOS_INVALIDOS" }
+```
+
+Lista vazia responde 400 "Informe a ordem dos banners".
+
+### Remover banner
+`DELETE /admin/banners/{id}` → **204** sem corpo.
+
+Apaga o banner (não há histórico a preservar), renumera os outros e tira as imagens do Cloudinary depois do commit (falha lá só vai para o log). Banner que não existe: 404 `RECURSO_NAO_ENCONTRADO`.
 
 ---
 

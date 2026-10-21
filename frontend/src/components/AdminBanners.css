@@ -1,0 +1,237 @@
+/* Banners da Home no painel (#89): lista na ordem do carrossel e formulário com prévia */
+
+.admin-banners {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.admin-banners__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-banners__explicacao {
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+}
+
+.admin-banners__novo {
+  min-height: 60px;
+  padding: 14px 22px;
+}
+
+.admin-banners__aviso {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.admin-banners__estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+}
+
+.admin-banners__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+/* Celular: miniatura em cima, depois o texto e as ações. A partir de 768px, tudo numa linha. */
+.admin-banners__item {
+  display: grid;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.admin-banners__miniatura {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 3 / 1;
+  object-fit: cover;
+  background: var(--foto-vazia);
+}
+
+.admin-banners__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-banners__nome {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: var(--tinta);
+}
+
+.admin-banners__situacao,
+.admin-banners__link {
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: var(--fumaca);
+}
+
+.admin-banners__situacao--no_ar {
+  color: var(--tinta);
+}
+
+.admin-banners__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+
+.admin-banners__pergunta,
+.admin-banners__acao {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--fumaca);
+}
+
+.admin-banners__pergunta {
+  color: var(--acento);
+}
+
+.admin-banners__acao:hover {
+  color: var(--tinta);
+}
+
+.admin-banners__acao--forte {
+  font-weight: 400;
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Setas com área de toque maior que o glifo */
+.admin-banners__seta {
+  min-width: 32px;
+  min-height: 32px;
+  font-size: 14px;
+  border: 1px solid var(--linha);
+}
+
+.admin-banners__acao:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+@media (min-width: 768px) {
+  .admin-banners__item {
+    grid-template-columns: 180px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .admin-banners__acoes {
+    justify-content: flex-end;
+  }
+}
+
+/* ---------- Formulário ---------- */
+
+.banner-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.banner-form__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin-top: 24px;
+}
+
+.banner-form__imagem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--linha);
+}
+
+.banner-form__botoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.banner-form__escolher {
+  position: relative;
+  cursor: pointer;
+}
+
+.banner-form__escolher:focus-within {
+  outline: 1px solid var(--tinta);
+  outline-offset: 3px;
+}
+
+.banner-form__previas {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.banner-previa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+/* Celular e computador em tamanho real, reduzidos para a largura da coluna */
+.banner-previa__caixa {
+  overflow: hidden;
+  border: 1px solid var(--linha);
+}
+
+.banner-previa:first-of-type .banner-previa__caixa {
+  max-width: 300px;
+}
+
+.banner-previa__tela {
+  transform-origin: top left;
+}
+
+@media (min-width: 1024px) {
+  .banner-form__corpo {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .banner-form__corpo > .produto-form__campos {
+    flex: 0 1 480px;
+  }
+
+  .banner-form__previas {
+    flex: 1;
+    position: sticky;
+    top: 24px;
+  }
+}
