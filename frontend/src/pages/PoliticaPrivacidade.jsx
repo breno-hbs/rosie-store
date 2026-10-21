@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { buscarPoliticaPrivacidade, listarCategorias } from '../api.js'
 import Footer from '../components/Footer.jsx'
 import Nav from '../components/Nav.jsx'
-import { formatarData, linkWhatsApp } from '../formato.js'
+import { formatarData, LINK_INSTAGRAM, linkWhatsApp } from '../formato.js'
 import './PoliticaPrivacidade.css'
 
 // Página "Política de privacidade" (LGPD, RNF06, #31), em /politica-de-privacidade: rodapé, cadastro e
@@ -356,7 +356,7 @@ export default function PoliticaPrivacidade() {
                 </>
               )}{' '}
               ou o Instagram{' '}
-              <a href="https://www.instagram.com/rosie.sttore/" target="_blank" rel="noreferrer">
+              <a href={LINK_INSTAGRAM} target="_blank" rel="noreferrer">
                 @rosie.sttore
               </a>
               .

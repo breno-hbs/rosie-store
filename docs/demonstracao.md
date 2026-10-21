@@ -44,7 +44,11 @@ winget install --id Cloudflare.cloudflared
 
 Feche e abra o terminal depois da instalação. Confira com `cloudflared --version`. O script não instala nada sozinho: sem o cloudflared, ele mostra esse comando e para.
 
-### 3. Ensaio (um ou dois dias antes)
+### 3. Pôr o WhatsApp no site (uma vez)
+
+Ponha o número do WhatsApp da Roseane no `frontend/.env.local` (copie do `frontend/.env.example` se ainda não existir), só dígitos com DDI 55 e DDD: `VITE_WHATSAPP_NUMERO=55DDDNUMERO`. O modo demo também lê o `.env.local`. Sem o número, os botões "Falar no WhatsApp" somem do site, e a Home mostra o Instagram no lugar.
+
+### 4. Ensaio (um ou dois dias antes)
 
 1. Ligue o MySQL e feche a API e o `npm run dev` de desenvolvimento, se estiverem abertos (o script usa as portas 8080 e 5173).
 2. Na raiz do repositório, atualizado com a `main`:
@@ -107,7 +111,7 @@ Uns 30 minutos. A ideia é ela ver primeiro como a cliente compra (no celular de
 2. **Categorias.** Toque numa categoria (ex.: Vestidos): a vitrine filtra. Destaque: *"você cria e renomeia as categorias"*.
 3. **Produto com fotos.** Abra um produto: fotos em 4:5 (deslizar), preço, descrição, composição e cuidados, tamanhos disponíveis. Tamanho sem estoque aparece indisponível. Destaque: *"as fotos e os textos são os seus; você mesma cadastra e troca quando quiser"*.
 4. **Tabela de medidas.** Toque em "Tabela de medidas": a tabela da categoria, em cm. Destaque: *"diminui troca por tamanho errado"*.
-5. **Carrinho.** Escolha o tamanho, adicione e abra o carrinho: mudar a quantidade, remover. O site não deixa pôr mais peças do que o estoque.
+5. **Carrinho.** Escolha o tamanho, adicione e abra o carrinho: mudar a quantidade, remover. O site não deixa pôr mais peças do que o estoque. Mostre também o **"Comprar agora"** do produto: põe a peça na sacola e já abre o checkout.
 6. **Frete.** No carrinho, digite um CEP: aparecem as opções (PAC, SEDEX, Jadlog) com preço e prazo. Destaque: *"na loja de verdade é o preço real do Melhor Envio, com o desconto da conta; aqui é simulado"*. Se quiser, mostre o CEP `99999-999` (nenhuma transportadora atende).
 7. **Conta da cliente.** Para fechar o pedido, ela entra ou cria conta (nome, e-mail, senha) e aceita a política de privacidade (LGPD). Use a **cliente de demonstração** na tela; se ela quiser testar no celular, que crie uma conta com um e-mail qualquer (nada é enviado).
 8. **Checkout com pagamento simulado.** Endereço (o CEP preenche a rua), frete, forma de pagamento (cartão ou PIX) e "Finalizar pedido". Abre a página **Pagamento simulado** (com o aviso "Ambiente de desenvolvimento": é esperado na demo): explique que *"aqui entraria a tela do Mercado Pago, na sua conta; o dinheiro cai direto para você"*. Clique em **Aprovar**: o pedido aparece como pago. Se quiser, faça um segundo pedido e mostre **Recusar**: o pedido fica com o pagamento recusado e o estoque não baixa.

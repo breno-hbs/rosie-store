@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   adicionarAoCarrinho,
+  buscarCarrinho,
   buscarProduto,
   buscarTabelaMedidas,
   lerSessaoCliente,
@@ -12,7 +13,7 @@ import Nav from '../components/Nav.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
 import Footer from '../components/Footer.jsx'
-import { formatarPreco, linkWhatsApp } from '../formato.js'
+import { formatarPreco } from '../formato.js'
 import { POLITICA_TROCA } from '../troca.js'
 import './Produto.css'
 
@@ -126,6 +127,14 @@ function DetalheProduto({ produto }) {
   // "Adicionar à sacola" (#22): null, { tipo: 'ok' } ou { tipo: 'erro', mensagem }
   const [adicionando, setAdicionando] = useState(false)
   const [retornoSacola, setRetornoSacola] = useState(null)
+  // "Comprar agora" (#80): põe a peça na sacola e vai direto para o checkout
+  const [comprando, setComprando] = useState(false)
+  // Voltando do checkout pelo "voltar" do navegador, a página pode vir do cache ainda com "Um instante…"
+  useEffect(() => {
+    const aoMostrar = (evento) => evento.persisted && setComprando(false)
+    window.addEventListener('pageshow', aoMostrar)
+    return () => window.removeEventListener('pageshow', aoMostrar)
+  }, [])
   // Tabela de medidas da categoria (#20): o botão só aparece quando ela tem medidas
   const [tabelaMedidas, setTabelaMedidas] = useState(null)
   const [medidasAbertas, setMedidasAbertas] = useState(false)
@@ -149,15 +158,6 @@ function DetalheProduto({ produto }) {
   const fotos = produto.imagens
   const disponiveis = produto.estoque.filter((item) => item.quantidade > 0)
   const esgotado = disponiveis.length === 0
-
-  const mensagem = [
-    `Olá! Tenho interesse no produto ${produto.nome}`,
-    tamanho && `(tamanho ${tamanho})`,
-    `— ${window.location.origin}/produtos/${produto.id}`,
-  ]
-    .filter(Boolean)
-    .join(' ')
-  const whatsapp = linkWhatsApp(mensagem)
 
   function escolherTamanho(novo) {
     setTamanho(novo)
@@ -183,12 +183,29 @@ function DetalheProduto({ produto }) {
       .finally(() => setAdicionando(false))
   }
 
-  function comprarPeloWhatsapp(evento) {
-    // Com estoque, o tamanho precisa ir na mensagem
-    if (!esgotado && !tamanho) {
-      evento.preventDefault()
+  // Mesmo caminho do "Adicionar à sacola" (tamanho, login, estoque pela API), mas segue para o checkout.
+  // Se a peça já está na sacola nesse tamanho, não soma outra: só vai para o checkout.
+  function comprarAgora() {
+    if (!tamanho) {
       setPedirTamanho(true)
+      return
     }
+    if (!lerSessaoCliente()) {
+      window.location.assign(rotaLoginCliente())
+      return
+    }
+    setComprando(true)
+    setRetornoSacola(null)
+    buscarCarrinho()
+      .then((carrinho) => {
+        const jaNaSacola = carrinho.itens.some((item) => item.produto.id === produto.id && item.tamanho === tamanho)
+        return jaNaSacola ? carrinho : adicionarAoCarrinho(produto.id, tamanho, 1)
+      })
+      .then(() => window.location.assign('/checkout'))
+      .catch((erro) => {
+        setRetornoSacola({ tipo: 'erro', mensagem: erro.message })
+        setComprando(false)
+      })
   }
 
   return (
@@ -275,7 +292,7 @@ function DetalheProduto({ produto }) {
           <button
             type="button"
             className="botao botao--primario"
-            disabled={esgotado || adicionando}
+            disabled={esgotado || adicionando || comprando}
             onClick={adicionarNaSacola}
           >
             {adicionando ? 'Adicionando…' : 'Adicionar à sacola'}
@@ -294,16 +311,14 @@ function DetalheProduto({ produto }) {
               )}
             </p>
           )}
-          <a
+          <button
+            type="button"
             className="botao botao--contorno"
-            href={whatsapp}
-            aria-disabled={!whatsapp}
-            target="_blank"
-            rel="noreferrer"
-            onClick={comprarPeloWhatsapp}
+            disabled={esgotado || adicionando || comprando}
+            onClick={comprarAgora}
           >
-            Comprar pelo WhatsApp
-          </a>
+            {comprando ? 'Um instante…' : 'Comprar agora'}
+          </button>
         </div>
 
         <div className="produto__acordeao">

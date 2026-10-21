@@ -5,12 +5,12 @@ import HeroCarousel from '../components/HeroCarousel.jsx'
 import CategoryTiles from '../components/CategoryTiles.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Footer from '../components/Footer.jsx'
-import { linkWhatsApp } from '../formato.js'
+import { contatoLoja } from '../formato.js'
 import './Home.css'
 
 const TAMANHO_PAGINA = 12
 const QTD_SLIDES = 3
-const WHATSAPP = linkWhatsApp()
+const CONTATO = contatoLoja('Olá! Vim pelo site da Rosie e quero tirar uma dúvida.')
 
 function categoriaDaUrl() {
   const id = Number(new URLSearchParams(window.location.search).get('categoria'))
@@ -231,14 +231,8 @@ export default function Home() {
         <section className="atendimento">
           <p className="eyebrow">Atendimento</p>
           <h2 className="titulo-2">Rosie</h2>
-          <a
-            className="botao botao--primario"
-            href={WHATSAPP}
-            aria-disabled={!WHATSAPP}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Falar no WhatsApp
+          <a className="botao botao--primario" href={CONTATO.href} target="_blank" rel="noreferrer">
+            {CONTATO.texto}
           </a>
         </section>
       </main>

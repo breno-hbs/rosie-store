@@ -1,8 +1,11 @@
+import { LINK_INSTAGRAM, linkWhatsApp } from '../formato.js'
 import { ROTA_POLITICA_PRIVACIDADE } from '../privacidade.js'
 import LogoBadge from './LogoBadge.jsx'
 import './Footer.css'
 
-// Instagram e Trocas e devoluções (#27) têm destino; os demais itens ganham link quando as páginas existirem.
+// Instagram, WhatsApp (se VITE_WHATSAPP_NUMERO estiver definido, senão some) e Trocas e devoluções (#27) têm destino;
+// os demais itens ganham link quando as páginas existirem.
+const whatsapp = linkWhatsApp('Olá! Vim pelo site da Rosie e quero tirar uma dúvida.')
 const colunas = [
   { titulo: 'Loja', itens: [{ texto: 'Todos os produtos' }, { texto: 'Novidades' }, { texto: 'Mais vendidos' }] },
   {
@@ -12,10 +15,10 @@ const colunas = [
   {
     titulo: 'Contato',
     itens: [
-      { texto: 'WhatsApp' },
-      { texto: 'Instagram', href: 'https://www.instagram.com/rosie.sttore/' },
+      whatsapp && { texto: 'WhatsApp', href: whatsapp },
+      { texto: 'Instagram', href: LINK_INSTAGRAM },
       { texto: 'E-mail' },
-    ],
+    ].filter(Boolean),
   },
 ]
 
