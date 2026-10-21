@@ -130,7 +130,7 @@ class ProdutoEstoqueAdminServiceTests {
     }
 
     private ProdutoResumoDTO resumoNaVitrine(Produto produto) {
-        return produtoService.listar(categoria.getId(), 0, 12).conteudo().stream()
+        return produtoService.listar(categoria.getId(), null, 0, 12).conteudo().stream()
                 .filter(p -> p.id().equals(produto.getId()))
                 .findFirst()
                 .orElseThrow();

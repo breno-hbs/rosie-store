@@ -37,7 +37,7 @@ class SecurityConfigTest {
 
     @Test
     void listarProdutosSemAutenticacaoEhPermitido() throws Exception {
-        when(produtoService.listar(any(), anyInt(), anyInt()))
+        when(produtoService.listar(any(), any(), anyInt(), anyInt()))
                 .thenReturn(new ProdutoListaResponseDTO(List.of(), 0, 0));
 
         mockMvc.perform(get("/produtos"))

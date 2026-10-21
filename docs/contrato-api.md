@@ -8,7 +8,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 
 | Endpoint | Status | DTO de resposta |
 |---|---|---|
-| `GET /produtos` | Implementado | `ProdutoListaResponseDTO` |
+| `GET /produtos` | Implementado (filtros opcionais `categoriaId` e `busca`) | `ProdutoListaResponseDTO` |
 | `GET /produtos/destaques` | Implementado (público, só ativos com `destaque = true`) | lista de `ProdutoResumoDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
@@ -430,12 +430,14 @@ Pública (sem token). Usada pela Página de Produto, com o `categoria.id` do pro
 { "erro": "Categoria não encontrada", "codigo": "RECURSO_NAO_ENCONTRADO" }
 ```
 
-### Listar produtos (com filtro opcional por categoria)
-`GET /produtos?categoriaId=1&pagina=0&tamanho=12`
+### Listar produtos (com filtro opcional por categoria e busca)
+`GET /produtos?categoriaId=1&busca=vestido%20midi&pagina=0&tamanho=12`
 
-Parâmetros (todos opcionais): `categoriaId`, `pagina` (padrão `0`), `tamanho` (padrão `12`).
+Parâmetros (todos opcionais): `categoriaId`, `busca`, `pagina` (padrão `0`), `tamanho` (padrão `12`).
 
-Lista só produtos ativos (`ativo = true`), com ou sem `categoriaId`. Produto inativo não aparece na listagem.
+Lista só produtos ativos (`ativo = true`), com ou sem `categoriaId` e `busca`. Produto inativo não aparece na listagem.
+
+`busca` (busca do header, #82): texto separado em termos pelos espaços; cada termo precisa aparecer no nome, na descrição, na composição ou no nome da categoria do produto (ex.: `vestido linho` acha um vestido de linho). Não diferencia maiúsculas nem acentos (`calca` acha "Calça"); `%` e `_` são texto, não curinga. Vazia ou só com espaços, lista como se não houvesse busca. Sem erro para busca longa: só os primeiros 100 caracteres e os 5 primeiros termos (sem repetir) contam. Combina com `categoriaId` (os dois filtros valem juntos). Sem resultado: `conteudo` vazio, `totalItens` `0`.
 
 `disponivel` é `true` quando algum tamanho tem `quantidade > 0` no estoque; produto sem estoque cadastrado ou com todos os tamanhos zerados vem com `false` (continua listado, como esgotado).
 

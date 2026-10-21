@@ -118,7 +118,7 @@ class ProdutoImagemServiceTests {
                 base + "g_north" + resto + "1.jpg",
                 base + "g_center" + resto + "2.jpg",
                 base + "g_auto" + resto + "3.jpg");
-        assertThat(produtoService.listar(categoria.getId(), 0, 12).conteudo().get(0).imagemPrincipal())
+        assertThat(produtoService.listar(categoria.getId(), null, 0, 12).conteudo().get(0).imagemPrincipal())
                 .isEqualTo(base + "g_north" + resto + "1.jpg");
         assertThat(produtoAdminService.buscarPorId(produto.getId()).imagens())
                 .extracting(ProdutoImagemDTO::url, ProdutoImagemDTO::enquadramento)
@@ -283,7 +283,7 @@ class ProdutoImagemServiceTests {
         entityManager.clear();
         assertThat(produtoService.buscarPorId(produto.getId()).imagens())
                 .containsExactly("https://placehold.co/c", "https://placehold.co/a", "https://placehold.co/b");
-        assertThat(produtoService.listar(categoria.getId(), 0, 12).conteudo().get(0).imagemPrincipal())
+        assertThat(produtoService.listar(categoria.getId(), null, 0, 12).conteudo().get(0).imagemPrincipal())
                 .isEqualTo("https://placehold.co/c");
     }
 
