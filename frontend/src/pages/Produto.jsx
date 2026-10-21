@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   adicionarAoCarrinho,
+  buscarCarrinho,
   buscarProduto,
   buscarTabelaMedidas,
   lerSessaoCliente,
@@ -126,6 +127,14 @@ function DetalheProduto({ produto }) {
   // "Adicionar à sacola" (#22): null, { tipo: 'ok' } ou { tipo: 'erro', mensagem }
   const [adicionando, setAdicionando] = useState(false)
   const [retornoSacola, setRetornoSacola] = useState(null)
+  // "Comprar agora" (#80): põe a peça na sacola e vai direto para o checkout
+  const [comprando, setComprando] = useState(false)
+  // Voltando do checkout pelo "voltar" do navegador, a página pode vir do cache ainda com "Um instante…"
+  useEffect(() => {
+    const aoMostrar = (evento) => evento.persisted && setComprando(false)
+    window.addEventListener('pageshow', aoMostrar)
+    return () => window.removeEventListener('pageshow', aoMostrar)
+  }, [])
   // Tabela de medidas da categoria (#20): o botão só aparece quando ela tem medidas
   const [tabelaMedidas, setTabelaMedidas] = useState(null)
   const [medidasAbertas, setMedidasAbertas] = useState(false)
@@ -172,6 +181,31 @@ function DetalheProduto({ produto }) {
       .then(() => setRetornoSacola({ tipo: 'ok' }))
       .catch((erro) => setRetornoSacola({ tipo: 'erro', mensagem: erro.message }))
       .finally(() => setAdicionando(false))
+  }
+
+  // Mesmo caminho do "Adicionar à sacola" (tamanho, login, estoque pela API), mas segue para o checkout.
+  // Se a peça já está na sacola nesse tamanho, não soma outra: só vai para o checkout.
+  function comprarAgora() {
+    if (!tamanho) {
+      setPedirTamanho(true)
+      return
+    }
+    if (!lerSessaoCliente()) {
+      window.location.assign(rotaLoginCliente())
+      return
+    }
+    setComprando(true)
+    setRetornoSacola(null)
+    buscarCarrinho()
+      .then((carrinho) => {
+        const jaNaSacola = carrinho.itens.some((item) => item.produto.id === produto.id && item.tamanho === tamanho)
+        return jaNaSacola ? carrinho : adicionarAoCarrinho(produto.id, tamanho, 1)
+      })
+      .then(() => window.location.assign('/checkout'))
+      .catch((erro) => {
+        setRetornoSacola({ tipo: 'erro', mensagem: erro.message })
+        setComprando(false)
+      })
   }
 
   return (
@@ -258,7 +292,7 @@ function DetalheProduto({ produto }) {
           <button
             type="button"
             className="botao botao--primario"
-            disabled={esgotado || adicionando}
+            disabled={esgotado || adicionando || comprando}
             onClick={adicionarNaSacola}
           >
             {adicionando ? 'Adicionando…' : 'Adicionar à sacola'}
@@ -277,6 +311,14 @@ function DetalheProduto({ produto }) {
               )}
             </p>
           )}
+          <button
+            type="button"
+            className="botao botao--contorno"
+            disabled={esgotado || adicionando || comprando}
+            onClick={comprarAgora}
+          >
+            {comprando ? 'Um instante…' : 'Comprar agora'}
+          </button>
         </div>
 
         <div className="produto__acordeao">

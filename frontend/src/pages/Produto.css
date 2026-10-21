@@ -190,7 +190,7 @@
   min-height: 60px;
 }
 
-/* Confirmação ou erro de "Adicionar à sacola", logo abaixo do botão */
+/* Confirmação ou erro de "Adicionar à sacola", entre os dois botões */
 .produto__retorno {
   padding: 12px 0 14px;
   font-size: 13px;
