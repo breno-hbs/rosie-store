@@ -12,6 +12,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `GET /produtos/destaques` | Implementado (público, só ativos com `destaque = true`) | lista de `ProdutoResumoDTO` |
 | `GET /produtos/{id}` | Implementado (404 com `RECURSO_NAO_ENCONTRADO`, também para produto inativo) | `ProdutoDetalheDTO` |
 | `GET /categorias` | Implementado (público, ordenado por nome) | lista de `CategoriaResumoDTO` |
+| `GET /categorias/{slug}` | Implementado (público; aceita o slug de antes de renomear; 404 com `RECURSO_NAO_ENCONTRADO`) | `CategoriaResumoDTO` |
 | `GET /categorias/{id}/medidas` | Implementado (público; `medidas` vazia se a categoria não tem tabela; 404) | `TabelaMedidasDTO` |
 | `POST /auth/registrar` | Implementado (público; 201; 400 `DADOS_INVALIDOS`; 409 com `EMAIL_JA_CADASTRADO`) | `LoginResponseDTO` |
 | `POST /auth/login` | Implementado (público; só `CLIENTE`; 401 com `CREDENCIAIS_INVALIDAS`, também para conta excluída) | `LoginResponseDTO` |
@@ -131,7 +132,7 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 
 | Rotas | Quem acessa |
 |---|---|
-| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias`, `GET /privacidade`, `POST /conta/email/confirmar` | Público |
+| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias`, `GET /categorias/{slug}`, `GET /categorias/{id}/medidas`, `GET /privacidade`, `POST /conta/email/confirmar` | Público |
 | `POST /pagamentos/webhook` | Público, mas só processa aviso com a assinatura `x-signature` do Mercado Pago |
 | `/auth/**` (ex.: `GET /auth/me`), `/conta/**` (menos a confirmação da troca de e-mail), `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
@@ -400,12 +401,31 @@ O admin inicial é criado na subida da API só enquanto não existir nenhum usu�
 
 Pública (sem token). Retorna todas as categorias ordenadas por nome.
 
+`slug` (#88) é o endereço da página da categoria na loja, `/categoria/{slug}`, gerado do nome: sem acentos, em minúsculas, e tudo o que não é letra nem número (espaço, `/`, pontuação) vira um hífen só, sem hífen nas pontas ("Cropped/Body" → `cropped-body`, "Calça" → `calca`). Tem até 80 caracteres; nome sem nenhuma letra ou número vira `categoria`. É único: se outra categoria já usa o slug, a nova recebe o primeiro sufixo livre (`vestido-2`, `vestido-3`...). O slug sai também no `categoria` dos produtos (`ProdutoResumoDTO`, `ProdutoDetalheDTO` e os DTOs do painel).
+
 ```json
-// Response 200
+// Response 200 — lista de CategoriaResumoDTO
 [
-  { "id": 1, "nome": "Vestido" },
-  { "id": 2, "nome": "Calça" }
+  { "id": 2, "nome": "Calça", "slug": "calca" },
+  { "id": 4, "nome": "Cropped/Body", "slug": "cropped-body" },
+  { "id": 1, "nome": "Vestido", "slug": "vestido" }
 ]
+```
+
+### Buscar categoria pelo slug
+`GET /categorias/{slug}`
+
+Pública (sem token). Usada pela página da categoria (`/categoria/{slug}`, #88); os produtos da página vêm do `GET /produtos?categoriaId={id}`, com a paginação de sempre. Não diferencia maiúsculas (`Vestido` acha `vestido`).
+
+**Renomear muda o slug, mas o link antigo continua funcionando:** o slug de antes de renomear fica guardado e também acha a categoria, que vem com o `slug` atual. Quando o `slug` da resposta é diferente do pedido, a loja troca o endereço pelo atual (sem recarregar). Se outra categoria passar a ter aquele slug (ex.: "Vestido" virou "Vestidos" e depois a Roseane criou uma "Vestido" nova), o slug é dela, e o link leva para a categoria nova. Remover a categoria apaga os slugs antigos dela.
+
+```json
+// Response 200 — CategoriaResumoDTO (GET /categorias/cropped-body)
+{ "id": 4, "nome": "Cropped/Body", "slug": "cropped-body" }
+// Response 200 — slug antigo: "Vestido" foi renomeada para "Vestidos" (GET /categorias/vestido)
+{ "id": 1, "nome": "Vestidos", "slug": "vestidos" }
+// Response 404 — nenhuma categoria tem (nem teve) esse slug
+{ "erro": "Categoria não encontrada", "codigo": "RECURSO_NAO_ENCONTRADO" }
 ```
 
 ### Tabela de medidas da categoria
@@ -449,7 +469,7 @@ Lista só produtos ativos (`ativo = true`), com ou sem `categoriaId` e `busca`. 
       "id": 10,
       "nome": "Conjunto Serpente",
       "preco": 189.00,
-      "categoria": { "id": 1, "nome": "Vestido" },
+      "categoria": { "id": 1, "nome": "Vestido", "slug": "vestido" },
       "imagemPrincipal": "https://.../conjunto-serpente-1.jpg",
       "disponivel": true
     }
@@ -477,7 +497,7 @@ Cada item tem o mesmo formato de um item de `conteudo` em `GET /produtos` (`Prod
     "id": 10,
     "nome": "Conjunto Serpente",
     "preco": 189.00,
-    "categoria": { "id": 1, "nome": "Vestido" },
+    "categoria": { "id": 1, "nome": "Vestido", "slug": "vestido" },
     "imagemPrincipal": "https://.../conjunto-serpente-1.jpg",
     "disponivel": true
   }
@@ -497,7 +517,7 @@ Pública (sem token). Só produto ativo: inativo responde 404, igual a um id que
   "descricao": "Tecido leve... Trocas aceitas em caso de defeito ou produto que não serviu.",
   "composicao": "100% linho\nLavar à mão em água fria\nNão usar secadora",
   "preco": 189.00,
-  "categoria": { "id": 1, "nome": "Vestido" },
+  "categoria": { "id": 1, "nome": "Vestido", "slug": "vestido" },
   "imagens": ["https://.../1.jpg", "https://.../2.jpg"],
   "estoque": [
     { "tamanho": "P", "quantidade": 3 },
@@ -931,7 +951,7 @@ Serve às duas telas do painel: "Lista de Produtos" usa `estoqueTotal` e "Gestã
     "id": 10,
     "nome": "Conjunto Serpente",
     "preco": 189.00,
-    "categoria": { "id": 1, "nome": "Vestido" },
+    "categoria": { "id": 1, "nome": "Vestido", "slug": "vestido" },
     "estoqueTotal": 12,
     "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 }, { "tamanho": "G", "quantidade": 4 } ],
     "ativo": true,
@@ -953,7 +973,7 @@ Mesmo formato do `GET /produtos/{id}`, mais `ativo`, `destaque` e `pacote` (peso
   "descricao": "...",
   "composicao": "...",
   "preco": 189.00,
-  "categoria": { "id": 1, "nome": "Vestido" },
+  "categoria": { "id": 1, "nome": "Vestido", "slug": "vestido" },
   "imagens": [ { "id": 3, "url": "https://res.cloudinary.com/<cloud>/image/upload/c_fill,ar_4:5,g_auto/c_limit,w_1000/f_auto,q_auto/v1/rosie/produtos/abc123.jpg", "ordem": 0, "enquadramento": "AUTOMATICO" } ],
   "estoque": [ { "tamanho": "P", "quantidade": 3 }, { "tamanho": "M", "quantidade": 5 } ],
   "ativo": true,
@@ -1127,7 +1147,7 @@ Com todos os tamanhos zerados, o produto continua na vitrine, mas com `disponive
 
 ## Painel admin — Categorias (RF17) — requer autenticação ADMIN
 
-O nome é obrigatório, tem até 80 caracteres e é salvo sem os espaços das pontas. Dois nomes iguais sem diferenciar maiúsculas (`Bolsas` e `BOLSAS`) contam como duplicados. O `GET /categorias` público continua igual (só `id` e `nome`).
+O nome é obrigatório, tem até 80 caracteres e é salvo sem os espaços das pontas. Dois nomes iguais sem diferenciar maiúsculas (`Bolsas` e `BOLSAS`) contam como duplicados. O `slug` (endereço da página na loja, regras em "Listar categorias" do catálogo) é gerado pela API ao criar e ao renomear; não vai no body.
 
 ### Listar categorias
 `GET /admin/categorias`
@@ -1137,8 +1157,8 @@ Todas as categorias, ordenadas por nome, com a quantidade de produtos ligados a 
 ```json
 // Response 200 — lista de CategoriaAdminDTO
 [
-  { "id": 2, "nome": "Calça", "quantidadeProdutos": 0 },
-  { "id": 1, "nome": "Vestido", "quantidadeProdutos": 4 }
+  { "id": 2, "nome": "Calça", "slug": "calca", "quantidadeProdutos": 0 },
+  { "id": 1, "nome": "Vestido", "slug": "vestido", "quantidadeProdutos": 4 }
 ]
 ```
 
@@ -1149,7 +1169,7 @@ Todas as categorias, ordenadas por nome, com a quantidade de produtos ligados a 
 // Request — CategoriaRequestDTO
 { "nome": "Acessórios" }
 // Response 201 — CategoriaAdminDTO
-{ "id": 5, "nome": "Acessórios", "quantidadeProdutos": 0 }
+{ "id": 5, "nome": "Acessórios", "slug": "acessorios", "quantidadeProdutos": 0 }
 // Response 400 — nome vazio ou com mais de 80 caracteres
 { "erro": "Informe o nome da categoria", "codigo": "DADOS_INVALIDOS" }
 // Response 409 — já existe categoria com esse nome
@@ -1157,11 +1177,11 @@ Todas as categorias, ordenadas por nome, com a quantidade de produtos ligados a 
 ```
 
 ### Renomear categoria
-`PUT /admin/categorias/{id}` — mesmo body e mesmas validações do POST. Mudar só maiúsculas/minúsculas do próprio nome é permitido.
+`PUT /admin/categorias/{id}` — mesmo body e mesmas validações do POST. Mudar só maiúsculas/minúsculas do próprio nome é permitido (e mantém o slug). O slug passa a ser o do nome novo; o anterior continua achando a categoria no `GET /categorias/{slug}`.
 
 ```json
-// Response 200 — CategoriaAdminDTO
-{ "id": 5, "nome": "Bijuterias", "quantidadeProdutos": 0 }
+// Response 200 — CategoriaAdminDTO ("Acessórios" renomeada; /categoria/acessorios continua abrindo)
+{ "id": 5, "nome": "Bijuterias", "slug": "bijuterias", "quantidadeProdutos": 0 }
 // Response 404 — RECURSO_NAO_ENCONTRADO; 409 — CATEGORIA_DUPLICADA
 ```
 
