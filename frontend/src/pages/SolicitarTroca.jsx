@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ApiError, buscarPedido, listarCategorias, listarPedidos, listarTrocas, solicitarTroca } from '../api.js'
 import Footer from '../components/Footer.jsx'
 import Nav from '../components/Nav.jsx'
-import { formatarData, linkWhatsApp } from '../formato.js'
+import { contatoLoja, formatarData } from '../formato.js'
 import { MOTIVOS_TROCA, POLITICA_TROCA, dentroDoPrazo, textoFrete, trocaAberta } from '../troca.js'
 import useCarregar from '../useCarregar.js'
 import './SolicitarTroca.css'
@@ -82,7 +82,7 @@ export default function SolicitarTroca() {
 }
 
 function SemPedidos({ pedidoInicial }) {
-  const whatsapp = linkWhatsApp(
+  const contato = contatoLoja(
     pedidoInicial ? `Olá! Quero falar sobre uma troca do pedido #${pedidoInicial}.` : 'Olá! Quero falar sobre uma troca.',
   )
   return (
@@ -100,11 +100,9 @@ function SemPedidos({ pedidoInicial }) {
         <a className="botao botao--contorno" href="/minha-conta">
           Ver meus pedidos
         </a>
-        {whatsapp && (
-          <a className="botao botao--contorno" href={whatsapp} target="_blank" rel="noopener noreferrer">
-            Falar no WhatsApp
-          </a>
-        )}
+        <a className="botao botao--contorno" href={contato.href} target="_blank" rel="noopener noreferrer">
+          {contato.texto}
+        </a>
       </div>
     </div>
   )

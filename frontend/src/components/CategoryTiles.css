@@ -1,49 +1,138 @@
+/* Cards de categoria (#81): foto 4:5 de um produto da categoria, nome em caixa alta pequena e um
+   "Ver tudo" discreto, como as vitrines de COS, Arket e & Other Stories. 2 colunas no celular, até 4 no desktop. */
 .categorias {
+  padding: 40px var(--margem) 8px;
+}
+
+.categorias__titulo {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.categorias__grade {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1px;
-  margin-top: 40px;
-  background: var(--linha);
-  border-bottom: 1px solid var(--linha);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .categorias__item {
   display: flex;
-  align-items: flex-end;
-  height: 200px;
-  padding: 0 20px 20px;
-  background: var(--foto-vazia);
+  flex-direction: column;
+  width: 100%;
   text-align: left;
 }
 
-/* Número ímpar de categorias: a última ocupa a linha inteira no mobile */
-.categorias__item:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
+.categorias__foto {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--foto-vazia);
 }
 
-.categorias__item:hover {
-  background: var(--foto-vazia-forte);
+.categorias__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
 }
 
-.categorias__item[aria-pressed='true'] .titulo-3 {
+/* Categoria sem produto com foto: passe-partout de 1px e a marca, em vez de um bloco liso */
+.categorias__sem-foto {
+  position: absolute;
+  inset: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--linha);
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.45em;
+  text-indent: 0.45em; /* compensa o espaço depois da última letra */
+  text-transform: uppercase;
+  color: var(--fumaca);
+}
+
+.categorias__nome {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tinta);
+  overflow-wrap: break-word;
+}
+
+.categorias__acao {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+.categorias__item:hover .categorias__acao,
+.categorias__item[aria-pressed='true'] .categorias__acao {
+  color: var(--tinta);
+}
+
+.categorias__item[aria-pressed='true'] .categorias__nome {
   text-decoration: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 6px;
+  text-underline-offset: 5px;
+}
+
+.categorias__item[aria-pressed='true'] .categorias__foto {
+  outline: 1px solid var(--tinta);
+  outline-offset: -1px;
+}
+
+@media (hover: hover) {
+  .categorias__item:hover .categorias__foto img {
+    transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .categorias__foto img {
+    transition: none;
+  }
 }
 
 @media (min-width: 768px) {
   .categorias {
-    grid-template-columns: none;
-    grid-auto-columns: 1fr;
-    grid-auto-flow: column;
-    margin-top: 64px;
+    padding-top: 64px;
   }
 
-  .categorias__item {
-    height: 300px;
+  .categorias__titulo {
+    margin-bottom: 28px;
   }
 
-  .categorias__item:last-child:nth-child(odd) {
-    grid-column: auto;
+  .categorias__grade {
+    grid-template-columns: repeat(var(--colunas, 4), minmax(0, 1fr));
+    gap: 40px 16px;
+  }
+
+  .categorias__nome {
+    margin-top: 16px;
+    font-size: 13px;
+  }
+}
+
+/* Tela larga: uma linha só com até 6 categorias; com poucas, os cards ficariam enormes, então a
+   largura de cada um para em 320px e a grade centraliza */
+@media (min-width: 1200px) {
+  .categorias__grade {
+    grid-template-columns: repeat(var(--colunas-largo, 4), minmax(0, 1fr));
+    max-width: calc(var(--colunas-largo, 4) * 320px);
+    margin: 0 auto;
+  }
+
+  .categorias__sem-foto {
+    font-size: 14px;
   }
 }

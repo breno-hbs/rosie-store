@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   adicionarAoCarrinho,
+  buscarCarrinho,
   buscarProduto,
   buscarTabelaMedidas,
   lerSessaoCliente,
@@ -13,7 +14,7 @@ import ProductCard from '../components/ProductCard.jsx'
 import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
 import AvisoSacola from '../components/AvisoSacola.jsx'
 import Footer from '../components/Footer.jsx'
-import { formatarPreco, linkWhatsApp } from '../formato.js'
+import { formatarPreco } from '../formato.js'
 import { POLITICA_TROCA } from '../troca.js'
 import './Produto.css'
 
@@ -131,6 +132,14 @@ function DetalheProduto({ produto }) {
   const [avisoAberto, setAvisoAberto] = useState(false)
   const botaoSacola = useRef(null)
   const opcoesTamanho = useRef(null)
+  // "Comprar agora" (#80): põe a peça na sacola e vai direto para o checkout
+  const [comprando, setComprando] = useState(false)
+  // Voltando do checkout pelo "voltar" do navegador, a página pode vir do cache ainda com "Um instante…"
+  useEffect(() => {
+    const aoMostrar = (evento) => evento.persisted && setComprando(false)
+    window.addEventListener('pageshow', aoMostrar)
+    return () => window.removeEventListener('pageshow', aoMostrar)
+  }, [])
   // Tabela de medidas da categoria (#20): o botão só aparece quando ela tem medidas
   const [tabelaMedidas, setTabelaMedidas] = useState(null)
   const [medidasAbertas, setMedidasAbertas] = useState(false)
@@ -155,15 +164,6 @@ function DetalheProduto({ produto }) {
   const disponiveis = produto.estoque.filter((item) => item.quantidade > 0)
   const esgotado = disponiveis.length === 0
 
-  const mensagem = [
-    `Olá! Tenho interesse no produto ${produto.nome}`,
-    tamanho && `(tamanho ${tamanho})`,
-    `— ${window.location.origin}/produtos/${produto.id}`,
-  ]
-    .filter(Boolean)
-    .join(' ')
-  const whatsapp = linkWhatsApp(mensagem)
-
   function escolherTamanho(novo) {
     setTamanho(novo)
     setPedirTamanho(false)
@@ -171,11 +171,15 @@ function DetalheProduto({ produto }) {
   }
 
   // Sem login vai para /entrar e volta para este produto; o estoque é conferido pela API
+  // Leva a cliente (e o foco do teclado) aos tamanhos; o focus() também rola até eles
+  function pedirEscolhaDeTamanho() {
+    setPedirTamanho(true)
+    opcoesTamanho.current?.querySelector('button:not(:disabled)')?.focus()
+  }
+
   function adicionarNaSacola() {
     if (!tamanho) {
-      setPedirTamanho(true)
-      // Leva a cliente (e o foco do teclado) aos tamanhos; o focus() também rola até eles
-      opcoesTamanho.current?.querySelector('button:not(:disabled)')?.focus()
+      pedirEscolhaDeTamanho()
       return
     }
     if (!lerSessaoCliente()) {
@@ -198,12 +202,29 @@ function DetalheProduto({ produto }) {
     botaoSacola.current?.focus()
   }
 
-  function comprarPeloWhatsapp(evento) {
-    // Com estoque, o tamanho precisa ir na mensagem
-    if (!esgotado && !tamanho) {
-      evento.preventDefault()
-      setPedirTamanho(true)
+  // Mesmo caminho do "Adicionar à sacola" (tamanho, login, estoque pela API), mas segue para o checkout.
+  // Se a peça já está na sacola nesse tamanho, não soma outra: só vai para o checkout.
+  function comprarAgora() {
+    if (!tamanho) {
+      pedirEscolhaDeTamanho()
+      return
     }
+    if (!lerSessaoCliente()) {
+      window.location.assign(rotaLoginCliente())
+      return
+    }
+    setComprando(true)
+    setErroSacola(null)
+    buscarCarrinho()
+      .then((carrinho) => {
+        const jaNaSacola = carrinho.itens.some((item) => item.produto.id === produto.id && item.tamanho === tamanho)
+        return jaNaSacola ? carrinho : adicionarAoCarrinho(produto.id, tamanho, 1)
+      })
+      .then(() => window.location.assign('/checkout'))
+      .catch((erro) => {
+        setErroSacola(erro)
+        setComprando(false)
+      })
   }
 
   return (
@@ -298,7 +319,7 @@ function DetalheProduto({ produto }) {
             ref={botaoSacola}
             type="button"
             className="botao botao--primario"
-            disabled={esgotado || adicionando}
+            disabled={esgotado || adicionando || comprando}
             aria-busy={adicionando || undefined}
             aria-haspopup="dialog"
             onClick={adicionarNaSacola}
@@ -315,16 +336,15 @@ function DetalheProduto({ produto }) {
               onFechar={fecharAviso}
             />
           )}
-          <a
+          <button
+            type="button"
             className="botao botao--contorno"
-            href={whatsapp}
-            aria-disabled={!whatsapp}
-            target="_blank"
-            rel="noreferrer"
-            onClick={comprarPeloWhatsapp}
+            disabled={esgotado || adicionando || comprando}
+            aria-busy={comprando || undefined}
+            onClick={comprarAgora}
           >
-            Comprar pelo WhatsApp
-          </a>
+            {comprando ? 'Um instante…' : 'Comprar agora'}
+          </button>
         </div>
 
         <div className="produto__acordeao">
