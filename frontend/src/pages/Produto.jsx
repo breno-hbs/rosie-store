@@ -12,7 +12,7 @@ import Nav from '../components/Nav.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
 import Footer from '../components/Footer.jsx'
-import { formatarPreco, linkWhatsApp } from '../formato.js'
+import { formatarPreco } from '../formato.js'
 import { POLITICA_TROCA } from '../troca.js'
 import './Produto.css'
 
@@ -150,17 +150,6 @@ function DetalheProduto({ produto }) {
   const disponiveis = produto.estoque.filter((item) => item.quantidade > 0)
   const esgotado = disponiveis.length === 0
 
-  // Nome da peça em negrito (*...* no WhatsApp) e o link sozinho na última linha, para virar prévia na conversa
-  const linkProduto = `${window.location.origin}/produtos/${produto.id}`
-  const mensagem = esgotado
-    ? `Olá! Tenho interesse nesta peça, que está esgotada no site:
-*${produto.nome}*
-${linkProduto}`
-    : `Olá! Quero comprar esta peça:
-*${produto.nome}*${tamanho ? ` — tamanho ${tamanho}` : ''}
-${linkProduto}`
-  const whatsapp = linkWhatsApp(mensagem)
-
   function escolherTamanho(novo) {
     setTamanho(novo)
     setPedirTamanho(false)
@@ -183,14 +172,6 @@ ${linkProduto}`
       .then(() => setRetornoSacola({ tipo: 'ok' }))
       .catch((erro) => setRetornoSacola({ tipo: 'erro', mensagem: erro.message }))
       .finally(() => setAdicionando(false))
-  }
-
-  function comprarPeloWhatsapp(evento) {
-    // Com estoque, o tamanho precisa ir na mensagem
-    if (!esgotado && !tamanho) {
-      evento.preventDefault()
-      setPedirTamanho(true)
-    }
   }
 
   return (
@@ -295,17 +276,6 @@ ${linkProduto}`
                 retornoSacola.mensagem
               )}
             </p>
-          )}
-          {whatsapp && (
-            <a
-              className="botao botao--contorno"
-              href={whatsapp}
-              target="_blank"
-              rel="noreferrer"
-              onClick={comprarPeloWhatsapp}
-            >
-              {esgotado ? 'Perguntar pelo WhatsApp' : 'Comprar pelo WhatsApp'}
-            </a>
           )}
         </div>
 

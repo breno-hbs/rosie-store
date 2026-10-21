@@ -46,7 +46,7 @@ Feche e abra o terminal depois da instalação. Confira com `cloudflared --versi
 
 ### 3. Pôr o WhatsApp no site (uma vez)
 
-Ponha o número do WhatsApp da Roseane no `frontend/.env.local` (copie do `frontend/.env.example` se ainda não existir), só dígitos com DDI 55 e DDD: `VITE_WHATSAPP_NUMERO=55DDDNUMERO`. O modo demo também lê o `.env.local`. Sem o número, os botões "Comprar pelo WhatsApp" e "Falar no WhatsApp" somem do site, e a Home mostra o Instagram no lugar.
+Ponha o número do WhatsApp da Roseane no `frontend/.env.local` (copie do `frontend/.env.example` se ainda não existir), só dígitos com DDI 55 e DDD: `VITE_WHATSAPP_NUMERO=55DDDNUMERO`. O modo demo também lê o `.env.local`. Sem o número, os botões "Falar no WhatsApp" somem do site, e a Home mostra o Instagram no lugar.
 
 ### 4. Ensaio (um ou dois dias antes)
 
@@ -109,7 +109,7 @@ Uns 30 minutos. A ideia é ela ver primeiro como a cliente compra (no celular de
 
 1. **Vitrine (Home).** O carrossel com os destaques, as categorias e os produtos. Destaque: *"é mobile-first, pensada para quem chega pelo Instagram no celular"*; as cores e a fonte seguem a identidade da Rosie; os destaques do carrossel quem escolhe é ela, no painel.
 2. **Categorias.** Toque numa categoria (ex.: Vestidos): a vitrine filtra. Destaque: *"você cria e renomeia as categorias"*.
-3. **Produto com fotos.** Abra um produto: fotos em 4:5 (deslizar), preço, descrição, composição e cuidados, tamanhos disponíveis. Tamanho sem estoque aparece indisponível. Escolha um tamanho e toque em "Comprar pelo WhatsApp": abre a conversa com ela já com a peça, o tamanho e o link. Destaque: *"as fotos e os textos são os seus; você mesma cadastra e troca quando quiser"*.
+3. **Produto com fotos.** Abra um produto: fotos em 4:5 (deslizar), preço, descrição, composição e cuidados, tamanhos disponíveis. Tamanho sem estoque aparece indisponível. Destaque: *"as fotos e os textos são os seus; você mesma cadastra e troca quando quiser"*.
 4. **Tabela de medidas.** Toque em "Tabela de medidas": a tabela da categoria, em cm. Destaque: *"diminui troca por tamanho errado"*.
 5. **Carrinho.** Escolha o tamanho, adicione e abra o carrinho: mudar a quantidade, remover. O site não deixa pôr mais peças do que o estoque.
 6. **Frete.** No carrinho, digite um CEP: aparecem as opções (PAC, SEDEX, Jadlog) com preço e prazo. Destaque: *"na loja de verdade é o preço real do Melhor Envio, com o desconto da conta; aqui é simulado"*. Se quiser, mostre o CEP `99999-999` (nenhuma transportadora atende).

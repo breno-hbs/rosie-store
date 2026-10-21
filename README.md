@@ -219,7 +219,7 @@ cp frontend/.env.example frontend/.env.local
 | Variável | Padrão | Uso |
 |---|---|---|
 | `VITE_API_URL` | `http://localhost:8080` | URL base da API |
-| `VITE_WHATSAPP_NUMERO` | vazio | Número do WhatsApp da Rosie: DDI 55 + DDD + número, só dígitos (ex.: `5511999999999`). Liga os botões "Comprar pelo WhatsApp" (produto) e "Falar no WhatsApp" (Home, rodapé, pedido, troca, política de privacidade), com a mensagem pronta. Vazio ou fora do formato, eles somem (na Home e na troca fica o Instagram no lugar) e o console do navegador avisa do formato errado. Também vale para o `npm run demo`. |
+| `VITE_WHATSAPP_NUMERO` | vazio | Número do WhatsApp da Rosie: DDI 55 + DDD + número, só dígitos (ex.: `5511999999999`). Liga o contato "Falar no WhatsApp" (Home, rodapé, pedido, troca, política de privacidade), com a mensagem pronta; a compra é só pelo site. Vazio ou fora do formato, eles somem (na Home e na troca fica o Instagram no lugar) e o console do navegador avisa do formato errado. Também vale para o `npm run demo`. |
 
 Sem `.env.local`, valem os padrões acima. Depois de mudar o arquivo, reinicie o `npm run dev`.
 
