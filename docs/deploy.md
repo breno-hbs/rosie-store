@@ -182,7 +182,7 @@ Conferidas no código: todos os `${...}` de `application.properties` e `applicat
 | `ROSIE_WHATSAPP_NUMERO` | WhatsApp da loja nos e-mails (DDI + DDD, só dígitos; o mesmo de `VITE_WHATSAPP_NUMERO`) | `5511999999999` | não |
 | `ROSIE_TROCA_EMAIL_VALIDADE` | Prazo do link de confirmação da troca de e-mail | `24h` (padrão) | não |
 | `PORT` | Porta HTTP; **o Railway define sozinho** | (não definir) | — |
-| `SPRING_PROFILES_ACTIVE` | Perfil do Spring; o `railway.json` e o Dockerfile já sobem com `prod` | (não definir) | — |
+| `SPRING_PROFILES_ACTIVE` | Perfil do Spring; o `railway.json` e o Dockerfile já sobem com `prod`. O perfil `demo` ([`docs/demonstracao.md`](demonstracao.md)) é só para a demonstração local, e a API não sobe com `prod` e `demo` juntos | (não definir) | — |
 | `FRETE_SIMULADO` | Só desenvolvimento: frete, etiqueta e rastreio de mentira | (não definir) | **nunca em produção** |
 | `PAGAMENTO_SIMULADO` | Só desenvolvimento: pagamento de mentira, aprovado pela tela | (não definir) | **nunca em produção** |
 | `JPA_SHOW_SQL` | Só desenvolvimento: SQL no console. Ignorada no perfil `prod` | (não definir) | — |

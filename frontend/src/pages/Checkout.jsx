@@ -6,6 +6,7 @@ import {
   criarPedido,
   guardarFrete,
   lerFrete,
+  linkPagamento,
   listarCategorias,
   listarEnderecos,
   privacidadePendente,
@@ -138,7 +139,7 @@ function FormularioCheckout({ carrinho, enderecosSalvos }) {
       }
       const pedido = await criarPedido({ enderecoId, servicoFreteId: frete.id, formaPagamento: forma })
       // Continua "enviando" enquanto o navegador vai para o Mercado Pago
-      window.location.assign(pedido.urlPagamento)
+      window.location.assign(linkPagamento(pedido.urlPagamento))
     } catch (erro) {
       if (erro.codigo === 'PRIVACIDADE_PENDENTE') {
         setAceitePendente(true)

@@ -104,7 +104,8 @@ function voltarParaLogin(area, motivo) {
 // catálogo não recebem token, porque um token vencido faria a API responder 401 mesmo nelas.
 // `silencioso`: no 401 só esquece a sessão, sem levar ao login (chamadas de fundo, como a da Nav).
 async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenticado, silencioso, signal } = {}) {
-  const url = new URL(API_URL + caminho)
+  // A base vale para VITE_API_URL relativa (/api na demonstração, #77); com URL completa ela é ignorada
+  const url = new URL(API_URL + caminho, window.location.origin)
   for (const [chave, valor] of Object.entries(params)) {
     if (valor !== undefined && valor !== null && valor !== '') {
       url.searchParams.set(chave, valor)
@@ -474,6 +475,19 @@ export function buscarPedido(id, opcoes) {
 // ou CANCELADO → o pedido atualizado. Fora do modo simulado: 404.
 export function simularPagamento(id, status, opcoes) {
   return postCliente(`/pedidos/${id}/pagamento-simulado`, { status }, opcoes)
+}
+
+// Para onde o "Finalizar pedido" e o "Pagar" levam (urlPagamento). A página do pagamento simulado é da própria
+// loja: abre no endereço em que a cliente já está (localhost ou o link do túnel da demonstração, #77), onde
+// ela está logada, e não no ROSIE_LOJA_URL da API. O link do Mercado Pago segue como veio.
+export function linkPagamento(urlPagamento) {
+  try {
+    const { pathname } = new URL(urlPagamento)
+    if (/^\/pedido\/\d+\/pagamento-simulado$/.test(pathname)) return pathname
+  } catch {
+    // URL relativa ou inválida: segue como veio
+  }
+  return urlPagamento
 }
 
 // GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, estoque: [{ tamanho, quantidade }], ativo, destaque }],

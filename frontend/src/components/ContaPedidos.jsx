@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { buscarPedido, listarPedidos } from '../api.js'
+import { buscarPedido, linkPagamento, listarPedidos } from '../api.js'
 import useCarregar from '../useCarregar.js'
 import ContaAviso from './ContaAviso.jsx'
 import { formatarData, formatarPreco, mascararCep, rotuloStatusPedido, statusEncerrado } from '../formato.js'
@@ -161,7 +161,7 @@ function ConteudoPedido({ pedido }) {
           entrega && <p className="conta__texto">{entrega}</p>
         )}
         {pedido.urlPagamento && (
-          <a className="botao botao--primario conta__pagar" href={pedido.urlPagamento}>
+          <a className="botao botao--primario conta__pagar" href={linkPagamento(pedido.urlPagamento)}>
             Pagar agora
           </a>
         )}
