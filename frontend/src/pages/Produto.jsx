@@ -12,6 +12,7 @@ import {
 import Nav from '../components/Nav.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
+import AvisoSacola from '../components/AvisoSacola.jsx'
 import Footer from '../components/Footer.jsx'
 import { formatarPreco } from '../formato.js'
 import { POLITICA_TROCA } from '../troca.js'
@@ -124,9 +125,13 @@ function DetalheProduto({ produto }) {
   const [indiceFoto, setIndiceFoto] = useState(0)
   const [tamanho, setTamanho] = useState(null)
   const [pedirTamanho, setPedirTamanho] = useState(false)
-  // "Adicionar à sacola" (#22): null, { tipo: 'ok' } ou { tipo: 'erro', mensagem }
+  // "Adicionar à sacola" (#22): o painel AvisoSacola confirma (#79); o erro fica junto ao botão
   const [adicionando, setAdicionando] = useState(false)
-  const [retornoSacola, setRetornoSacola] = useState(null)
+  const [erroSacola, setErroSacola] = useState(null)
+  const [adicionado, setAdicionado] = useState(null) // { tamanho, carrinho } da última adição
+  const [avisoAberto, setAvisoAberto] = useState(false)
+  const botaoSacola = useRef(null)
+  const opcoesTamanho = useRef(null)
   // "Comprar agora" (#80): põe a peça na sacola e vai direto para o checkout
   const [comprando, setComprando] = useState(false)
   // Voltando do checkout pelo "voltar" do navegador, a página pode vir do cache ainda com "Um instante…"
@@ -162,13 +167,19 @@ function DetalheProduto({ produto }) {
   function escolherTamanho(novo) {
     setTamanho(novo)
     setPedirTamanho(false)
-    setRetornoSacola(null)
+    setErroSacola(null)
   }
 
   // Sem login vai para /entrar e volta para este produto; o estoque é conferido pela API
+  // Leva a cliente (e o foco do teclado) aos tamanhos; o focus() também rola até eles
+  function pedirEscolhaDeTamanho() {
+    setPedirTamanho(true)
+    opcoesTamanho.current?.querySelector('button:not(:disabled)')?.focus()
+  }
+
   function adicionarNaSacola() {
     if (!tamanho) {
-      setPedirTamanho(true)
+      pedirEscolhaDeTamanho()
       return
     }
     if (!lerSessaoCliente()) {
@@ -176,18 +187,26 @@ function DetalheProduto({ produto }) {
       return
     }
     setAdicionando(true)
-    setRetornoSacola(null)
+    setErroSacola(null)
     adicionarAoCarrinho(produto.id, tamanho, 1)
-      .then(() => setRetornoSacola({ tipo: 'ok' }))
-      .catch((erro) => setRetornoSacola({ tipo: 'erro', mensagem: erro.message }))
+      .then((carrinho) => {
+        setAdicionado({ tamanho, carrinho })
+        setAvisoAberto(true)
+      })
+      .catch(setErroSacola)
       .finally(() => setAdicionando(false))
+  }
+
+  function fecharAviso() {
+    setAvisoAberto(false)
+    botaoSacola.current?.focus()
   }
 
   // Mesmo caminho do "Adicionar à sacola" (tamanho, login, estoque pela API), mas segue para o checkout.
   // Se a peça já está na sacola nesse tamanho, não soma outra: só vai para o checkout.
   function comprarAgora() {
     if (!tamanho) {
-      setPedirTamanho(true)
+      pedirEscolhaDeTamanho()
       return
     }
     if (!lerSessaoCliente()) {
@@ -195,7 +214,7 @@ function DetalheProduto({ produto }) {
       return
     }
     setComprando(true)
-    setRetornoSacola(null)
+    setErroSacola(null)
     buscarCarrinho()
       .then((carrinho) => {
         const jaNaSacola = carrinho.itens.some((item) => item.produto.id === produto.id && item.tamanho === tamanho)
@@ -203,7 +222,7 @@ function DetalheProduto({ produto }) {
       })
       .then(() => window.location.assign('/checkout'))
       .catch((erro) => {
-        setRetornoSacola({ tipo: 'erro', mensagem: erro.message })
+        setErroSacola(erro)
         setComprando(false)
       })
   }
@@ -251,7 +270,14 @@ function DetalheProduto({ produto }) {
           {esgotado ? (
             <p className="produto__esgotado">Esgotado no momento.</p>
           ) : (
-            <div className="produto__opcoes" role="group" aria-labelledby="rotulo-tamanho">
+            <div
+              ref={opcoesTamanho}
+              className="produto__opcoes"
+              role="group"
+              aria-labelledby="rotulo-tamanho"
+              aria-describedby={pedirTamanho ? 'pedir-tamanho' : undefined}
+              data-pedir={pedirTamanho || undefined}
+            >
               {produto.estoque.map((item) => (
                 <button
                   key={item.tamanho}
@@ -268,7 +294,7 @@ function DetalheProduto({ produto }) {
             </div>
           )}
           {pedirTamanho && (
-            <p className="produto__alerta" role="alert">
+            <p id="pedir-tamanho" className="produto__alerta" role="alert">
               Escolha um tamanho.
             </p>
           )}
@@ -290,31 +316,31 @@ function DetalheProduto({ produto }) {
 
         <div className="produto__acoes">
           <button
+            ref={botaoSacola}
             type="button"
             className="botao botao--primario"
             disabled={esgotado || adicionando || comprando}
+            aria-busy={adicionando || undefined}
+            aria-haspopup="dialog"
             onClick={adicionarNaSacola}
           >
             {adicionando ? 'Adicionando…' : 'Adicionar à sacola'}
           </button>
-          {retornoSacola && (
-            <p
-              className="produto__retorno"
-              role={retornoSacola.tipo === 'erro' ? 'alert' : 'status'}
-            >
-              {retornoSacola.tipo === 'ok' ? (
-                <>
-                  Adicionado à sacola. <a href="/carrinho">Ver sacola</a>
-                </>
-              ) : (
-                retornoSacola.mensagem
-              )}
-            </p>
+          {erroSacola && <ErroSacola erro={erroSacola} />}
+          {adicionado && (
+            <AvisoSacola
+              aberto={avisoAberto}
+              produto={produto}
+              tamanho={adicionado.tamanho}
+              carrinho={adicionado.carrinho}
+              onFechar={fecharAviso}
+            />
           )}
           <button
             type="button"
             className="botao botao--contorno"
             disabled={esgotado || adicionando || comprando}
+            aria-busy={comprando || undefined}
             onClick={comprarAgora}
           >
             {comprando ? 'Um instante…' : 'Comprar agora'}
@@ -341,6 +367,24 @@ function DetalheProduto({ produto }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// Erro de "Adicionar à sacola" junto ao botão. Estoque: a API já manda a frase pronta ("Só temos 3 no
+// tamanho P, e você já tem 3 na sacola"), e o link leva a quem já tem a peça na sacola.
+function ErroSacola({ erro }) {
+  const mensagem =
+    erro.codigo === 'SEM_CONEXAO' ? 'Sem conexão com a loja. Confira a internet e tente de novo.' : erro.message
+  return (
+    <p className="produto__retorno" role="alert">
+      {mensagem.replace(/\.?$/, '.')}
+      {erro.codigo === 'ESTOQUE_INSUFICIENTE' && (
+        <>
+          {' '}
+          <a href="/carrinho">Ver sacola</a>
+        </>
+      )}
+    </p>
   )
 }
 
