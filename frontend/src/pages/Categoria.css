@@ -1,0 +1,109 @@
+/* Página da categoria (#88): o mesmo topo centrado da busca e a grade da Home */
+.categoria__topo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px var(--margem) 28px;
+  text-align: center;
+}
+
+.categoria__topo .titulo-2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Lugar do nome enquanto a categoria carrega, para o topo não pular */
+.categoria__titulo-vazio {
+  display: block;
+  width: 160px;
+  height: 1.2em;
+  font-size: 28px;
+  background: var(--foto-vazia);
+}
+
+.categoria__total {
+  font-size: 13px;
+  color: var(--fumaca);
+}
+
+.categoria__produtos {
+  border-top: 1px solid var(--linha);
+}
+
+.categoria__aviso,
+.categoria__mais {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px var(--margem) 56px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+  text-align: center;
+}
+
+.categoria__aviso > p {
+  max-width: 420px;
+}
+
+.categoria__mais {
+  border-top: 1px solid var(--linha);
+}
+
+/* Categoria inexistente: a página inteira é o aviso */
+.categoria__aviso--pagina {
+  gap: 14px;
+  padding-top: 56px;
+  padding-bottom: 72px;
+}
+
+.categoria__aviso--pagina .titulo-2 {
+  color: var(--tinta);
+}
+
+.categoria__outras {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0;
+}
+
+.categoria__outras ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.categoria__outra {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--linha);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--acento);
+}
+
+.categoria__outra:hover {
+  border-color: var(--tinta);
+  color: var(--tinta);
+}
+
+@media (min-width: 768px) {
+  .categoria__topo {
+    padding: 56px var(--margem) 34px;
+  }
+
+  .categoria__aviso--pagina {
+    padding-top: 80px;
+    padding-bottom: 96px;
+  }
+}

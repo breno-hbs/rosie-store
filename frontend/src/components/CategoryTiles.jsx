@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listarProdutos } from '../api.js'
+import { rotaCategoria } from '../categoria.js'
 import './CategoryTiles.css'
 
 // Produtos olhados por categoria até achar um com foto para a capa
@@ -13,7 +14,8 @@ function primeiraFoto(produtos) {
 
 // Capa da categoria: a foto do destaque dela (já carregado na Home); sem destaque com foto, a do primeiro
 // produto ativo com foto, buscado aqui. undefined enquanto busca, null quando a categoria não tem foto.
-export default function CategoryTiles({ categorias, destaques, categoriaSelecionada, onSelecionarCategoria }) {
+// Cada card leva para a página da categoria (#88).
+export default function CategoryTiles({ categorias, destaques }) {
   const [fotosBuscadas, setFotosBuscadas] = useState({})
 
   const fotosDestaques = {}
@@ -61,15 +63,9 @@ export default function CategoryTiles({ categorias, destaques, categoriaSelecion
       >
         {categorias.map((categoria) => {
           const foto = fotosDestaques[categoria.id] ?? fotosBuscadas[categoria.id]
-          const selecionada = categoria.id === categoriaSelecionada
           return (
             <li key={categoria.id}>
-              <button
-                type="button"
-                className="categorias__item"
-                aria-pressed={selecionada}
-                onClick={() => onSelecionarCategoria(categoria.id)}
-              >
+              <a className="categorias__item" href={rotaCategoria(categoria)}>
                 <span className="categorias__foto">
                   {foto ? (
                     <img src={foto} alt="" loading="lazy" />
@@ -84,9 +80,9 @@ export default function CategoryTiles({ categorias, destaques, categoriaSelecion
                 {/* Espaço invisível depois da barra: "Cropped/Body" quebra ali, não no meio da palavra */}
                 <span className="categorias__nome">{categoria.nome.replaceAll('/', '/\u200b')}</span>
                 <span className="categorias__acao" aria-hidden="true">
-                  {selecionada ? 'Tirar filtro ×' : 'Ver tudo →'}
+                  Ver tudo →
                 </span>
-              </button>
+              </a>
             </li>
           )
         })}

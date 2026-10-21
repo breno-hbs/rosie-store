@@ -69,6 +69,9 @@
 }
 
 .admin-categorias__nome {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
   font-size: 13px;
   font-weight: 400;
@@ -111,4 +114,34 @@
 .admin-categorias__acao:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* Endereço da página da categoria na loja (#88), para copiar e divulgar */
+.admin-categorias__link {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--fumaca);
+}
+
+.admin-categorias__link:hover {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-categorias__linha--edicao {
+  align-items: center;
+}
+
+.admin-categorias__renomear {
+  flex: 1;
+  min-width: 0;
+  max-width: 400px;
+}
+
+.admin-categorias__nota {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
 }

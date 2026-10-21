@@ -5,6 +5,8 @@ import AdminLogin from './pages/AdminLogin.jsx'
 import Busca from './pages/Busca.jsx'
 import Cadastro from './pages/Cadastro.jsx'
 import Carrinho from './pages/Carrinho.jsx'
+import Categoria from './pages/Categoria.jsx'
+import CategoriaAntiga from './pages/CategoriaAntiga.jsx'
 import Checkout from './pages/Checkout.jsx'
 import ConfirmarEmail from './pages/ConfirmarEmail.jsx'
 import Entrar from './pages/Entrar.jsx'
@@ -17,6 +19,15 @@ import Produto from './pages/Produto.jsx'
 import SolicitarTroca from './pages/SolicitarTroca.jsx'
 import { ROTA_POLITICA_PRIVACIDADE } from './privacidade.js'
 
+// Trecho da URL com %XX (ex.: slug digitado com acento); malformado, segue como veio
+function decodificar(trecho) {
+  try {
+    return decodeURIComponent(trecho)
+  } catch {
+    return trecho
+  }
+}
+
 // Rotas pelo caminho da URL; os links recarregam a página, sem roteador por enquanto.
 // Em produção o Netlify serve o index.html para qualquer caminho (redirect da SPA no netlify.toml).
 function rotaAtual() {
@@ -26,6 +37,9 @@ function rotaAtual() {
   if (/^\/entrar\/?$/.test(caminho)) return { pagina: 'entrar' }
   if (/^\/cadastro\/?$/.test(caminho)) return { pagina: 'cadastro' }
   if (/^\/carrinho\/?$/.test(caminho)) return { pagina: 'carrinho' }
+  // Página da categoria (#88), pública: /categoria/cropped-body
+  const categoria = caminho.match(/^\/categoria\/([^/]+)\/?$/)
+  if (categoria) return { pagina: 'categoria', slug: decodificar(categoria[1]) }
   // Resultados da busca do header (#82), pública: /busca?q=linho
   if (caminho.replace(/\/$/, '') === ROTA_BUSCA) return { pagina: 'busca' }
   if (/^\/checkout\/?$/.test(caminho)) return { pagina: 'checkout' }
@@ -59,6 +73,11 @@ function rotaAtual() {
   if (pedidoAdmin) return { pagina: 'admin', secao: 'pedidos', pedidoId: Number(pedidoAdmin[1]) }
   const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias|pedidos|trocas))?\/?$/)
   if (admin) return { pagina: 'admin', secao: admin[1] ?? 'produtos' }
+  // Link antigo da Home filtrada por categoria (antes da #88): /?categoria=1 vai para /categoria/{slug}
+  const categoriaAntiga = Number(new URLSearchParams(window.location.search).get('categoria'))
+  if (caminho === '/' && Number.isInteger(categoriaAntiga) && categoriaAntiga > 0) {
+    return { pagina: 'categoria-antiga', id: categoriaAntiga }
+  }
   return { pagina: 'home' }
 }
 
@@ -94,6 +113,8 @@ export default function App() {
   }
 
   if (rota.pagina === 'produto') return <Produto id={rota.id} />
+  if (rota.pagina === 'categoria') return <Categoria slug={rota.slug} />
+  if (rota.pagina === 'categoria-antiga') return <CategoriaAntiga id={rota.id} />
   if (rota.pagina === 'busca') return <Busca />
   if (rota.pagina === 'carrinho') return <Carrinho />
   if (rota.pagina === 'checkout') return <Checkout />

@@ -154,9 +154,15 @@ async function requisicao(caminho, { metodo = 'GET', params = {}, corpo, autenti
   return conteudo
 }
 
-// GET /categorias → [{ id, nome }]
+// GET /categorias → [{ id, nome, slug }]
 export function listarCategorias(opcoes) {
   return requisicao('/categorias', opcoes)
+}
+
+// GET /categorias/{slug} → { id, nome, slug } (#88). O slug de antes de renomear também acha a categoria, que
+// volta com o slug atual. Categoria inexistente: ApiError com status 404
+export function buscarCategoria(slug, opcoes) {
+  return requisicao(`/categorias/${encodeURIComponent(slug)}`, opcoes)
 }
 
 // GET /produtos → { conteudo: [...], totalPaginas, totalItens }
@@ -547,18 +553,19 @@ export function atualizarEstoque(id, estoque, opcoes) {
   return putAdmin(`/admin/produtos/${id}/estoque`, { estoque }, opcoes)
 }
 
-// GET /admin/categorias → [{ id, nome, quantidadeProdutos }], ordenado por nome
+// GET /admin/categorias → [{ id, nome, slug, quantidadeProdutos }], ordenado por nome
 export function listarCategoriasAdmin(opcoes) {
   return getAdmin('/admin/categorias', opcoes)
 }
 
-// POST /admin/categorias → { id, nome, quantidadeProdutos }
+// POST /admin/categorias → { id, nome, slug, quantidadeProdutos }
 // Nome repetido (sem diferenciar maiúsculas): ApiError com codigo CATEGORIA_DUPLICADA (409)
 export function criarCategoria(nome, opcoes) {
   return postAdmin('/admin/categorias', { nome }, opcoes)
 }
 
-// PUT /admin/categorias/{id} → { id, nome, quantidadeProdutos }
+// PUT /admin/categorias/{id} → { id, nome, slug, quantidadeProdutos }. Muda o slug junto com o nome (#88).
+// Nome repetido: ApiError com codigo CATEGORIA_DUPLICADA (409)
 export function renomearCategoria(id, nome, opcoes) {
   return putAdmin(`/admin/categorias/${id}`, { nome }, opcoes)
 }

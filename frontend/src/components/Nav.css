@@ -142,7 +142,7 @@
 }
 
 .nav__link:hover,
-.nav__link[aria-pressed='true'] {
+.nav__link[aria-current='page'] {
   color: var(--tinta);
   text-decoration: underline;
   text-underline-offset: 6px;
@@ -224,7 +224,7 @@ body:has(.nav dialog[open]) {
 }
 
 .nav__painel-categoria:hover,
-.nav__painel-categoria[aria-pressed='true'] {
+.nav__painel-categoria[aria-current='page'] {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 6px;
