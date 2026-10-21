@@ -1,11 +1,13 @@
 package com.rosie.backend.service;
 
 import com.rosie.backend.dto.CategoriaAdminDTO;
+import com.rosie.backend.dto.CategoriaResumoDTO;
 import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
 import com.rosie.backend.model.Categoria;
 import com.rosie.backend.model.Produto;
 import com.rosie.backend.repository.CategoriaRepository;
+import com.rosie.backend.repository.CategoriaSlugAntigoRepository;
 import com.rosie.backend.repository.ProdutoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,9 @@ class CategoriaServiceTests {
 
     @Autowired
     private ProdutoRepository produtoRepository;
+
+    @Autowired
+    private CategoriaSlugAntigoRepository slugAntigoRepository;
 
     // Sufixo único para não colidir com as categorias que já existem no banco
     private String sufixo;
@@ -71,8 +76,8 @@ class CategoriaServiceTests {
         var lista = categoriaService.listarAdmin();
 
         assertThat(lista).contains(
-                new CategoriaAdminDTO(comProdutos.getId(), comProdutos.getNome(), 2),
-                new CategoriaAdminDTO(vazia.getId(), vazia.getNome(), 0));
+                new CategoriaAdminDTO(comProdutos.getId(), comProdutos.getNome(), comProdutos.getSlug(), 2),
+                new CategoriaAdminDTO(vazia.getId(), vazia.getNome(), vazia.getSlug(), 0));
     }
 
     @Test
@@ -111,7 +116,7 @@ class CategoriaServiceTests {
 
         CategoriaAdminDTO renomeada = categoriaService.renomear(categoria.getId(), " Novo " + sufixo + " ");
 
-        assertThat(renomeada).isEqualTo(new CategoriaAdminDTO(categoria.getId(), "Novo " + sufixo, 1));
+        assertThat(renomeada).isEqualTo(new CategoriaAdminDTO(categoria.getId(), "Novo " + sufixo, "novo-" + sufixo, 1));
     }
 
     @Test
@@ -137,6 +142,102 @@ class CategoriaServiceTests {
     void renomearCategoriaInexistenteDa404() {
         assertThatThrownBy(() -> categoriaService.renomear(-1L, "Qualquer " + sufixo))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    @Test
+    void criarGeraOSlugDoNome() {
+        CategoriaAdminDTO criada = categoriaService.criar("Cropped/Body Ávila " + sufixo);
+
+        assertThat(criada.slug()).isEqualTo("cropped-body-avila-" + sufixo);
+        assertThat(categoriaRepository.findById(criada.id())).get()
+                .extracting(Categoria::getSlug).isEqualTo("cropped-body-avila-" + sufixo);
+    }
+
+    @Test
+    void criarComSlugJaUsadoGanhaSufixo() {
+        CategoriaAdminDTO primeira = categoriaService.criar("Saia Longa " + sufixo);
+        CategoriaAdminDTO segunda = categoriaService.criar("Saia/Longa " + sufixo);
+        CategoriaAdminDTO terceira = categoriaService.criar("Saia - Longa " + sufixo);
+
+        assertThat(primeira.slug()).isEqualTo("saia-longa-" + sufixo);
+        assertThat(segunda.slug()).isEqualTo("saia-longa-" + sufixo + "-2");
+        assertThat(terceira.slug()).isEqualTo("saia-longa-" + sufixo + "-3");
+    }
+
+    @Test
+    void renomearTrocaOSlugEOAntigoContinuaAchandoACategoria() {
+        CategoriaAdminDTO criada = categoriaService.criar("Vestido " + sufixo);
+
+        CategoriaAdminDTO renomeada = categoriaService.renomear(criada.id(), "Vestidos de Festa " + sufixo);
+
+        assertThat(renomeada.slug()).isEqualTo("vestidos-de-festa-" + sufixo);
+        CategoriaResumoDTO esperada = new CategoriaResumoDTO(criada.id(), "Vestidos de Festa " + sufixo,
+                "vestidos-de-festa-" + sufixo);
+        assertThat(categoriaService.buscarPorSlug("vestidos-de-festa-" + sufixo)).isEqualTo(esperada);
+        assertThat(categoriaService.buscarPorSlug("vestido-" + sufixo)).isEqualTo(esperada);
+    }
+
+    @Test
+    void renomearSoMudandoMaiusculasMantemOSlug() {
+        CategoriaAdminDTO criada = categoriaService.criar("Body " + sufixo);
+        CategoriaAdminDTO outra = categoriaService.criar("Body! " + sufixo);
+
+        CategoriaAdminDTO renomeada = categoriaService.renomear(outra.id(), "BODY! " + sufixo);
+
+        assertThat(criada.slug()).isEqualTo("body-" + sufixo);
+        assertThat(renomeada.slug()).isEqualTo("body-" + sufixo + "-2");
+        assertThat(slugAntigoRepository.findBySlug("body-" + sufixo + "-2")).isEmpty();
+    }
+
+    @Test
+    void renomearDeVoltaRecuperaOSlugSemDeixarRegistroRepetido() {
+        CategoriaAdminDTO criada = categoriaService.criar("Short " + sufixo);
+        categoriaService.renomear(criada.id(), "Bermuda " + sufixo);
+
+        CategoriaAdminDTO devolta = categoriaService.renomear(criada.id(), "Short " + sufixo);
+
+        assertThat(devolta.slug()).isEqualTo("short-" + sufixo);
+        assertThat(slugAntigoRepository.findBySlug("short-" + sufixo)).isEmpty();
+        assertThat(slugAntigoRepository.findBySlug("bermuda-" + sufixo)).get()
+                .extracting(antigo -> antigo.getCategoria().getId()).isEqualTo(criada.id());
+    }
+
+    @Test
+    void categoriaNovaFicaComOSlugAntigoDeOutra() {
+        CategoriaAdminDTO antiga = categoriaService.criar("Macacão " + sufixo);
+        categoriaService.renomear(antiga.id(), "Macaquinho " + sufixo);
+
+        CategoriaAdminDTO nova = categoriaService.criar("Macacão " + sufixo);
+
+        assertThat(nova.slug()).isEqualTo("macacao-" + sufixo);
+        assertThat(categoriaService.buscarPorSlug("macacao-" + sufixo).id()).isEqualTo(nova.id());
+        assertThat(categoriaService.buscarPorSlug("macaquinho-" + sufixo).id()).isEqualTo(antiga.id());
+    }
+
+    @Test
+    void removerLevaOsSlugsAntigosJunto() {
+        CategoriaAdminDTO criada = categoriaService.criar("Pijama " + sufixo);
+        categoriaService.renomear(criada.id(), "Pijamas " + sufixo);
+
+        categoriaService.remover(criada.id());
+
+        assertThat(slugAntigoRepository.findBySlug("pijama-" + sufixo)).isEmpty();
+        assertThatThrownBy(() -> categoriaService.buscarPorSlug("pijama-" + sufixo))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    @Test
+    void buscarPorSlugInexistenteDa404() {
+        assertThatThrownBy(() -> categoriaService.buscarPorSlug("nao-existe-" + sufixo))
+                .isInstanceOf(RecursoNaoEncontradoException.class)
+                .hasMessage("Categoria não encontrada");
+    }
+
+    @Test
+    void categoriaSalvaDiretoPeloRepositoryGanhaSlugDoNome() {
+        Categoria categoria = novaCategoria("Calça Jeans " + sufixo);
+
+        assertThat(categoria.getSlug()).isEqualTo("calca-jeans-" + sufixo);
     }
 
     private Categoria novaCategoria(String nome) {

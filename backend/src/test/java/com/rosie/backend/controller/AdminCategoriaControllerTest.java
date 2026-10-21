@@ -90,6 +90,7 @@ class AdminCategoriaControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.nome").value("Acessórios " + sufixo))
+                .andExpect(jsonPath("$.slug").value("acessorios-" + sufixo))
                 .andExpect(jsonPath("$.quantidadeProdutos").value(0))
                 .andReturn().getResponse().getContentAsString();
 
@@ -130,7 +131,29 @@ class AdminCategoriaControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(categoria.getId()))
                 .andExpect(jsonPath("$.nome").value("Novo " + sufixo))
+                .andExpect(jsonPath("$.slug").value("novo-" + sufixo))
                 .andExpect(jsonPath("$.quantidadeProdutos").value(0));
+    }
+
+    @Test
+    void depoisDeRenomearOLinkAntigoDaLojaAchaACategoriaComOSlugNovo() throws Exception {
+        String criada = mockMvc.perform(comoAdmin(post("/admin/categorias")).content(nome("Calça " + sufixo)))
+                .andReturn().getResponse().getContentAsString();
+        Long id = ((Number) JsonPath.read(criada, "$.id")).longValue();
+        mockMvc.perform(comoAdmin(put("/admin/categorias/" + id)).content(nome("Calças/Jeans " + sufixo)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/categorias/calca-" + sufixo))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.nome").value("Calças/Jeans " + sufixo))
+                .andExpect(jsonPath("$.slug").value("calcas-jeans-" + sufixo));
+        mockMvc.perform(get("/categorias/calcas-jeans-" + sufixo))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id));
+        mockMvc.perform(get("/categorias/outra-" + sufixo))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
     }
 
     @Test
