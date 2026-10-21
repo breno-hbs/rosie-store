@@ -1,6 +1,8 @@
 import { destinoSeguro, lerSessaoAdmin, lerSessaoCliente, rotaLoginCliente } from './api.js'
+import { ROTA_BUSCA } from './busca.js'
 import Admin from './pages/Admin.jsx'
 import AdminLogin from './pages/AdminLogin.jsx'
+import Busca from './pages/Busca.jsx'
 import Cadastro from './pages/Cadastro.jsx'
 import Carrinho from './pages/Carrinho.jsx'
 import Checkout from './pages/Checkout.jsx'
@@ -24,6 +26,8 @@ function rotaAtual() {
   if (/^\/entrar\/?$/.test(caminho)) return { pagina: 'entrar' }
   if (/^\/cadastro\/?$/.test(caminho)) return { pagina: 'cadastro' }
   if (/^\/carrinho\/?$/.test(caminho)) return { pagina: 'carrinho' }
+  // Resultados da busca do header (#82), pública: /busca?q=linho
+  if (caminho.replace(/\/$/, '') === ROTA_BUSCA) return { pagina: 'busca' }
   if (/^\/checkout\/?$/.test(caminho)) return { pagina: 'checkout' }
   // Política de privacidade (#31), pública
   if (caminho.replace(/\/$/, '') === ROTA_POLITICA_PRIVACIDADE) return { pagina: 'privacidade' }
@@ -90,6 +94,7 @@ export default function App() {
   }
 
   if (rota.pagina === 'produto') return <Produto id={rota.id} />
+  if (rota.pagina === 'busca') return <Busca />
   if (rota.pagina === 'carrinho') return <Carrinho />
   if (rota.pagina === 'checkout') return <Checkout />
   if (rota.pagina === 'pedido') return <PedidoRetorno id={rota.id} etapa={rota.etapa} />

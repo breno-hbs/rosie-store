@@ -66,14 +66,14 @@ class ProdutoServiceTests {
     @Test
     void listarSemCategoriaRetornaSoAtivos() {
         // tamanho grande para não depender dos produtos já existentes no banco
-        List<Long> ids = idsDe(produtoService.listar(null, 0, 10_000).conteudo());
+        List<Long> ids = idsDe(produtoService.listar(null, null, 0, 10_000).conteudo());
 
         assertThat(ids).contains(ativo.getId()).doesNotContain(inativo.getId());
     }
 
     @Test
     void listarPorCategoriaRetornaSoAtivos() {
-        var resposta = produtoService.listar(categoria.getId(), 0, 12);
+        var resposta = produtoService.listar(categoria.getId(), null, 0, 12);
 
         assertThat(idsDe(resposta.conteudo())).containsExactly(ativo.getId());
         assertThat(resposta.totalItens()).isEqualTo(1);
@@ -132,7 +132,7 @@ class ProdutoServiceTests {
                 .ativo(true)
                 .build());
 
-        Map<Long, Boolean> disponivelPorId = produtoService.listar(categoria.getId(), 0, 12).conteudo().stream()
+        Map<Long, Boolean> disponivelPorId = produtoService.listar(categoria.getId(), null, 0, 12).conteudo().stream()
                 .collect(Collectors.toMap(ProdutoResumoDTO::id, ProdutoResumoDTO::disponivel));
 
         assertThat(disponivelPorId)
@@ -176,6 +176,93 @@ class ProdutoServiceTests {
     @Test
     void produtoNovoNaoEhDestaquePorPadrao() {
         assertThat(produtoRepository.findById(ativo.getId()).orElseThrow().getDestaque()).isFalse();
+    }
+
+    // Busca do header (#82). Cada busca leva uma marca única para não depender dos produtos já existentes no banco
+    @Test
+    void buscarProcuraEmNomeDescricaoEComposicaoComTodosOsTermos() {
+        String marca = "marca" + System.nanoTime();
+        Produto midi = salvarProduto("Vestido midi " + marca, null, null);
+        Produto decote = salvarProduto("Blusa " + marca, "Decote canoa e manga curta", null);
+        Produto linho = salvarProduto("Camisa " + marca, null, "100% linho. Lavar à mão");
+        produtoRepository.flush();
+
+        assertThat(idsDe(produtoService.listar(null, marca, 0, 12).conteudo()))
+                .containsExactlyInAnyOrder(midi.getId(), decote.getId(), linho.getId());
+        assertThat(idsDe(produtoService.listar(null, "vestido midi " + marca, 0, 12).conteudo()))
+                .containsExactly(midi.getId());
+        assertThat(idsDe(produtoService.listar(null, marca + " decote", 0, 12).conteudo()))
+                .containsExactly(decote.getId());
+        assertThat(idsDe(produtoService.listar(null, "  LINHO   " + marca + " ", 0, 12).conteudo()))
+                .containsExactly(linho.getId());
+        assertThat(produtoService.listar(null, marca + " seda", 0, 12).totalItens()).isZero();
+    }
+
+    @Test
+    void buscarPeloNomeDaCategoriaSoTrazAtivos() {
+        // categoria do setUp: "Teste <nanoTime>"; o número só aparece no nome dela
+        String numero = categoria.getNome().substring("Teste ".length());
+
+        var resposta = produtoService.listar(null, numero, 0, 12);
+
+        assertThat(idsDe(resposta.conteudo())).containsExactly(ativo.getId());
+        assertThat(resposta.totalItens()).isEqualTo(1);
+    }
+
+    @Test
+    void buscarIgnoraMaiusculasEAcentos() {
+        String marca = "marca" + System.nanoTime();
+        Produto calca = salvarProduto("Calça pantalona " + marca, null, null);
+        produtoRepository.flush();
+
+        assertThat(idsDe(produtoService.listar(null, "CALCA " + marca, 0, 12).conteudo()))
+                .containsExactly(calca.getId());
+    }
+
+    @Test
+    void buscarComCategoriaCombinaOsDoisFiltros() {
+        String marca = "marca" + System.nanoTime();
+        Produto daCategoria = salvarProduto("Vestido " + marca, null, null);
+        Categoria outra = categoriaRepository.save(Categoria.builder().nome("Outra " + System.nanoTime()).build());
+        produtoRepository.saveAndFlush(Produto.builder()
+                .categoria(outra)
+                .nome("Vestido " + marca)
+                .preco(new BigDecimal("100.00"))
+                .build());
+
+        assertThat(idsDe(produtoService.listar(categoria.getId(), marca, 0, 12).conteudo()))
+                .containsExactly(daCategoria.getId());
+    }
+
+    @Test
+    void buscarTrataCuringaDoLikeComoTexto() {
+        // Sem escapar, "%" e "_" achariam qualquer produto da categoria
+        assertThat(produtoService.listar(categoria.getId(), "%", 0, 12).totalItens()).isZero();
+        assertThat(produtoService.listar(categoria.getId(), "_", 0, 12).totalItens()).isZero();
+    }
+
+    @Test
+    void buscarVaziaListaComoSemBusca() {
+        assertThat(idsDe(produtoService.listar(categoria.getId(), "   ", 0, 12).conteudo()))
+                .containsExactly(ativo.getId());
+    }
+
+    @Test
+    void termosDaBuscaCortaTamanhoERepeticao() {
+        assertThat(ProdutoService.termosDaBusca(null)).isEmpty();
+        assertThat(ProdutoService.termosDaBusca(" Vestido  vestido MIDI ")).containsExactly("vestido", "midi");
+        assertThat(ProdutoService.termosDaBusca("a b c d e f g")).hasSize(ProdutoService.TERMOS_MAXIMOS_BUSCA);
+        assertThat(ProdutoService.termosDaBusca("x".repeat(500)).get(0)).hasSize(ProdutoService.TAMANHO_MAXIMO_BUSCA);
+    }
+
+    private Produto salvarProduto(String nome, String descricao, String composicao) {
+        return produtoRepository.save(Produto.builder()
+                .categoria(categoria)
+                .nome(nome)
+                .descricao(descricao)
+                .composicao(composicao)
+                .preco(new BigDecimal("100.00"))
+                .build());
     }
 
     private Produto salvarProduto(String nome, boolean ativo, boolean destaque) {

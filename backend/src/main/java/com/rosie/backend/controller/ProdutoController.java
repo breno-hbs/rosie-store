@@ -21,10 +21,11 @@ public class ProdutoController {
     @GetMapping("/produtos")
     public ProdutoListaResponseDTO listar(
             @RequestParam(required = false) Long categoriaId,
+            @RequestParam(required = false) String busca,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "12") int tamanho
     ) {
-        return produtoService.listar(categoriaId, pagina, tamanho);
+        return produtoService.listar(categoriaId, busca, pagina, tamanho);
     }
 
     @GetMapping("/produtos/destaques")
