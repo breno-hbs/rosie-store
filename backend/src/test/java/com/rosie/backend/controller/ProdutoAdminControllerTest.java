@@ -1,10 +1,21 @@
 package com.rosie.backend.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.rosie.backend.model.CarrinhoItem;
 import com.rosie.backend.model.Categoria;
+import com.rosie.backend.model.Endereco;
+import com.rosie.backend.model.FormaPagamento;
+import com.rosie.backend.model.Pedido;
+import com.rosie.backend.model.PedidoItem;
 import com.rosie.backend.model.Role;
+import com.rosie.backend.model.StatusPedido;
+import com.rosie.backend.model.Tamanho;
 import com.rosie.backend.model.Usuario;
+import com.rosie.backend.repository.CarrinhoItemRepository;
 import com.rosie.backend.repository.CategoriaRepository;
+import com.rosie.backend.repository.EnderecoRepository;
+import com.rosie.backend.repository.PedidoRepository;
+import com.rosie.backend.repository.ProdutoRepository;
 import com.rosie.backend.repository.UsuarioRepository;
 import com.rosie.backend.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +28,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -44,6 +57,19 @@ class ProdutoAdminControllerTest {
     @Autowired
     private TokenService tokenService;
 
+    @Autowired
+    private ProdutoRepository produtoRepository;
+
+    @Autowired
+    private CarrinhoItemRepository carrinhoItemRepository;
+
+    @Autowired
+    private EnderecoRepository enderecoRepository;
+
+    @Autowired
+    private PedidoRepository pedidoRepository;
+
+    private Usuario cliente;
     private String tokenAdmin;
     private String tokenCliente;
     private Categoria categoria;
@@ -56,7 +82,7 @@ class ProdutoAdminControllerTest {
                 .senhaHash("hash-irrelevante")
                 .role(Role.ADMIN)
                 .build());
-        Usuario cliente = usuarioRepository.save(Usuario.builder()
+        cliente = usuarioRepository.save(Usuario.builder()
                 .nome("Cliente Teste")
                 .email("cliente-produtos@rosie.test")
                 .senhaHash("hash-irrelevante")
@@ -260,11 +286,65 @@ class ProdutoAdminControllerTest {
     }
 
     @Test
+    void excluirDefinitivoRetorna204ETiraDoPainelDaVitrineEDaSacola() throws Exception {
+        Integer id = criar("Cadastro errado");
+        carrinhoItemRepository.saveAndFlush(CarrinhoItem.builder().usuario(cliente)
+                .produto(produtoRepository.getReferenceById(id.longValue())).tamanho(Tamanho.P).quantidade(1).build());
+
+        mockMvc.perform(comAdmin(delete("/admin/produtos/" + id).param("definitivo", "true")))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(comAdmin(get("/admin/produtos/" + id)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(comAdmin(get("/admin/produtos")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + id + ")]").isEmpty());
+        mockMvc.perform(get("/produtos/" + id))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/carrinho").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens").isEmpty());
+    }
+
+    @Test
+    void excluirDefinitivoProdutoComPedidoRetorna409EContinuaArquivavel() throws Exception {
+        Integer id = criar("Vendido");
+        Endereco endereco = enderecoRepository.save(Endereco.builder()
+                .usuario(cliente).cep("03925050").logradouro("Rua das Flores").numero("120")
+                .bairro("Jardim Iva").cidade("São Paulo").estado("SP").build());
+        Pedido pedido = Pedido.builder()
+                .usuario(cliente).endereco(endereco).status(StatusPedido.PAGO).formaPagamento(FormaPagamento.PIX)
+                .transportadora("Correios").servicoFrete("PAC").servicoFreteId(1).prazoFreteDias(7)
+                .valorFrete(new BigDecimal("22.90")).valorTotal(new BigDecimal("211.90"))
+                .build();
+        pedido.getItens().add(PedidoItem.builder().pedido(pedido)
+                .produto(produtoRepository.getReferenceById(id.longValue())).tamanho(Tamanho.M)
+                .quantidade(1).precoUnitario(new BigDecimal("189.00")).build());
+        pedidoRepository.saveAndFlush(pedido);
+
+        mockMvc.perform(comAdmin(delete("/admin/produtos/" + id).param("definitivo", "true")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("PRODUTO_COM_HISTORICO"))
+                .andExpect(jsonPath("$.erro").value("Este produto já entrou em pedido ou troca e não pode ser "
+                        + "excluído. Arquive para tirá-lo da loja: o histórico continua."));
+
+        // Arquivar (sem o parâmetro) continua funcionando
+        mockMvc.perform(comAdmin(delete("/admin/produtos/" + id)))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(comAdmin(get("/admin/produtos/" + id)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
+    }
+
+    @Test
     void produtoInexistenteRetorna404() throws Exception {
         mockMvc.perform(comAdmin(put("/admin/produtos/-1")).content(corpo("Produto", "100.00", categoria.getId(), "[]", false)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
         mockMvc.perform(comAdmin(delete("/admin/produtos/-1")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
+        mockMvc.perform(comAdmin(delete("/admin/produtos/-1").param("definitivo", "true")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
     }
@@ -291,6 +371,14 @@ class ProdutoAdminControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.erro").value(mensagem))
                 .andExpect(jsonPath("$.codigo").value("DADOS_INVALIDOS"));
+    }
+
+    private Integer criar(String nome) throws Exception {
+        String criado = mockMvc.perform(comAdmin(post("/admin/produtos"))
+                        .content(corpo(nome, "189.00", categoria.getId(), "[{\"tamanho\":\"P\",\"quantidade\":3}]", false)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(criado, "$.id");
     }
 
     private MockHttpServletRequestBuilder comAdmin(MockHttpServletRequestBuilder requisicao) {

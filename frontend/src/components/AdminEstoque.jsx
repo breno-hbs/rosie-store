@@ -83,7 +83,7 @@ function LinhaEstoque({ produto }) {
       <tr>
         <th scope="row" className="admin-estoque__nome">
           {produto.nome}
-          {!produto.ativo && <span className="rotulo admin-estoque__marca">Inativo</span>}
+          {!produto.ativo && <span className="rotulo admin-estoque__marca">Arquivado</span>}
         </th>
         {TAMANHOS.map((tamanho) => (
           <td key={tamanho} className="admin-estoque__tamanho" data-rotulo={tamanho}>
