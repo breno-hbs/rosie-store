@@ -1,0 +1,140 @@
+.busca__topo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px var(--margem) 28px;
+  text-align: center;
+}
+
+.busca__topo .titulo-2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.busca__total {
+  font-size: 13px;
+  color: var(--fumaca);
+}
+
+.busca__form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+  margin-top: 14px;
+}
+
+/* 16px: o iPhone não dá zoom no campo */
+.busca__campo {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--linha);
+  font: inherit;
+  font-size: 16px;
+  color: var(--tinta);
+  background: var(--papel);
+}
+
+.busca__campo:focus-visible {
+  border-color: var(--tinta);
+  outline: none;
+}
+
+.busca__campo::placeholder {
+  color: var(--fumaca);
+}
+
+.busca__enviar {
+  flex-shrink: 0;
+}
+
+/* Mesma grade da Home: linhas de 1px entre os cards */
+.busca__resultados {
+  border-top: 1px solid var(--linha);
+}
+
+.busca__grade {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.busca__grade > * {
+  border-right: 1px solid var(--linha);
+  border-bottom: 1px solid var(--linha);
+}
+
+.busca__grade > :nth-child(2n) {
+  border-right: 0;
+}
+
+.busca__aviso,
+.busca__mais {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px var(--margem) 56px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fumaca);
+  text-align: center;
+}
+
+.busca__aviso > p {
+  max-width: 420px;
+}
+
+.busca__categorias {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.busca__categorias ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.busca__categoria {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--linha);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--acento);
+}
+
+.busca__categoria:hover {
+  border-color: var(--tinta);
+  color: var(--tinta);
+}
+
+@media (min-width: 768px) {
+  .busca__topo {
+    padding: 56px var(--margem) 34px;
+  }
+
+  .busca__grade {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .busca__grade > :nth-child(2n) {
+    border-right: 1px solid var(--linha);
+  }
+
+  .busca__grade > :nth-child(4n) {
+    border-right: 0;
+  }
+}

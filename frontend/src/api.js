@@ -160,8 +160,9 @@ export function listarCategorias(opcoes) {
 }
 
 // GET /produtos → { conteudo: [...], totalPaginas, totalItens }
-export function listarProdutos({ categoriaId, pagina = 0, tamanho = 12 } = {}, opcoes) {
-  return requisicao('/produtos', { ...opcoes, params: { categoriaId, pagina, tamanho } })
+// `busca` (#82): termos no nome, descrição, composição ou categoria; vazia lista sem busca
+export function listarProdutos({ categoriaId, busca, pagina = 0, tamanho = 12 } = {}, opcoes) {
+  return requisicao('/produtos', { ...opcoes, params: { categoriaId, busca, pagina, tamanho } })
 }
 
 // GET /produtos/destaques → [{ id, nome, preco, categoria, imagemPrincipal, disponivel }]
