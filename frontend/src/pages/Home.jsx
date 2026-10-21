@@ -150,6 +150,7 @@ export default function Home() {
 
         <CategoryTiles
           categorias={categorias}
+          destaques={destaques}
           categoriaSelecionada={categoriaSelecionada}
           onSelecionarCategoria={selecionarCategoria}
         />
