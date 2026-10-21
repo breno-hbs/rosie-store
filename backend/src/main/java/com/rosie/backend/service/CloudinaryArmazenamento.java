@@ -9,8 +9,6 @@ import java.util.Map;
 // Fotos no Cloudinary (decisão na #15), com o SDK oficial. Credenciais só via CLOUDINARY_URL.
 public class CloudinaryArmazenamento implements ArmazenamentoImagens {
 
-    static final String PASTA = "rosie/produtos";
-
     private final Cloudinary cloudinary;
 
     public CloudinaryArmazenamento(Cloudinary cloudinary) {
@@ -18,10 +16,10 @@ public class CloudinaryArmazenamento implements ArmazenamentoImagens {
     }
 
     @Override
-    public ImagemArmazenada enviar(byte[] conteudo) {
+    public ImagemArmazenada enviar(byte[] conteudo, String pasta) {
         try {
             Map<?, ?> resposta = cloudinary.uploader().upload(conteudo, ObjectUtils.asMap(
-                    "folder", PASTA,
+                    "folder", pasta,
                     "resource_type", "image"));
             return new ImagemArmazenada((String) resposta.get("secure_url"), (String) resposta.get("public_id"));
         } catch (Exception e) {

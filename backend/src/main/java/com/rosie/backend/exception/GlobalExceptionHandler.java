@@ -115,11 +115,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ErroResponseDTO(erro.getMessage(), erro.getCodigo()));
     }
 
-    // Upload sem o campo "arquivo", ou requisição que não é multipart
+    // Upload sem o campo "arquivo", ou requisição que não é multipart. Banner (#89) sem a parte "dados".
     @ExceptionHandler({MissingServletRequestPartException.class, MultipartException.class})
     public ResponseEntity<ErroResponseDTO> handleSemArquivo(Exception ex) {
-        return ResponseEntity.badRequest()
-                .body(new ErroResponseDTO("Envie a foto no campo arquivo", "DADOS_INVALIDOS"));
+        String mensagem = ex instanceof MissingServletRequestPartException faltando
+                && !"arquivo".equals(faltando.getRequestPartName())
+                ? "Envie o campo " + faltando.getRequestPartName()
+                : "Envie a foto no campo arquivo";
+        return ResponseEntity.badRequest().body(new ErroResponseDTO(mensagem, "DADOS_INVALIDOS"));
     }
 
     // Sem CLOUDINARY_URL, ou o Cloudinary não respondeu

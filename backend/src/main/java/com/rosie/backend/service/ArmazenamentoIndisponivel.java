@@ -9,7 +9,7 @@ public class ArmazenamentoIndisponivel implements ArmazenamentoImagens {
     static final String MENSAGEM = "O envio de fotos não está configurado no servidor (falta CLOUDINARY_URL)";
 
     @Override
-    public ImagemArmazenada enviar(byte[] conteudo) {
+    public ImagemArmazenada enviar(byte[] conteudo, String pasta) {
         throw new ArmazenamentoIndisponivelException(MENSAGEM);
     }
 

@@ -1,5 +1,11 @@
 package com.rosie.backend.service;
 
+import com.rosie.backend.exception.ArquivoInvalidoException;
+import com.rosie.backend.exception.DadosInvalidosException;
+import org.springframework.util.unit.DataSize;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -12,6 +18,28 @@ final class FormatoImagem {
     private static final byte[] WEBP = "WEBP".getBytes(StandardCharsets.US_ASCII);
 
     private FormatoImagem() {
+    }
+
+    // Lê a foto enviada no painel (produto ou banner). O formato é conferido pelo conteúdo, não pela
+    // extensão nem pelo Content-Type do navegador. faltando: mensagem quando o campo vem vazio.
+    static byte[] ler(MultipartFile arquivo, DataSize tamanhoMaximo, String faltando) {
+        if (arquivo == null || arquivo.isEmpty()) {
+            throw new DadosInvalidosException(faltando);
+        }
+        if (arquivo.getSize() > tamanhoMaximo.toBytes()) {
+            throw ArquivoInvalidoException.muitoGrande(tamanhoMaximo);
+        }
+
+        byte[] conteudo;
+        try {
+            conteudo = arquivo.getBytes();
+        } catch (IOException e) {
+            throw new DadosInvalidosException("Não foi possível ler a foto enviada");
+        }
+        if (!aceito(conteudo)) {
+            throw ArquivoInvalidoException.formatoNaoSuportado();
+        }
+        return conteudo;
     }
 
     static boolean aceito(byte[] conteudo) {

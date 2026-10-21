@@ -68,6 +68,8 @@ public class SecurityConfig {
                         // Dados pessoais da Minha Conta (#26)
                         .requestMatchers("/conta", "/conta/**").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/**", "/categorias").permitAll()
+                        // Banners do carrossel da Home (#89)
+                        .requestMatchers(HttpMethod.GET, "/banners").permitAll()
                         // Versão da política de privacidade em vigor (#31)
                         .requestMatchers(HttpMethod.GET, "/privacidade").permitAll()
                         // Tabela de medidas da categoria, na Página de Produto (#20)
