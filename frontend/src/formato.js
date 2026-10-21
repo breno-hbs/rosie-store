@@ -61,11 +61,46 @@ export function somenteDigitos(valor) {
   return valor.replace(/\D/g, '')
 }
 
-const WHATSAPP_NUMERO = import.meta.env.VITE_WHATSAPP_NUMERO
+export const LINK_INSTAGRAM = 'https://www.instagram.com/rosie.sttore/'
 
-// Link do WhatsApp da loja, ou undefined se VITE_WHATSAPP_NUMERO não estiver definido
+// DDI 55 + DDD (sem zero) + 8 ou 9 dígitos, ex.: 5511999999999
+const FORMATO_WHATSAPP = /^55[1-9]{2}\d{8,9}$/
+
+// VITE_WHATSAPP_NUMERO validado. Pontuação (+, espaço, hífen) é tirada com aviso; número fora do formato vira
+// "sem WhatsApp", para a cliente nunca ver um botão que abre um número errado.
+function numeroWhatsApp(valor) {
+  const bruto = (valor ?? '').trim()
+  if (!bruto) return null
+  const numero = somenteDigitos(bruto)
+  const avisar = import.meta.env.MODE !== 'production'
+  if (!FORMATO_WHATSAPP.test(numero)) {
+    if (avisar) {
+      console.warn(
+        `VITE_WHATSAPP_NUMERO="${bruto}" não é um WhatsApp válido: use DDI 55 + DDD + número, só dígitos ` +
+          '(ex.: 5511999999999). Os botões do WhatsApp ficam escondidos.',
+      )
+    }
+    return null
+  }
+  if (numero !== bruto && avisar) {
+    console.warn(`VITE_WHATSAPP_NUMERO deve ter só dígitos: use ${numero} em vez de "${bruto}".`)
+  }
+  return numero
+}
+
+const WHATSAPP_NUMERO = numeroWhatsApp(import.meta.env.VITE_WHATSAPP_NUMERO)
+
+// Link do WhatsApp da loja com a mensagem pronta, ou undefined sem número válido: nesse caso o botão não aparece
 export function linkWhatsApp(mensagem) {
   if (!WHATSAPP_NUMERO) return undefined
   const texto = mensagem ? `?text=${encodeURIComponent(mensagem)}` : ''
   return `https://wa.me/${WHATSAPP_NUMERO}${texto}`
+}
+
+// Contato da loja para quando ele é a única saída da tela: o WhatsApp com a mensagem, ou o Instagram sem número
+export function contatoLoja(mensagem) {
+  const whatsapp = linkWhatsApp(mensagem)
+  return whatsapp
+    ? { href: whatsapp, texto: 'Falar no WhatsApp' }
+    : { href: LINK_INSTAGRAM, texto: 'Falar no Instagram' }
 }

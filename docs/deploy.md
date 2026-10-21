@@ -194,7 +194,7 @@ Também nunca defina `LOGGING_LEVEL_COM_ROSIE_BACKEND_SERVICE_EMAILSONOLOG=DEBUG
 | Variável | Para que serve | Exemplo | Obrigatória |
 |---|---|---|---|
 | `VITE_API_URL` | URL base da API, sem barra no fim. Sem ela o build aponta para `http://localhost:8080` | `https://api.rosiestore.com.br` | sim |
-| `VITE_WHATSAPP_NUMERO` | WhatsApp da Rosie (DDI + DDD, só dígitos) no botão "Falar no WhatsApp" | `5511999999999` | não (vazio = botão sem link) |
+| `VITE_WHATSAPP_NUMERO` | WhatsApp da Rosie (DDI 55 + DDD + número, só dígitos) nos botões do WhatsApp do site | `5511999999999` | não (vazio = os botões do WhatsApp somem e fica o Instagram) |
 
 As `VITE_*` são públicas: vão no JavaScript do site. Nunca ponha segredo nelas.
 

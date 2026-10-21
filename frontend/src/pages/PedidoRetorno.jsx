@@ -140,7 +140,7 @@ function situacao(pedido, etapa) {
 
 function Pedido({ pedido, etapa, atualizando }) {
   const { titulo, texto, acao, sacola, whatsapp } = situacao(pedido, etapa)
-  const contato = whatsapp ? linkWhatsApp(`Olá! Sobre o meu pedido #${pedido.id}`) : undefined
+  const contato = whatsapp ? linkWhatsApp(`Olá! Quero falar sobre o meu pedido #${pedido.id}.`) : undefined
   const { endereco } = pedido
 
   return (

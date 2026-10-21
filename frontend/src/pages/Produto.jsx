@@ -150,13 +150,15 @@ function DetalheProduto({ produto }) {
   const disponiveis = produto.estoque.filter((item) => item.quantidade > 0)
   const esgotado = disponiveis.length === 0
 
-  const mensagem = [
-    `Olá! Tenho interesse no produto ${produto.nome}`,
-    tamanho && `(tamanho ${tamanho})`,
-    `— ${window.location.origin}/produtos/${produto.id}`,
-  ]
-    .filter(Boolean)
-    .join(' ')
+  // Nome da peça em negrito (*...* no WhatsApp) e o link sozinho na última linha, para virar prévia na conversa
+  const linkProduto = `${window.location.origin}/produtos/${produto.id}`
+  const mensagem = esgotado
+    ? `Olá! Tenho interesse nesta peça, que está esgotada no site:
+*${produto.nome}*
+${linkProduto}`
+    : `Olá! Quero comprar esta peça:
+*${produto.nome}*${tamanho ? ` — tamanho ${tamanho}` : ''}
+${linkProduto}`
   const whatsapp = linkWhatsApp(mensagem)
 
   function escolherTamanho(novo) {
@@ -294,16 +296,17 @@ function DetalheProduto({ produto }) {
               )}
             </p>
           )}
-          <a
-            className="botao botao--contorno"
-            href={whatsapp}
-            aria-disabled={!whatsapp}
-            target="_blank"
-            rel="noreferrer"
-            onClick={comprarPeloWhatsapp}
-          >
-            Comprar pelo WhatsApp
-          </a>
+          {whatsapp && (
+            <a
+              className="botao botao--contorno"
+              href={whatsapp}
+              target="_blank"
+              rel="noreferrer"
+              onClick={comprarPeloWhatsapp}
+            >
+              {esgotado ? 'Perguntar pelo WhatsApp' : 'Comprar pelo WhatsApp'}
+            </a>
+          )}
         </div>
 
         <div className="produto__acordeao">
