@@ -1,0 +1,101 @@
+/* Banner da Home (#89). Celular: imagem 4:5 e o texto embaixo, em papel (nada de texto sobre a foto, que
+   fica ilegível sem sombra nem gradiente). Desktop (768px+ no modo auto, ou a prévia "desktop" do painel):
+   faixa 3:1 com o texto num quadro de papel à esquerda, depois da seta. */
+
+.banner {
+  background: var(--papel);
+}
+
+.banner__palco {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--foto-vazia-forte);
+}
+
+.banner__palco picture,
+.banner__link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.banner__imagem {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.banner__legenda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px var(--margem) 28px;
+  background: var(--papel);
+}
+
+.banner__titulo {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.1;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  color: var(--tinta);
+}
+
+.banner__texto {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  color: var(--acento);
+}
+
+.banner__botao {
+  margin-top: 6px;
+}
+
+/* Layout de computador: as mesmas regras para a prévia fixa e para a Home a partir de 768px */
+.banner--desktop {
+  position: relative;
+}
+
+.banner--desktop .banner__palco {
+  aspect-ratio: 3 / 1;
+}
+
+.banner--desktop .banner__legenda {
+  position: absolute;
+  top: 50%;
+  left: 88px;
+  max-width: min(420px, 45%);
+  padding: 24px 28px;
+  transform: translateY(-50%);
+}
+
+.banner--desktop .banner__titulo {
+  font-size: 28px;
+}
+
+@media (min-width: 768px) {
+  .banner--auto {
+    position: relative;
+  }
+
+  .banner--auto .banner__palco {
+    aspect-ratio: 3 / 1;
+  }
+
+  .banner--auto .banner__legenda {
+    position: absolute;
+    top: 50%;
+    left: 88px;
+    max-width: min(420px, 45%);
+    padding: 24px 28px;
+    transform: translateY(-50%);
+  }
+
+  .banner--auto .banner__titulo {
+    font-size: 28px;
+  }
+}

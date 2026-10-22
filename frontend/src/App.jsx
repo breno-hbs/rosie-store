@@ -69,9 +69,14 @@ function rotaAtual() {
   }
   const medidasAdmin = caminho.match(/^\/admin\/categorias\/(\d+)\/medidas\/?$/)
   if (medidasAdmin) return { pagina: 'admin', secao: 'categorias', categoriaId: Number(medidasAdmin[1]) }
+  // Banners da Home (#89): /admin/banners/novo e /admin/banners/{id} abrem o formulário
+  const bannerAdmin = caminho.match(/^\/admin\/banners\/(novo|\d+)\/?$/)
+  if (bannerAdmin) {
+    return { pagina: 'admin', secao: 'banners', bannerId: bannerAdmin[1] === 'novo' ? 'novo' : Number(bannerAdmin[1]) }
+  }
   const pedidoAdmin = caminho.match(/^\/admin\/pedidos\/(\d+)\/?$/)
   if (pedidoAdmin) return { pagina: 'admin', secao: 'pedidos', pedidoId: Number(pedidoAdmin[1]) }
-  const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias|pedidos|trocas))?\/?$/)
+  const admin = caminho.match(/^\/admin(?:\/(produtos|estoque|categorias|banners|pedidos|trocas))?\/?$/)
   if (admin) return { pagina: 'admin', secao: admin[1] ?? 'produtos' }
   // Link antigo da Home filtrada por categoria (antes da #88): /?categoria=1 vai para /categoria/{slug}
   const categoriaAntiga = Number(new URLSearchParams(window.location.search).get('categoria'))
@@ -134,6 +139,7 @@ export default function App() {
         produtoId={rota.produtoId}
         categoriaId={rota.categoriaId}
         pedidoId={rota.pedidoId}
+        bannerId={rota.bannerId}
       />
     )
   }

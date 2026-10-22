@@ -1,7 +1,6 @@
 package com.rosie.backend.service;
 
 import com.rosie.backend.dto.ProdutoImagemDTO;
-import com.rosie.backend.exception.ArquivoInvalidoException;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
 import com.rosie.backend.model.Enquadramento;
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -47,7 +45,7 @@ public class ProdutoImagemService {
     @Transactional
     public ProdutoImagemDTO enviar(Long produtoId, MultipartFile arquivo, String enquadramento) {
         Produto produto = buscarProduto(produtoId);
-        byte[] conteudo = validar(arquivo);
+        byte[] conteudo = FormatoImagem.ler(arquivo, tamanhoMaximo, "Envie a foto no campo arquivo");
         Enquadramento corte = enquadramento(enquadramento);
 
         ImagemArmazenada armazenada = armazenamento.enviar(conteudo);
@@ -113,27 +111,6 @@ public class ProdutoImagemService {
         return produtoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Produto com id " + id + " não encontrado"));
-    }
-
-    // O formato é conferido pelo conteúdo, não pela extensão nem pelo Content-Type do navegador
-    private byte[] validar(MultipartFile arquivo) {
-        if (arquivo == null || arquivo.isEmpty()) {
-            throw new DadosInvalidosException("Envie a foto no campo arquivo");
-        }
-        if (arquivo.getSize() > tamanhoMaximo.toBytes()) {
-            throw ArquivoInvalidoException.muitoGrande(tamanhoMaximo);
-        }
-
-        byte[] conteudo;
-        try {
-            conteudo = arquivo.getBytes();
-        } catch (IOException e) {
-            throw new DadosInvalidosException("Não foi possível ler a foto enviada");
-        }
-        if (!FormatoImagem.aceito(conteudo)) {
-            throw ArquivoInvalidoException.formatoNaoSuportado();
-        }
-        return conteudo;
     }
 
     private Enquadramento enquadramento(String valor) {

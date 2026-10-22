@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { buscarUsuarioAdmin, lerSessaoAdmin, sairDoPainel } from '../api.js'
+import AdminBannerForm from '../components/AdminBannerForm.jsx'
+import AdminBanners from '../components/AdminBanners.jsx'
 import AdminCategorias from '../components/AdminCategorias.jsx'
 import AdminEstoque from '../components/AdminEstoque.jsx'
 import AdminMedidas from '../components/AdminMedidas.jsx'
@@ -12,10 +14,11 @@ import AdminTrocas from '../components/AdminTrocas.jsx'
 import { SECOES_ADMIN } from '../components/adminSecoes.js'
 import './Admin.css'
 
-// Casca do painel: produtos (#14), estoque (#16), categorias (#17), tabela de medidas (#20), pedidos (#25) e trocas (#27).
+// Casca do painel: produtos (#14), estoque (#16), categorias (#17), tabela de medidas (#20), banners (#89),
+// pedidos (#25) e trocas (#27).
 // produtoId: 'novo' ou o id do produto em edição; categoriaId: categoria com a tabela de medidas aberta;
-// pedidoId: pedido aberto no detalhe.
-export default function Admin({ secao, produtoId, categoriaId, pedidoId }) {
+// pedidoId: pedido aberto no detalhe; bannerId: 'novo' ou o id do banner em edição.
+export default function Admin({ secao, produtoId, categoriaId, pedidoId, bannerId }) {
   const [usuario, setUsuario] = useState(() => lerSessaoAdmin()?.usuario ?? null)
   const nomeSecao = SECOES_ADMIN.find((s) => s.id === secao)?.nome
 
@@ -41,6 +44,15 @@ export default function Admin({ secao, produtoId, categoriaId, pedidoId }) {
     conteudo = <AdminPedidoDetalhe id={pedidoId} />
   } else if (secao === 'pedidos') {
     conteudo = <AdminPedidos />
+  } else if (secao === 'banners' && bannerId) {
+    conteudo = <AdminBannerForm id={bannerId === 'novo' ? null : bannerId} />
+  } else if (secao === 'banners') {
+    conteudo = (
+      <>
+        <h1 className="titulo-2 admin__titulo">{nomeSecao}</h1>
+        <AdminBanners />
+      </>
+    )
   } else if (secao === 'trocas') {
     conteudo = <AdminTrocas />
   } else if (secao === 'categorias') {

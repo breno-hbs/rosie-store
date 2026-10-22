@@ -672,3 +672,54 @@ export function atualizarStatusTroca(id, status, resposta, opcoes) {
 export function gerarEtiquetaVolta(id, opcoes) {
   return postAdmin(`/admin/trocas/${id}/etiqueta-volta`, undefined, opcoes)
 }
+
+// ---------- Banners da Home (#89) ----------
+
+// GET /banners → [{ id, titulo, texto, textoBotao, link, textoAlternativo, imagemDesktop: { url, srcset },
+// imagemCelular: { url, srcset } }]: só os ativos dentro do período, na ordem. Lista vazia = sem banner no ar
+export function listarBanners(opcoes) {
+  return requisicao('/banners', opcoes)
+}
+
+// GET /admin/banners → todos, na ordem, cada um com { ativo, inicio, fim, ordem, situacao: 'NO_AR' |
+// 'AGENDADO' | 'ENCERRADO' | 'DESATIVADO', previaDesktop, previaCelular } além do que a Home recebe
+export function listarBannersAdmin(opcoes) {
+  return getAdmin('/admin/banners', opcoes)
+}
+
+// Multipart do banner: "dados" em JSON e as imagens que foram escolhidas (as outras ficam como estão)
+function corpoBanner(dados, { imagemDesktop, imagemCelular } = {}) {
+  const corpo = new FormData()
+  corpo.append('dados', new Blob([JSON.stringify(dados)], { type: 'application/json' }))
+  if (imagemDesktop) corpo.append('imagemDesktop', imagemDesktop)
+  if (imagemCelular) corpo.append('imagemCelular', imagemCelular)
+  return corpo
+}
+
+// POST /admin/banners; dados: { titulo, texto, textoBotao, link, textoAlternativo, ativo, inicio, fim }
+// (datas "2026-12-01T00:00", horário de São Paulo); imagemDesktop obrigatória → o banner, no fim do carrossel.
+// Recusa: DADOS_INVALIDOS (link fora da loja, período invertido...), FORMATO_NAO_SUPORTADO e
+// ARQUIVO_MUITO_GRANDE (400); ARMAZENAMENTO_INDISPONIVEL (503)
+export function criarBanner(dados, imagens, opcoes) {
+  return postAdmin('/admin/banners', corpoBanner(dados, imagens), opcoes)
+}
+
+// PUT /admin/banners/{id}; mesmos dados do POST mais removerImagemCelular; imagens opcionais
+export function atualizarBanner(id, dados, imagens, opcoes) {
+  return putAdmin(`/admin/banners/${id}`, corpoBanner(dados, imagens), opcoes)
+}
+
+// PUT /admin/banners/{id}/ativo → o banner atualizado
+export function alterarAtivoBanner(id, ativo, opcoes) {
+  return putAdmin(`/admin/banners/${id}/ativo`, { ativo }, opcoes)
+}
+
+// PUT /admin/banners/ordem; ids de todos os banners, o primeiro do carrossel primeiro → a lista na nova ordem
+export function reordenarBanners(ids, opcoes) {
+  return putAdmin('/admin/banners/ordem', { banners: ids }, opcoes)
+}
+
+// DELETE /admin/banners/{id} → null; as imagens também saem do Cloudinary
+export function removerBanner(id, opcoes) {
+  return deleteAdmin(`/admin/banners/${id}`, opcoes)
+}

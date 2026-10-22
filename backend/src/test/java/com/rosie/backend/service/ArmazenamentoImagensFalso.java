@@ -20,14 +20,17 @@ public class ArmazenamentoImagensFalso implements ArmazenamentoImagens {
     public final List<byte[]> enviados = new ArrayList<>();
     public final List<String> removidos = new ArrayList<>();
     public boolean falharNaRemocao;
+    // Número do envio (1, 2...) que falha como o Cloudinary fora do ar; 0 = nenhum
+    public int falharNoEnvio;
 
     private int contador;
 
     @Override
-    public ImagemArmazenada enviar(byte[] conteudo) {
+    public ImagemArmazenada enviar(byte[] conteudo, String pasta) {
+        if (contador + 1 == falharNoEnvio) throw new ArmazenamentoIndisponivelException("Cloudinary fora do ar (teste)");
         enviados.add(conteudo);
         contador++;
-        String publicId = "rosie/produtos/teste-" + contador;
+        String publicId = pasta + "/teste-" + contador;
         // Mesmo formato da secure_url do Cloudinary, para os testes verem o corte 4:5 na entrega
         return new ImagemArmazenada(ORIGINAL + publicId + ".jpg", publicId);
     }
@@ -42,6 +45,7 @@ public class ArmazenamentoImagensFalso implements ArmazenamentoImagens {
         enviados.clear();
         removidos.clear();
         falharNaRemocao = false;
+        falharNoEnvio = 0;
         contador = 0;
     }
 

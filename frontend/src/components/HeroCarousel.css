@@ -6,6 +6,23 @@
   border-bottom: 1px solid var(--linha);
 }
 
+/* Banners (#89): a altura vem da proporção da imagem (BannerSlide) e do texto embaixo no celular */
+.hero--banners {
+  height: auto;
+  background: var(--papel);
+}
+
+/* Região que o leitor de tela acompanha (aria-live): ocupa o hero todo */
+.hero__vivo {
+  height: 100%;
+}
+
+/* Área da foto: setas e pontos ficam por cima dela */
+.hero__palco {
+  position: relative;
+  height: 100%;
+}
+
 .hero__foto {
   width: 100%;
   height: 100%;
@@ -36,12 +53,14 @@
   right: 24px;
 }
 
-/* O centro dos pontos continua a 36,5px da base (33px + metade do ponto) */
-.hero__pontos {
+/* Pontos e pausa numa faixa de papel, legível sobre qualquer foto. O centro dos pontos continua a 36,5px da base. */
+.hero__controles {
   position: absolute;
   bottom: 17.5px;
   left: 50%;
   display: flex;
+  align-items: center;
+  background: var(--papel);
   transform: translateX(-50%);
 }
 
@@ -66,8 +85,31 @@
   background: var(--tinta);
 }
 
+.hero__pausa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-left: 1px solid var(--linha);
+  font-size: 9px;
+  letter-spacing: -0.1em;
+  color: var(--tinta);
+}
+
 @media (min-width: 768px) {
   .hero {
     height: 460px;
+  }
+
+  .hero--banners {
+    height: auto;
+  }
+
+  /* O texto do banner fica à esquerda: os pontos vão para a direita */
+  .hero--banners .hero__controles {
+    right: 24px;
+    left: auto;
+    transform: none;
   }
 }
