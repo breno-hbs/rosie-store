@@ -205,8 +205,10 @@
   margin: 0;
 }
 
-/* Celular e computador em tamanho real, reduzidos para a largura da coluna */
+/* Celular e computador em tamanho real, reduzidos para a largura da coluna. A tela fica fora do fluxo
+   (absoluta) para os 1280px dela não alargarem o painel; a altura da caixa vem da medida (MolduraPrevia). */
 .banner-previa__caixa {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--linha);
 }
@@ -216,6 +218,9 @@
 }
 
 .banner-previa__tela {
+  position: absolute;
+  top: 0;
+  left: 0;
   transform-origin: top left;
 }
 
