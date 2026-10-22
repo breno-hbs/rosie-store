@@ -48,7 +48,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /admin/produtos` | Implementado (exige token `ADMIN`; 201) | `ProdutoAdminDTO` |
 | `PUT /admin/produtos/{id}` | Implementado (exige token `ADMIN`; `ativo: true` reativa; não altera o estoque) | `ProdutoAdminDTO` |
 | `PUT /admin/produtos/{id}/estoque` | Implementado (exige token `ADMIN`; só os tamanhos enviados) | `EstoqueProdutoDTO` |
-| `DELETE /admin/produtos/{id}` | Implementado (exige token `ADMIN`; 204, só desativa) | — |
+| `DELETE /admin/produtos/{id}` | Implementado (exige token `ADMIN`; 204; sem parâmetro arquiva; `?definitivo=true` exclui de vez, 409 `PRODUTO_COM_HISTORICO` se já entrou em pedido ou troca) | — |
 | `POST /admin/produtos/{id}/imagens` | Implementado (exige token `ADMIN`; multipart com `enquadramento` opcional; 201; 400 com `FORMATO_NAO_SUPORTADO`/`ARQUIVO_MUITO_GRANDE`/`DADOS_INVALIDOS`; 503 com `ARMAZENAMENTO_INDISPONIVEL`) | `ProdutoImagemDTO` |
 | `PUT /admin/produtos/{id}/imagens/ordem` | Implementado (exige token `ADMIN`; 400 se faltar ou repetir foto) | lista de `ProdutoImagemDTO` |
 | `DELETE /admin/produtos/{id}/imagens/{imagemId}` | Implementado (exige token `ADMIN`; 204; 404) | — |
@@ -100,6 +100,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `ARMAZENAMENTO_INDISPONIVEL` | 503 | Upload de foto sem `CLOUDINARY_URL` configurada no servidor, ou com o Cloudinary fora do ar |
 | `CATEGORIA_DUPLICADA` | 409 | Criar ou renomear categoria com um nome que já existe (sem diferenciar maiúsculas) |
 | `CATEGORIA_EM_USO` | 409 | Remover categoria que ainda tem produtos (ativos ou inativos); `erro` diz quantos |
+| `PRODUTO_COM_HISTORICO` | 409 | Painel: excluir definitivamente (`DELETE /admin/produtos/{id}?definitivo=true`) um produto que já entrou em pedido (de qualquer status) ou em troca; `erro` sugere arquivar (#87) |
 | `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente, ou troca de e-mail na Minha Conta (no pedido e de novo na confirmação), com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
 | `SENHA_INCORRETA` | 403 | Troca de e-mail com a senha atual errada. Não é 401: a sessão continua valendo |
 | `TOKEN_INVALIDO` | 400 | Confirmação da troca de e-mail com um token que não existe, já foi usado ou foi substituído por um pedido mais novo (ou sem token) |
@@ -577,7 +578,7 @@ Itens na ordem em que entraram. `preco` e `subtotal` usam o **preço atual** do 
 |---|---|
 | `itens[].subtotal` | `preco × quantidade` do item, mesmo se ele estiver indisponível |
 | `itens[].estoqueDisponivel` | Estoque atual do tamanho (tamanho sem estoque cadastrado = 0). O front usa para travar o "+" |
-| `itens[].disponivel` / `motivoIndisponivel` | Item que ficou indisponível **depois** de adicionado continua no carrinho (a API não apaga sozinha), com `disponivel: false` e o motivo: `PRODUTO_INATIVO` (a Roseane desativou o produto), `TAMANHO_ESGOTADO` (estoque do tamanho zerou) ou `ESTOQUE_INSUFICIENTE` (estoque menor que a quantidade). A cliente remove ou diminui a quantidade |
+| `itens[].disponivel` / `motivoIndisponivel` | Item que ficou indisponível **depois** de adicionado continua no carrinho (a API não apaga sozinha), com `disponivel: false` e o motivo: `PRODUTO_INATIVO` (a Roseane desativou o produto), `TAMANHO_ESGOTADO` (estoque do tamanho zerou) ou `ESTOQUE_INSUFICIENTE` (estoque menor que a quantidade). A cliente remove ou diminui a quantidade. Produto excluído de vez no painel (#87) sai da sacola, sem aviso |
 | `quantidadeItens` | Soma das quantidades de todos os itens, inclusive indisponíveis: é o número da "Sacola" na Nav |
 | `subtotal` | Soma dos `subtotal` **só dos itens disponíveis** (o que dá para comprar agora). Sem frete: ele é calculado no checkout |
 | `temIndisponiveis` | `true` se algum item está com `disponivel: false` |
@@ -938,7 +939,7 @@ Todas as rotas exigem `Authorization: Bearer {token}` de `ADMIN` (401 `NAO_AUTEN
 ### Listar produtos do painel
 `GET /admin/produtos`
 
-Todos os produtos, ativos e inativos, do mais recente para o mais antigo. Sem paginação (o catálogo é pequeno). `estoqueTotal` é a soma das quantidades de todos os tamanhos; `estoque` traz cada tamanho cadastrado, na ordem P, M, G, GG (tamanho que o produto não tem não aparece).
+Todos os produtos, ativos e inativos (arquivados), do mais recente para o mais antigo. A tela "Lista de Produtos" esconde os arquivados até a Roseane marcar "Mostrar arquivados" (#87): o filtro é só no painel, a resposta continua trazendo todos. Sem paginação (o catálogo é pequeno). `estoqueTotal` é a soma das quantidades de todos os tamanhos; `estoque` traz cada tamanho cadastrado, na ordem P, M, G, GG (tamanho que o produto não tem não aparece).
 
 Serve às duas telas do painel: "Lista de Produtos" usa `estoqueTotal` e "Gestão de Estoque" usa `estoque`.
 
@@ -1040,12 +1041,27 @@ Mesmos campos e mesmas validações do POST, **menos o `estoque`**. `destaque`, 
 
 **Decisão (#47): a edição não mexe no estoque, e um `estoque` no corpo é ignorado** (não dá 400). O estoque muda só por `PUT /admin/produtos/{id}/estoque` (tela "Gestão de Estoque"). Antes, o PUT substituía o estoque inteiro, e um formulário de edição aberto antes de uma mudança de estoque (pela tela de estoque ou, mais adiante, por uma venda) desfazia essa mudança ao salvar. Ignorar em vez de rejeitar é o que o back já faz com qualquer campo que o DTO não tem, e não quebra um cliente antigo que ainda mande o campo; o que importa é que ele não tem efeito.
 
-**Reativar:** um produto removido volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia os outros campos). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
+**Reativar:** um produto arquivado volta para a loja com `PUT` e `"ativo": true` (o painel busca o produto e reenvia os outros campos). Também dá para desativar com `"ativo": false`, com o mesmo efeito do DELETE.
 
-### Remover produto
-`DELETE /admin/produtos/{id}` → **204** sem corpo.
+### Arquivar ou excluir produto
+`DELETE /admin/produtos/{id}` → **204** sem corpo: **arquiva**.
+`DELETE /admin/produtos/{id}?definitivo=true` → **204** sem corpo: **exclui de vez**.
 
-**Decisão (#14): remover desativa, não apaga.** O produto fica com `ativo = false`: some de `GET /produtos`, `GET /produtos/destaques` e `GET /produtos/{id}` (404), mas continua no banco e no painel, porque pedidos e carrinhos antigos apontam para ele (`pedido_item.produto_id`). Remover um produto já inativo também responde 204.
+```json
+// Response 404 — RECURSO_NAO_ENCONTRADO (nos dois)
+// Response 409 — só no definitivo, produto que já entrou em pedido ou troca
+{ "erro": "Este produto já entrou em pedido ou troca e não pode ser excluído. Arquive para tirá-lo da loja: o histórico continua.", "codigo": "PRODUTO_COM_HISTORICO" }
+```
+
+**Decisão (#14): sem parâmetro, o DELETE arquiva, não apaga.** O produto fica com `ativo = false`: some de `GET /produtos`, `GET /produtos/destaques` e `GET /produtos/{id}` (404), mas continua no banco e no painel (marcado "Arquivado"), e volta com o `PUT` e `"ativo": true` (ver "Reativar"). Arquivar um produto já arquivado também responde 204. No carrinho, ele aparece como indisponível.
+
+**Decisão (#87): a exclusão definitiva é só para produto sem histórico**, para cadastro errado, teste ou duplicado. "Histórico" é ter entrado em algum pedido (`pedido_item`, de qualquer status, inclusive cancelado ou aguardando pagamento) ou em alguma troca (`troca`): esses registros precisam continuar mostrando o produto, então o produto com histórico só pode ser arquivado (409 `PRODUTO_COM_HISTORICO`). Sem histórico, a exclusão apaga numa transação só:
+
+- o produto, o estoque (`produto_estoque`) e as linhas das fotos (`produto_imagem`);
+- o produto das sacolas onde estiver (`carrinho_item`), de qualquer cliente;
+- as fotos no Cloudinary, pelo `public_id`, **depois do commit**: se o Cloudinary falhar, a exclusão continua valendo e a foto que sobrou fica registrada no log (aviso com o `public_id`), como na remoção de uma foto. Fotos antigas sem `public_id` não estão no Cloudinary e não são enviadas a ele.
+
+Não há como desfazer. No painel, a confirmação de excluir ("Excluir de vez? Não dá para desfazer.") é diferente da de arquivar ("Tirar da loja? Dá para reativar depois."). Se um pedido for fechado com o produto no meio da exclusão, a chave estrangeira de `pedido_item` barra o `DELETE` e a resposta é o mesmo 409.
 
 ### Upload de imagem
 `POST /admin/produtos/{id}/imagens` — multipart/form-data, campo `arquivo` e, opcional, `enquadramento` (`AUTOMATICO`, `CENTRO` ou `TOPO`; vazio = `AUTOMATICO`)
@@ -1188,7 +1204,7 @@ Todas as categorias, ordenadas por nome, com a quantidade de produtos ligados a 
 ### Remover categoria
 `DELETE /admin/categorias/{id}`
 
-Só remove categoria sem nenhum produto. Produto inativo também bloqueia, porque continua ligado à categoria (o `DELETE /admin/produtos/{id}` só desativa): para liberar a categoria, mude os produtos de categoria. A tabela de medidas não bloqueia: se a categoria vazia tiver uma, ela é apagada junto.
+Só remove categoria sem nenhum produto. Produto arquivado também bloqueia, porque continua ligado à categoria (o `DELETE /admin/produtos/{id}` sem parâmetro só arquiva): para liberar a categoria, mude os produtos de categoria ou, se nunca entraram em pedido nem troca, exclua de vez (`?definitivo=true`). A tabela de medidas não bloqueia: se a categoria vazia tiver uma, ela é apagada junto.
 
 ```json
 // Response 204 — sem corpo

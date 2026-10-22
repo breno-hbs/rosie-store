@@ -35,6 +35,27 @@
   color: var(--fumaca);
 }
 
+/* "Mostrar arquivados" (#87): os arquivados ficam escondidos por padrão */
+.admin-produtos__filtro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-start;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--tinta);
+  cursor: pointer;
+}
+
+.admin-produtos__filtro input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--tinta);
+  cursor: pointer;
+}
+
 /* Tabela: no celular cada produto vira um bloco; a partir de 768px, as colunas do Figma */
 .admin-produtos__tabela {
   width: 100%;

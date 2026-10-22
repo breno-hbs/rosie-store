@@ -400,7 +400,7 @@ export default function AdminProdutoForm({ id }) {
                 />
                 <span className="produto-form__opcao-texto">
                   Ativo na loja
-                  <span className="produto-form__dica">Desmarcado, o produto some da loja, mas continua aqui.</span>
+                  <span className="produto-form__dica">Desmarcado, o produto fica arquivado: some da loja, mas continua aqui.</span>
                 </span>
               </label>
             )}

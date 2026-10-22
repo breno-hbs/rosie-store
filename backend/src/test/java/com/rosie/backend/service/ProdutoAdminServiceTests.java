@@ -6,12 +6,32 @@ import com.rosie.backend.dto.ProdutoAdminDTO;
 import com.rosie.backend.dto.ProdutoAdminResumoDTO;
 import com.rosie.backend.dto.ProdutoEdicaoDTO;
 import com.rosie.backend.dto.ProdutoRequestDTO;
+import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.DadosInvalidosException;
 import com.rosie.backend.exception.RecursoNaoEncontradoException;
+import com.rosie.backend.model.CarrinhoItem;
 import com.rosie.backend.model.Categoria;
+import com.rosie.backend.model.Endereco;
+import com.rosie.backend.model.FormaPagamento;
+import com.rosie.backend.model.MotivoTroca;
+import com.rosie.backend.model.Pedido;
+import com.rosie.backend.model.PedidoItem;
 import com.rosie.backend.model.Produto;
+import com.rosie.backend.model.ProdutoImagem;
+import com.rosie.backend.model.Role;
+import com.rosie.backend.model.StatusPedido;
+import com.rosie.backend.model.Tamanho;
+import com.rosie.backend.model.Troca;
+import com.rosie.backend.model.Usuario;
+import com.rosie.backend.repository.CarrinhoItemRepository;
 import com.rosie.backend.repository.CategoriaRepository;
+import com.rosie.backend.repository.EnderecoRepository;
+import com.rosie.backend.repository.PedidoRepository;
+import com.rosie.backend.repository.ProdutoEstoqueRepository;
+import com.rosie.backend.repository.ProdutoImagemRepository;
 import com.rosie.backend.repository.ProdutoRepository;
+import com.rosie.backend.repository.TrocaRepository;
+import com.rosie.backend.repository.UsuarioRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +61,27 @@ class ProdutoAdminServiceTests {
 
     @Autowired
     private CategoriaRepository categoriaRepository;
+
+    @Autowired
+    private ProdutoEstoqueRepository produtoEstoqueRepository;
+
+    @Autowired
+    private ProdutoImagemRepository produtoImagemRepository;
+
+    @Autowired
+    private CarrinhoItemRepository carrinhoItemRepository;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private EnderecoRepository enderecoRepository;
+
+    @Autowired
+    private PedidoRepository pedidoRepository;
+
+    @Autowired
+    private TrocaRepository trocaRepository;
 
     @Autowired
     private EntityManager entityManager;
@@ -184,6 +225,72 @@ class ProdutoAdminServiceTests {
                 .isInstanceOf(RecursoNaoEncontradoException.class);
     }
 
+    // As fotos saem do armazenamento só depois do commit: ver ProdutoExclusaoTests
+    @Test
+    void excluirDefinitivamenteSemHistoricoApagaEstoqueFotosESacolas() {
+        ProdutoAdminDTO criado = produtoAdminService.criar(request("Cadastro errado", vestido, true, null,
+                List.of(new EstoqueDTO("P", 2), new EstoqueDTO("M", 1))));
+        Produto produto = produtoRepository.findById(criado.id()).orElseThrow();
+        produto.getImagens().add(ProdutoImagem.builder().produto(produto).url("https://exemplo.test/1.jpg")
+                .publicId("rosie/produtos/errado-1").ordem(0).build());
+        ProdutoAdminDTO outro = produtoAdminService.criar(request("Fica", vestido, false, null,
+                List.of(new EstoqueDTO("P", 2))));
+        Usuario cliente = cliente();
+        noCarrinho(cliente, criado.id());
+        noCarrinho(cliente, outro.id());
+        entityManager.flush();
+        entityManager.clear();
+
+        produtoAdminService.excluirDefinitivamente(criado.id());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(produtoRepository.findById(criado.id())).isEmpty();
+        assertThat(produtoEstoqueRepository.findByProdutoId(criado.id())).isEmpty();
+        assertThat(produtoImagemRepository.findByProdutoIdOrderByOrdemAsc(criado.id())).isEmpty();
+        // Sai da sacola da cliente; o outro produto continua nela
+        assertThat(carrinhoItemRepository.findByUsuarioIdOrderByIdAsc(cliente.getId()))
+                .extracting(item -> item.getProduto().getId())
+                .containsExactly(outro.id());
+        assertThat(produtoAdminService.listar()).noneMatch(p -> p.id().equals(criado.id()));
+        assertThatThrownBy(() -> produtoService.buscarPorId(criado.id()))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    @Test
+    void excluirDefinitivamenteProdutoQueEntrouEmPedidoBloqueia() {
+        ProdutoAdminDTO criado = produtoAdminService.criar(request("Vendido", vestido, false, null, null));
+        pedidoCom(cliente(), produtoRepository.getReferenceById(criado.id()));
+
+        assertThatThrownBy(() -> produtoAdminService.excluirDefinitivamente(criado.id()))
+                .isInstanceOf(ConflitoException.class)
+                .hasMessage(ProdutoAdminService.MENSAGEM_COM_HISTORICO)
+                .extracting("codigo").isEqualTo("PRODUTO_COM_HISTORICO");
+        assertThat(produtoRepository.findById(criado.id())).isPresent();
+    }
+
+    @Test
+    void excluirDefinitivamenteProdutoComTrocaBloqueia() {
+        ProdutoAdminDTO vendido = produtoAdminService.criar(request("Vendido", vestido, false, null, null));
+        ProdutoAdminDTO trocado = produtoAdminService.criar(request("Trocado", vestido, false, null, null));
+        Pedido pedido = pedidoCom(cliente(), produtoRepository.getReferenceById(vendido.id()));
+        // A troca sozinha já segura: aqui o produto dela nem está entre os itens do pedido
+        trocaRepository.saveAndFlush(Troca.builder().pedido(pedido)
+                .produto(produtoRepository.getReferenceById(trocado.id()))
+                .tamanho(Tamanho.M).quantidade(1).motivo(MotivoTroca.NAO_SERVIU).build());
+
+        assertThatThrownBy(() -> produtoAdminService.excluirDefinitivamente(trocado.id()))
+                .isInstanceOf(ConflitoException.class)
+                .extracting("codigo").isEqualTo("PRODUTO_COM_HISTORICO");
+        assertThat(produtoRepository.findById(trocado.id())).isPresent();
+    }
+
+    @Test
+    void excluirDefinitivamenteProdutoInexistenteFalha() {
+        assertThatThrownBy(() -> produtoAdminService.excluirDefinitivamente(-1L))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
     @Test
     void atualizarComAtivoTrueReativa() {
         ProdutoAdminDTO criado = produtoAdminService.criar(request("Produto", vestido, false, null, null));
@@ -318,6 +425,32 @@ class ProdutoAdminServiceTests {
                 """).getSingleResult();
 
         assertThat(nulavel).isEqualTo("YES");
+    }
+
+    private Usuario cliente() {
+        return usuarioRepository.save(Usuario.builder().nome("Cliente Teste")
+                .email("exclusao-" + System.nanoTime() + "@rosie.test")
+                .senhaHash("hash-irrelevante").role(Role.CLIENTE).build());
+    }
+
+    private void noCarrinho(Usuario cliente, Long produtoId) {
+        carrinhoItemRepository.save(CarrinhoItem.builder().usuario(cliente)
+                .produto(produtoRepository.getReferenceById(produtoId)).tamanho(Tamanho.P).quantidade(1).build());
+    }
+
+    // Até um pedido cancelado conta como histórico: ele continua no painel apontando para o produto
+    private Pedido pedidoCom(Usuario cliente, Produto produto) {
+        Endereco endereco = enderecoRepository.save(Endereco.builder()
+                .usuario(cliente).cep("03925050").logradouro("Rua das Flores").numero("120")
+                .bairro("Jardim Iva").cidade("São Paulo").estado("SP").build());
+        Pedido pedido = Pedido.builder()
+                .usuario(cliente).endereco(endereco).status(StatusPedido.CANCELADO).formaPagamento(FormaPagamento.PIX)
+                .transportadora("Correios").servicoFrete("PAC").servicoFreteId(1).prazoFreteDias(7)
+                .valorFrete(new BigDecimal("22.90")).valorTotal(new BigDecimal("211.90"))
+                .build();
+        pedido.getItens().add(PedidoItem.builder().pedido(pedido).produto(produto).tamanho(Tamanho.M)
+                .quantidade(1).precoUnitario(new BigDecimal("189.00")).build());
+        return pedidoRepository.saveAndFlush(pedido);
     }
 
     private ProdutoRequestDTO request(String nome, Categoria categoria, Boolean destaque, Boolean ativo, List<EstoqueDTO> estoque) {

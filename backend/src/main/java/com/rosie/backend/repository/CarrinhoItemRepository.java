@@ -21,4 +21,7 @@ public interface CarrinhoItemRepository extends JpaRepository<CarrinhoItem, Long
 
     // Exclusão da conta (#31): a sacola some inteira
     void deleteByUsuarioId(Long usuarioId);
+
+    // Exclusão definitiva do produto (#87): ele sai de todas as sacolas
+    void deleteByProdutoId(Long produtoId);
 }

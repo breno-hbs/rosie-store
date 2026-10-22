@@ -498,7 +498,7 @@ export function linkPagamento(urlPagamento) {
 }
 
 // GET /admin/produtos → [{ id, nome, preco, categoria, estoqueTotal, estoque: [{ tamanho, quantidade }], ativo, destaque }],
-// inclusive inativos
+// inclusive os arquivados (ativo = false)
 export function listarProdutosAdmin(opcoes) {
   return getAdmin('/admin/produtos', opcoes)
 }
@@ -542,9 +542,15 @@ export function atualizarProduto(id, dados, opcoes) {
   return putAdmin(`/admin/produtos/${id}`, dados, opcoes)
 }
 
-// DELETE /admin/produtos/{id}: desativa (some da loja), não apaga
-export function desativarProduto(id, opcoes) {
+// DELETE /admin/produtos/{id}: arquiva (ativo = false, some da loja), não apaga; reativa pelo PUT com ativo: true
+export function arquivarProduto(id, opcoes) {
   return deleteAdmin(`/admin/produtos/${id}`, opcoes)
+}
+
+// DELETE /admin/produtos/{id}?definitivo=true: apaga de vez, com estoque, fotos e as linhas das sacolas (#87).
+// Produto que já entrou em pedido ou troca: ApiError com codigo PRODUTO_COM_HISTORICO (409), sugerindo arquivar
+export function excluirProduto(id, opcoes) {
+  return deleteAdmin(`/admin/produtos/${id}`, { ...opcoes, params: { definitivo: true } })
 }
 
 // PUT /admin/produtos/{id}/estoque → { produtoId, estoque: [{ tamanho, quantidade }] } (completo, em P, M, G, GG)

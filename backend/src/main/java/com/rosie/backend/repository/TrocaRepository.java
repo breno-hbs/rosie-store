@@ -13,6 +13,9 @@ public interface TrocaRepository extends JpaRepository<Troca, Long> {
 
     List<Troca> findByPedidoId(Long pedidoId);
 
+    // Produto com troca não pode ser excluído definitivamente, só arquivado (#87)
+    boolean existsByProdutoId(Long produtoId);
+
     // GET /trocas (#27): as trocas da cliente, mais recentes primeiro
     @EntityGraph(attributePaths = {"pedido", "produto"})
     List<Troca> findByPedidoUsuarioIdOrderByCreatedAtDescIdDesc(Long usuarioId);
