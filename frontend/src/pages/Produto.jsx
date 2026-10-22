@@ -14,6 +14,7 @@ import ProductCard from '../components/ProductCard.jsx'
 import TabelaMedidasModal from '../components/TabelaMedidasModal.jsx'
 import AvisoSacola from '../components/AvisoSacola.jsx'
 import Footer from '../components/Footer.jsx'
+import { rotaCategoria } from '../categoria.js'
 import { formatarPreco } from '../formato.js'
 import { POLITICA_TROCA } from '../troca.js'
 import './Produto.css'
@@ -94,7 +95,7 @@ export default function Produto({ id }) {
         ) : (
           <>
             <nav className="produto__trilha" aria-label="Você está em">
-              <a href="/">Loja</a> / <a href={`/?categoria=${produto.categoria.id}`}>{produto.categoria.nome}</a> /{' '}
+              <a href="/">Loja</a> / <a href={rotaCategoria(produto.categoria)}>{produto.categoria.nome}</a> /{' '}
               <span aria-current="page">{produto.nome}</span>
             </nav>
             <DetalheProduto produto={produto} />

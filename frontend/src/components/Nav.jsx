@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { buscarCarrinho, EVENTO_CARRINHO, EVENTO_CONTA, lerSessaoCliente, rotaLoginCliente } from '../api.js'
 import { ROTA_BUSCA, TAMANHO_MAXIMO_BUSCA } from '../busca.js'
+import { rotaCategoria } from '../categoria.js'
 import LogoBadge from './LogoBadge.jsx'
 import './Nav.css'
 
@@ -79,25 +80,14 @@ function rotuloSacola(numero) {
   return numero ? `Sacola, ${numero} ${numero === 1 ? 'peça' : 'peças'}` : 'Sacola'
 }
 
-// Na Home o clique filtra a lista (onSelecionarCategoria); nas outras páginas leva para a Home já filtrada
-function LinkCategoria({ categoria, categoriaSelecionada, onSelecionarCategoria, depois, className }) {
-  if (onSelecionarCategoria) {
-    return (
-      <button
-        type="button"
-        className={className}
-        aria-pressed={categoria.id === categoriaSelecionada}
-        onClick={() => {
-          depois?.()
-          onSelecionarCategoria(categoria.id)
-        }}
-      >
-        {categoria.nome}
-      </button>
-    )
-  }
+// Leva para a página da categoria (#88); na própria página, fica marcada como atual
+function LinkCategoria({ categoria, categoriaAtual, className }) {
   return (
-    <a className={className} href={`/?categoria=${categoria.id}`}>
+    <a
+      className={className}
+      href={rotaCategoria(categoria)}
+      aria-current={categoria.id === categoriaAtual ? 'page' : undefined}
+    >
       {categoria.nome}
     </a>
   )
@@ -133,7 +123,8 @@ function useDialogo() {
   }
 }
 
-export default function Nav({ categorias, categoriaSelecionada, onSelecionarCategoria }) {
+// categoriaAtual: id da categoria da página aberta (/categoria/{slug}), para marcar no menu
+export default function Nav({ categorias, categoriaAtual }) {
   const [sessao, setSessao] = useState(lerSessaoCliente)
   const quantidade = useQuantidadeSacola(sessao !== null)
   const menu = useDialogo()
@@ -166,7 +157,6 @@ export default function Nav({ categorias, categoriaSelecionada, onSelecionarCate
   const conta = sessao
     ? { href: '/minha-conta', rotulo: 'Minha conta' }
     : { href: rotaLoginCliente(), rotulo: 'Entrar' }
-  const propsCategoria = { categoriaSelecionada, onSelecionarCategoria }
 
   return (
     <header className="nav">
@@ -201,7 +191,7 @@ export default function Nav({ categorias, categoriaSelecionada, onSelecionarCate
 
       <nav className="nav__categorias" aria-label="Categorias">
         {categorias.map((categoria) => (
-          <LinkCategoria key={categoria.id} categoria={categoria} className="nav__link" {...propsCategoria} />
+          <LinkCategoria key={categoria.id} categoria={categoria} categoriaAtual={categoriaAtual} className="nav__link" />
         ))}
       </nav>
 
@@ -247,12 +237,7 @@ export default function Nav({ categorias, categoriaSelecionada, onSelecionarCate
             <ul className="nav__painel-lista">
               {categorias.map((categoria) => (
                 <li key={categoria.id}>
-                  <LinkCategoria
-                    categoria={categoria}
-                    className="nav__painel-categoria"
-                    depois={menu.fechar}
-                    {...propsCategoria}
-                  />
+                  <LinkCategoria categoria={categoria} categoriaAtual={categoriaAtual} className="nav__painel-categoria" />
                 </li>
               ))}
             </ul>
@@ -302,12 +287,7 @@ export default function Nav({ categorias, categoriaSelecionada, onSelecionarCate
               <ul>
                 {categorias.map((categoria) => (
                   <li key={categoria.id}>
-                    <LinkCategoria
-                      categoria={categoria}
-                      className="nav__sugestao"
-                      depois={busca.fechar}
-                      {...propsCategoria}
-                    />
+                    <LinkCategoria categoria={categoria} categoriaAtual={categoriaAtual} className="nav__sugestao" />
                   </li>
                 ))}
               </ul>

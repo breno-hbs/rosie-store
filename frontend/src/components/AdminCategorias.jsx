@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ApiError, criarCategoria, listarCategoriasAdmin, removerCategoria } from '../api.js'
+import { ApiError, criarCategoria, listarCategoriasAdmin, removerCategoria, renomearCategoria } from '../api.js'
+import { rotaCategoria } from '../categoria.js'
 import './AdminCategorias.css'
 
 // Erros do contrato com mensagem própria; o resto mostra o texto da API (ex.: CATEGORIA_EM_USO)
@@ -26,6 +27,10 @@ export default function AdminCategorias() {
   const [confirmando, setConfirmando] = useState(null)
   const [removendo, setRemovendo] = useState(null)
   const [erroLinha, setErroLinha] = useState({ id: null, mensagem: null })
+  // Renomear na própria linha (#88): o nome em edição e, depois de salvar, o aviso do link novo
+  const [editando, setEditando] = useState(null)
+  const [renomeando, setRenomeando] = useState(false)
+  const [renomeada, setRenomeada] = useState(null)
 
   const carregando = lista.tentativa !== tentativa
 
@@ -62,7 +67,52 @@ export default function AdminCategorias() {
 
   function pedirConfirmacao(id) {
     setConfirmando(id)
+    setEditando(null)
+    setRenomeada(null)
     setErroLinha({ id: null, mensagem: null })
+  }
+
+  function comecarRenomear(categoria) {
+    setEditando({ id: categoria.id, nome: categoria.nome })
+    setConfirmando(null)
+    setRenomeada(null)
+    setErroLinha({ id: null, mensagem: null })
+  }
+
+  function cancelarRenomear() {
+    setEditando(null)
+    setErroLinha({ id: null, mensagem: null })
+  }
+
+  async function renomear(evento, categoria) {
+    evento.preventDefault()
+    const nomeLimpo = editando.nome.trim()
+    if (!nomeLimpo) {
+      setErroLinha({ id: categoria.id, mensagem: 'Informe o nome da categoria.' })
+      return
+    }
+    if (nomeLimpo === categoria.nome) {
+      cancelarRenomear()
+      return
+    }
+    setRenomeando(true)
+    setErroLinha({ id: null, mensagem: null })
+    try {
+      const atualizada = await renomearCategoria(categoria.id, nomeLimpo)
+      setLista((atual) => ({
+        ...atual,
+        categorias: ordenarPorNome(atual.categorias.map((c) => (c.id === atualizada.id ? atualizada : c))),
+      }))
+      setEditando(null)
+      if (atualizada.slug !== categoria.slug) setRenomeada(atualizada.id)
+    } catch (erro) {
+      setErroLinha({
+        id: categoria.id,
+        mensagem: mensagemDeErro(erro, 'Não foi possível renomear a categoria. Tente de novo.'),
+      })
+    } finally {
+      setRenomeando(false)
+    }
   }
 
   async function remover(categoria) {
@@ -130,49 +180,113 @@ export default function AdminCategorias() {
         <ul className="admin-categorias__lista">
           {lista.categorias.map((categoria) => (
             <li key={categoria.id} className="admin-categorias__item">
-              <div className="admin-categorias__linha">
-                <span className="admin-categorias__nome">{categoria.nome}</span>
-
-                {confirmando === categoria.id ? (
+              {editando?.id === categoria.id ? (
+                <form
+                  className="admin-categorias__linha admin-categorias__linha--edicao"
+                  onSubmit={(evento) => renomear(evento, categoria)}
+                  noValidate
+                >
+                  <input
+                    className="campo__caixa admin-categorias__renomear"
+                    type="text"
+                    name="nome"
+                    maxLength={80}
+                    autoComplete="off"
+                    autoFocus
+                    value={editando.nome}
+                    onChange={(e) => setEditando({ ...editando, nome: e.target.value })}
+                    disabled={renomeando}
+                    aria-label={`Novo nome de ${categoria.nome}`}
+                    aria-invalid={erroLinha.id === categoria.id ? true : undefined}
+                  />
                   <span className="admin-categorias__acoes">
-                    <span className="admin-categorias__pergunta">Remover?</span>
                     <button
-                      type="button"
+                      type="submit"
                       className="admin-categorias__acao admin-categorias__acao--forte"
-                      onClick={() => remover(categoria)}
-                      disabled={removendo === categoria.id}
+                      disabled={renomeando}
                     >
-                      {removendo === categoria.id ? 'Removendo…' : 'Sim, remover'}
+                      {renomeando ? 'Salvando…' : 'Salvar'}
                     </button>
                     <button
                       type="button"
                       className="admin-categorias__acao"
-                      onClick={() => setConfirmando(null)}
-                      disabled={removendo === categoria.id}
+                      onClick={cancelarRenomear}
+                      disabled={renomeando}
                     >
                       Cancelar
                     </button>
                   </span>
-                ) : (
-                  <span className="admin-categorias__acoes">
+                </form>
+              ) : (
+                <div className="admin-categorias__linha">
+                  <span className="admin-categorias__nome">
+                    {categoria.nome}
                     <a
-                      className="admin-categorias__acao"
-                      href={`/admin/categorias/${categoria.id}/medidas`}
-                      aria-label={`Tabela de medidas de ${categoria.nome}`}
+                      className="admin-categorias__link"
+                      href={rotaCategoria(categoria)}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Ver ${categoria.nome} na loja (abre em outra aba)`}
                     >
-                      Medidas
+                      {rotaCategoria(categoria)}
                     </a>
-                    <button
-                      type="button"
-                      className="admin-categorias__acao"
-                      onClick={() => pedirConfirmacao(categoria.id)}
-                      aria-label={`Remover ${categoria.nome}`}
-                    >
-                      Remover
-                    </button>
                   </span>
-                )}
-              </div>
+
+                  {confirmando === categoria.id ? (
+                    <span className="admin-categorias__acoes">
+                      <span className="admin-categorias__pergunta">Remover?</span>
+                      <button
+                        type="button"
+                        className="admin-categorias__acao admin-categorias__acao--forte"
+                        onClick={() => remover(categoria)}
+                        disabled={removendo === categoria.id}
+                      >
+                        {removendo === categoria.id ? 'Removendo…' : 'Sim, remover'}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-categorias__acao"
+                        onClick={() => setConfirmando(null)}
+                        disabled={removendo === categoria.id}
+                      >
+                        Cancelar
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="admin-categorias__acoes">
+                      <button
+                        type="button"
+                        className="admin-categorias__acao"
+                        onClick={() => comecarRenomear(categoria)}
+                        aria-label={`Renomear ${categoria.nome}`}
+                      >
+                        Renomear
+                      </button>
+                      <a
+                        className="admin-categorias__acao"
+                        href={`/admin/categorias/${categoria.id}/medidas`}
+                        aria-label={`Tabela de medidas de ${categoria.nome}`}
+                      >
+                        Medidas
+                      </a>
+                      <button
+                        type="button"
+                        className="admin-categorias__acao"
+                        onClick={() => pedirConfirmacao(categoria.id)}
+                        aria-label={`Remover ${categoria.nome}`}
+                      >
+                        Remover
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {renomeada === categoria.id && (
+                <p className="admin-categorias__nota" role="status">
+                  Link novo: {rotaCategoria(categoria)}. O link antigo continua abrindo esta categoria.
+                </p>
+              )}
 
               {erroLinha.id === categoria.id && (
                 <p className="admin-categorias__aviso" role="alert">

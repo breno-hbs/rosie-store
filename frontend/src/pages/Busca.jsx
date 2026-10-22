@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listarCategorias, listarProdutos } from '../api.js'
 import { ROTA_BUSCA, TAMANHO_MAXIMO_BUSCA } from '../busca.js'
+import { rotaCategoria } from '../categoria.js'
 import Footer from '../components/Footer.jsx'
 import Nav from '../components/Nav.jsx'
 import ProductCard from '../components/ProductCard.jsx'
@@ -144,7 +145,7 @@ export default function Busca() {
                   <ul>
                     {categorias.map((categoria) => (
                       <li key={categoria.id}>
-                        <a className="busca__categoria" href={`/?categoria=${categoria.id}`}>
+                        <a className="busca__categoria" href={rotaCategoria(categoria)}>
                           {categoria.nome}
                         </a>
                       </li>

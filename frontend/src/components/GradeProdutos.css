@@ -1,0 +1,30 @@
+/* Linhas de 1px entre os cards (Figma: gap 1px sobre --linha), 2 colunas no celular e 4 a partir do tablet.
+   A última linha encosta na borda de cima do bloco seguinte via margin-bottom: -1px. */
+.grade-produtos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: -1px;
+}
+
+.grade-produtos > * {
+  border-right: 1px solid var(--linha);
+  border-bottom: 1px solid var(--linha);
+}
+
+.grade-produtos > :nth-child(2n) {
+  border-right: 0;
+}
+
+@media (min-width: 768px) {
+  .grade-produtos {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .grade-produtos > :nth-child(2n) {
+    border-right: 1px solid var(--linha);
+  }
+
+  .grade-produtos > :nth-child(4n) {
+    border-right: 0;
+  }
+}

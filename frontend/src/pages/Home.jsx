@@ -3,7 +3,7 @@ import { listarCategorias, listarDestaques, listarProdutos } from '../api.js'
 import Nav from '../components/Nav.jsx'
 import HeroCarousel from '../components/HeroCarousel.jsx'
 import CategoryTiles from '../components/CategoryTiles.jsx'
-import ProductCard from '../components/ProductCard.jsx'
+import GradeProdutos from '../components/GradeProdutos.jsx'
 import Footer from '../components/Footer.jsx'
 import { contatoLoja } from '../formato.js'
 import './Home.css'
@@ -12,33 +12,28 @@ const TAMANHO_PAGINA = 12
 const QTD_SLIDES = 3
 const CONTATO = contatoLoja('Olá! Vim pelo site da Rosie e quero tirar uma dúvida.')
 
-function categoriaDaUrl() {
-  const id = Number(new URLSearchParams(window.location.search).get('categoria'))
-  return Number.isInteger(id) && id > 0 ? id : null
-}
-
+// Só vitrine: as categorias têm página própria (/categoria/{slug}, #88), e o link antigo /?categoria={id}
+// é redirecionado para ela antes de chegar aqui (App.jsx)
 export default function Home() {
   const [categorias, setCategorias] = useState([])
   // null enquanto carrega; [] quando não há destaques marcados ou a chamada falhou
   const [destaques, setDestaques] = useState(null)
   const [slidesReserva, setSlidesReserva] = useState([])
   const [verTodos, setVerTodos] = useState(false)
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState(categoriaDaUrl)
   const [tentativa, setTentativa] = useState(0)
   const [lista, setLista] = useState({ chave: null, produtos: [], pagina: 0, totalPaginas: 0, erro: null })
   const [carregandoMais, setCarregandoMais] = useState(false)
   const [erroMais, setErroMais] = useState(null)
   const secaoProdutos = useRef(null)
 
-  // Muda a cada filtro ou nova tentativa; enquanto a lista não for dessa chave, está carregando
-  const chave = `${categoriaSelecionada ?? 'todas'}:${tentativa}`
+  // Muda a cada nova tentativa; enquanto a lista não for dessa chave, está carregando
+  const chave = tentativa
   const carregando = lista.chave !== chave
 
-  // Sem filtro, o "Best Sellers" mostra os destaques; sem destaques (ou com erro) cai na listagem comum
-  const naVitrine = !categoriaSelecionada && !verTodos
+  // O "Best Sellers" mostra os destaques; sem destaques (ou com erro) cai na listagem comum
   const temDestaques = destaques?.length > 0
-  const mostrarDestaques = naVitrine && temDestaques
-  const usarListagem = !naVitrine || destaques?.length === 0
+  const mostrarDestaques = !verTodos && temDestaques
+  const usarListagem = verTodos || destaques?.length === 0
 
   useEffect(() => {
     const controle = new AbortController()
@@ -66,10 +61,7 @@ export default function Home() {
   useEffect(() => {
     if (!usarListagem) return
     const controle = new AbortController()
-    listarProdutos(
-      { categoriaId: categoriaSelecionada, pagina: 0, tamanho: TAMANHO_PAGINA },
-      { signal: controle.signal },
-    )
+    listarProdutos({ pagina: 0, tamanho: TAMANHO_PAGINA }, { signal: controle.signal })
       .then((resposta) =>
         setLista({
           chave,
@@ -85,30 +77,13 @@ export default function Home() {
         }
       })
     return () => controle.abort()
-  }, [chave, categoriaSelecionada, usarListagem])
-
-  function selecionarCategoria(id) {
-    const nova = id === categoriaSelecionada ? null : id
-    setCategoriaSelecionada(nova)
-    setErroMais(null)
-
-    const url = new URL(window.location.href)
-    if (nova) url.searchParams.set('categoria', nova)
-    else url.searchParams.delete('categoria')
-    window.history.replaceState(null, '', url)
-
-    secaoProdutos.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [chave, usarListagem])
 
   async function carregarMais() {
     setCarregandoMais(true)
     setErroMais(null)
     try {
-      const resposta = await listarProdutos({
-        categoriaId: categoriaSelecionada,
-        pagina: lista.pagina + 1,
-        tamanho: TAMANHO_PAGINA,
-      })
+      const resposta = await listarProdutos({ pagina: lista.pagina + 1, tamanho: TAMANHO_PAGINA })
       setLista((atual) =>
         atual.chave === chave
           ? {
@@ -128,10 +103,10 @@ export default function Home() {
 
   function alternarVerTodos(valor) {
     setVerTodos(valor)
-    selecionarCategoria(null)
+    setErroMais(null)
+    secaoProdutos.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const categoriaAtual = categorias.find((categoria) => categoria.id === categoriaSelecionada)
   const carregandoGrade = !mostrarDestaques && carregando
   const produtos = mostrarDestaques ? destaques : lista.produtos
   const temMais = !mostrarDestaques && !carregando && lista.pagina + 1 < lista.totalPaginas
@@ -139,33 +114,16 @@ export default function Home() {
 
   return (
     <>
-      <Nav
-        categorias={categorias}
-        categoriaSelecionada={categoriaSelecionada}
-        onSelecionarCategoria={selecionarCategoria}
-      />
+      <Nav categorias={categorias} />
 
       <main>
         <HeroCarousel produtos={slides} />
 
-        <CategoryTiles
-          categorias={categorias}
-          destaques={destaques}
-          categoriaSelecionada={categoriaSelecionada}
-          onSelecionarCategoria={selecionarCategoria}
-        />
+        <CategoryTiles categorias={categorias} destaques={destaques} />
 
         <section className="produtos" ref={secaoProdutos} aria-busy={carregandoGrade}>
           <div className="secao-titulo">
-            {categoriaSelecionada ? (
-              <>
-                <p className="eyebrow">Categoria</p>
-                <h2 className="titulo-2">{categoriaAtual?.nome ?? 'Produtos'}</h2>
-                <button type="button" className="secao-titulo__limpar" onClick={() => alternarVerTodos(true)}>
-                  Ver todos os produtos
-                </button>
-              </>
-            ) : verTodos && temDestaques ? (
+            {verTodos && temDestaques ? (
               <>
                 <p className="eyebrow">Catálogo</p>
                 <h2 className="titulo-2">Todos os produtos</h2>
@@ -182,11 +140,7 @@ export default function Home() {
           </div>
 
           {carregandoGrade ? (
-            <div className="produtos__grade">
-              {Array.from({ length: 4 }, (_, i) => (
-                <ProductCard key={i} />
-              ))}
-            </div>
+            <GradeProdutos />
           ) : !mostrarDestaques && lista.erro ? (
             <div className="produtos__aviso" role="alert">
               <p>Não foi possível carregar os produtos.</p>
@@ -199,11 +153,7 @@ export default function Home() {
               <p>Nenhum produto por aqui ainda.</p>
             </div>
           ) : (
-            <div className="produtos__grade">
-              {produtos.map((produto) => (
-                <ProductCard key={produto.id} produto={produto} />
-              ))}
-            </div>
+            <GradeProdutos produtos={produtos} />
           )}
 
           {temMais && (
