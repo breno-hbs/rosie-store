@@ -47,10 +47,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErroResponseDTO(ex.getMessage(), "SENHA_INCORRETA"));
     }
 
-    // Link de confirmação da troca de e-mail (#61): TOKEN_INVALIDO ou TOKEN_EXPIRADO
+    // Link da troca de e-mail (#61) ou da redefinição de senha (#93): TOKEN_INVALIDO ou TOKEN_EXPIRADO
     @ExceptionHandler(TokenInvalidoException.class)
     public ResponseEntity<ErroResponseDTO> handleTokenInvalido(TokenInvalidoException ex) {
         return ResponseEntity.badRequest().body(new ErroResponseDTO(ex.getMessage(), ex.getCodigo()));
+    }
+
+    // Esqueci minha senha acima do limite por e-mail ou por IP (#93)
+    @ExceptionHandler(MuitasTentativasException.class)
+    public ResponseEntity<ErroResponseDTO> handleMuitasTentativas(MuitasTentativasException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ErroResponseDTO(ex.getMessage(), "MUITAS_TENTATIVAS"));
     }
 
     // Regra de negócio que impede a operação (ex.: CATEGORIA_DUPLICADA, CATEGORIA_EM_USO)

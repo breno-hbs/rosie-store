@@ -2,6 +2,7 @@ package com.rosie.backend.service;
 
 import com.rosie.backend.dto.ContaDTO;
 import com.rosie.backend.dto.ContaRequestDTO;
+import com.rosie.backend.dto.LoginResponseDTO;
 import com.rosie.backend.dto.SenhaRequestDTO;
 import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.DadosInvalidosException;
@@ -14,6 +15,7 @@ import com.rosie.backend.repository.CarrinhoItemRepository;
 import com.rosie.backend.repository.EmailPendenteRepository;
 import com.rosie.backend.repository.EnderecoRepository;
 import com.rosie.backend.repository.PedidoRepository;
+import com.rosie.backend.repository.RedefinicaoSenhaRepository;
 import com.rosie.backend.repository.TrocaRepository;
 import com.rosie.backend.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,21 +23,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
-// Dados pessoais da Minha Conta (#26): nome, telefone e troca de senha da cliente do token.
+// Dados pessoais da Minha Conta (#26): nome, telefone e troca de senha da cliente do token (que encerra as outras
+// sessões, #93).
 // O e-mail não muda por aqui (é o login): a troca, com confirmação pelo novo endereço, fica no MudancaEmailService (#61).
 // Direitos do titular (LGPD, #31): reaceite da política em vigor e exclusão da conta.
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ContaService {
-
-    // O BCrypt só aceita até 72 bytes; acentos ocupam 2, então o @Size do DTO não basta (como no cadastro)
-    private static final int BYTES_MAXIMOS_SENHA = 72;
 
     // Pedidos que a loja ainda precisa entregar: os dados de entrega (nome, telefone, endereço) ainda vão
     // para a etiqueta e para a transportadora, então a exclusão espera
@@ -56,7 +55,10 @@ public class ContaService {
     private final PedidoRepository pedidoRepository;
     private final TrocaRepository trocaRepository;
     private final EmailPendenteRepository emailPendenteRepository;
+    private final RedefinicaoSenhaRepository redefinicaoSenhaRepository;
     private final MudancaEmailService mudancaEmailService;
+    private final RedefinicaoSenhaService redefinicaoSenhaService;
+    private final AuthService authService;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -72,16 +74,16 @@ public class ContaService {
     }
 
     // Senha atual errada é 400 (não 401): a sessão continua valendo, só o formulário está errado.
-    // Tokens já emitidos seguem válidos até vencer (JWT sem estado, 2 horas).
-    public void trocarSenha(Long clienteId, SenhaRequestDTO requisicao) {
-        if (requisicao.novaSenha().getBytes(StandardCharsets.UTF_8).length > BYTES_MAXIMOS_SENHA) {
-            throw new DadosInvalidosException("A senha precisa ter de 8 a 72 caracteres");
-        }
+    // Como no "esqueci minha senha" (#93), a troca encerra as sessões abertas (outro aparelho, um celular
+    // perdido); este aparelho continua logado com o token novo da resposta.
+    public LoginResponseDTO trocarSenha(Long clienteId, SenhaRequestDTO requisicao) {
+        AuthService.conferirTamanhoSenha(requisicao.novaSenha());
         Usuario usuario = cliente(clienteId);
         if (!passwordEncoder.matches(requisicao.senhaAtual(), usuario.getSenhaHash())) {
             throw new DadosInvalidosException("Senha atual incorreta");
         }
-        usuario.setSenhaHash(passwordEncoder.encode(requisicao.novaSenha()));
+        redefinicaoSenhaService.trocarSenha(usuario, requisicao.novaSenha());
+        return authService.sessao(usuario);
     }
 
     // Aceite da versão em vigor da política (#31), por quem tinha aceitado uma antiga
@@ -117,8 +119,9 @@ public class ContaService {
                 .forEach(pedido -> pedido.setStatus(StatusPedido.CANCELADO));
 
         carrinhoItemRepository.deleteByUsuarioId(clienteId);
-        // Troca de e-mail pendente (#61): o link deixa de valer
+        // Troca de e-mail pendente (#61) e link de redefinição de senha (#93): deixam de valer
         emailPendenteRepository.apagarDaCliente(clienteId);
+        redefinicaoSenhaRepository.apagarDoUsuario(clienteId);
         for (Endereco endereco : enderecoRepository.findByUsuarioId(clienteId)) {
             if (pedidoRepository.existsByEnderecoId(endereco.getId())) {
                 anonimizar(endereco);

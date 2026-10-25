@@ -54,6 +54,8 @@ public class SecurityConfig {
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         // Conta do cliente (RF08): cadastro e login abertos, o resto só com token de cliente
                         .requestMatchers(HttpMethod.POST, "/auth/registrar", "/auth/login").permitAll()
+                        // Esqueci minha senha (#93), da cliente e do admin: o pedido e a nova senha pelo token do link
+                        .requestMatchers(HttpMethod.POST, "/auth/esqueci-senha", "/auth/redefinir-senha").permitAll()
                         .requestMatchers("/auth/**").hasRole("CLIENTE")
                         // Rotas da compra (#22, #24, #27): token de admin recebe 403, como token de cliente em /admin/**
                         .requestMatchers("/carrinho/**", "/pedidos/**", "/trocas/**").hasRole("CLIENTE")

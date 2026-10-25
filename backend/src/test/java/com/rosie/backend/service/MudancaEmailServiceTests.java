@@ -108,7 +108,7 @@ class MudancaEmailServiceTests {
         // No banco fica só o hash do token, nunca o token do link
         String token = token(email);
         EmailPendente salvo = pendenteRepository.findByUsuarioId(cliente.getId()).orElseThrow();
-        assertThat(salvo.getTokenHash()).isEqualTo(MudancaEmailService.hash(token)).isNotEqualTo(token);
+        assertThat(salvo.getTokenHash()).isEqualTo(TokenLink.hash(token)).isNotEqualTo(token);
         assertThat(email.chave()).doesNotContain(token);
 
         // A Minha Conta mostra a troca pendente; o e-mail da conta ainda é o antigo

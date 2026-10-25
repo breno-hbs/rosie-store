@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ApiError, entrarNoPainel } from '../api.js'
 import LogoBadge from '../components/LogoBadge.jsx'
+import { ROTAS_SENHA } from '../senha.js'
 import './AdminLogin.css'
 
 // Mensagem de erro para cada código do contrato; o resto mostra o texto da API
@@ -68,6 +69,9 @@ export default function AdminLogin() {
             disabled={carregando}
           />
         </label>
+        <a className="admin-login__esqueci" href={ROTAS_SENHA.admin.esqueci}>
+          Esqueci minha senha
+        </a>
 
         {(erro || sessaoExpirou) && (
           <p className="admin-login__aviso" role="alert">

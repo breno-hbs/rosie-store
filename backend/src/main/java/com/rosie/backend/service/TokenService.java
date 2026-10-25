@@ -24,6 +24,9 @@ public class TokenService {
         this.validade = validade;
     }
 
+    // Claim com a versão da credencial (#93): o JwtConfig recusa o token emitido antes da última troca de senha
+    public static final String CLAIM_VERSAO_CREDENCIAL = "vc";
+
     // subject = id do usuário; "role" vira a authority no SecurityConfig
     public String gerar(Usuario usuario) {
         Instant agora = Instant.now();
@@ -34,6 +37,7 @@ public class TokenService {
                 .expiresAt(agora.plus(validade))
                 .claim("nome", usuario.getNome())
                 .claim("role", usuario.getRole().name())
+                .claim(CLAIM_VERSAO_CREDENCIAL, usuario.getVersaoCredencial())
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();

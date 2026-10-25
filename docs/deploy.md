@@ -144,7 +144,7 @@ Conferidas no código: todos os `${...}` de `application.properties` e `applicat
 | `DB_PASSWORD` | Senha do MySQL | `${{MySQL.MYSQLPASSWORD}}` | sobe |
 | `JWT_SECRET` | Assina os tokens do painel e da cliente (HS256), com 32+ caracteres. Gere um novo (`openssl rand -base64 48`), nunca o do desenvolvimento. Trocar derruba todas as sessões | (gerado) | sobe |
 | `CORS_ORIGENS` | Origens do front liberadas no CORS, separadas por vírgula, sem barra no fim | `https://rosiestore.com.br,https://www.rosiestore.com.br` | sobe |
-| `ROSIE_LOJA_URL` | Endereço da loja: volta do Mercado Pago (`/pedido/{id}/sucesso`...) e links dos e-mails (`/minha-conta/...`) | `https://rosiestore.com.br` | sobe |
+| `ROSIE_LOJA_URL` | Endereço da loja: volta do Mercado Pago (`/pedido/{id}/sucesso`...) e links dos e-mails (`/minha-conta/...`, `/redefinir-senha`, `/admin/redefinir-senha`) | `https://rosiestore.com.br` | sobe |
 | `ROSIE_ADMIN_EMAIL` | E-mail do admin criado na primeira subida sem admin. Apagar depois | `voce@exemplo.com` | só na 1ª subida |
 | `ROSIE_ADMIN_SENHA` | Senha desse admin (8+ caracteres, guardada só como hash). Apagar depois | (sua) | só na 1ª subida |
 | `ROSIE_ADMIN_NOME` | Nome desse admin | `Roseane` (padrão) | não |
@@ -175,12 +175,14 @@ Conferidas no código: todos os `${...}` de `application.properties` e `applicat
 | `ROSIE_API_URL` | URL pública da API, com https; o webhook vai para `<url>/pagamentos/webhook` | `https://api.rosiestore.com.br` | loja (checkout) |
 | `PAGAMENTO_TIMEOUT` | Espera máxima pelo Mercado Pago | `10s` (padrão) | não |
 | `TROCA_PRAZO_DIAS` | Dias depois da entrega para pedir troca (mínimo do CDC: 7) | `7` (padrão) | não |
-| `RESEND_API_KEY` | Chave do Resend (*Sending access*); sem ela os e-mails só vão para o log | `re_...` | loja (e-mails, link da troca de e-mail) |
+| `RESEND_API_KEY` | Chave do Resend (*Sending access*); sem ela os e-mails só vão para o log | `re_...` | loja (e-mails, link da troca de e-mail e do "esqueci minha senha": sem ela ninguém recupera a senha) |
 | `ROSIE_EMAIL_REMETENTE` | Remetente dos e-mails, num domínio verificado no Resend | `Rosie <contato@rosiestore.com.br>` (padrão) | não |
 | `ROSIE_EMAIL_RESPONDER_PARA` | Para onde vão as respostas da cliente | `roseane@exemplo.com` | não |
 | `EMAIL_TIMEOUT` | Espera máxima pelo Resend | `10s` (padrão) | não |
 | `ROSIE_WHATSAPP_NUMERO` | WhatsApp da loja nos e-mails (DDI + DDD, só dígitos; o mesmo de `VITE_WHATSAPP_NUMERO`) | `5511999999999` | não |
 | `ROSIE_TROCA_EMAIL_VALIDADE` | Prazo do link de confirmação da troca de e-mail | `24h` (padrão) | não |
+| `ROSIE_REDEFINICAO_SENHA_VALIDADE` | Prazo do link de "esqueci minha senha" (#93) | `1h` (padrão) | não |
+| `ROSIE_ESQUECI_SENHA_LIMITE_EMAIL`, `ROSIE_ESQUECI_SENHA_LIMITE_IP`, `ROSIE_ESQUECI_SENHA_JANELA` | Limite de pedidos do link por e-mail e por IP, na memória da API (uma instância só) | `3`, `10`, `1h` (padrão) | não |
 | `PORT` | Porta HTTP; **o Railway define sozinho** | (não definir) | — |
 | `SPRING_PROFILES_ACTIVE` | Perfil do Spring; o `railway.json` e o Dockerfile já sobem com `prod`. O perfil `demo` ([`docs/demonstracao.md`](demonstracao.md)) é só para a demonstração local, e a API não sobe com `prod` e `demo` juntos | (não definir) | — |
 | `FRETE_SIMULADO` | Só desenvolvimento: frete, etiqueta e rastreio de mentira | (não definir) | **nunca em produção** |

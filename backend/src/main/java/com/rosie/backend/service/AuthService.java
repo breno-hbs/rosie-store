@@ -48,9 +48,7 @@ public class AuthService {
     // Guarda o aceite da política de privacidade (RNF06) com a data e a versão em vigor.
     @Transactional
     public LoginResponseDTO registrar(RegistroRequestDTO requisicao) {
-        if (requisicao.senha().getBytes(StandardCharsets.UTF_8).length > BYTES_MAXIMOS_SENHA) {
-            throw new DadosInvalidosException("A senha precisa ter de 8 a 72 caracteres");
-        }
+        conferirTamanhoSenha(requisicao.senha());
 
         String email = normalizarEmail(requisicao.email());
         if (usuarioRepository.existsByEmail(email)) {
@@ -73,7 +71,7 @@ public class AuthService {
             throw new ConflitoException(MENSAGEM_EMAIL_DUPLICADO, "EMAIL_JA_CADASTRADO");
         }
 
-        return resposta(usuario);
+        return sessao(usuario);
     }
 
     // Login da loja (RF08). Só entra CLIENTE: a Roseane entra pelo painel (/admin/auth/login),
@@ -98,14 +96,23 @@ public class AuthService {
                 .filter(u -> senhaConfere && u.getRole() == roleExigida && u.getExcluidaEm() == null)
                 .orElseThrow(CredenciaisInvalidasException::new);
 
-        return resposta(usuario);
+        return sessao(usuario);
     }
 
     // Quem aceitou uma versão antiga da política de privacidade entra normalmente, mas a loja pede o aceite
-    // da nova antes de seguir (#31); o checkout também exige
-    private LoginResponseDTO resposta(Usuario usuario) {
+    // da nova antes de seguir (#31); o checkout também exige. Também usado na troca de senha da Minha Conta
+    // (#93): o token novo substitui o que deixou de valer
+    public LoginResponseDTO sessao(Usuario usuario) {
         return new LoginResponseDTO(tokenService.gerar(usuario), UsuarioResumoDTO.from(usuario),
                 PoliticaPrivacidade.aceitePendente(usuario));
+    }
+
+    // A mesma regra do @Size dos DTOs (8 a 72 caracteres), em bytes: vale no cadastro, na troca de senha da
+    // Minha Conta (#26) e na redefinição pelo link (#93)
+    public static void conferirTamanhoSenha(String senha) {
+        if (senha.getBytes(StandardCharsets.UTF_8).length > BYTES_MAXIMOS_SENHA) {
+            throw new DadosInvalidosException("A senha precisa ter de 8 a 72 caracteres");
+        }
     }
 
     public static String normalizarEmail(String email) {

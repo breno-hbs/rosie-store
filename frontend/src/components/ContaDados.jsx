@@ -298,7 +298,7 @@ function FormularioSenha() {
           {envio.enviando ? 'Salvando…' : 'Trocar senha'}
         </button>
         <p className="conta__retorno" role="status">
-          {envio.salvo ? 'Senha alterada.' : ''}
+          {envio.salvo ? 'Senha alterada. As sessões abertas em outros aparelhos foram encerradas.' : ''}
         </p>
       </div>
       {envio.erro && (

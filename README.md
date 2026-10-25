@@ -161,11 +161,13 @@ O `application.properties` importa esse arquivo automaticamente quando ele exist
 | `ROSIE_RASTREIO_INTERVALO` | `6h` | Intervalo entre as rodadas do rastreio (ex.: `30m`, `6h`); a primeira sai 1 min depois de a API subir |
 | `ROSIE_RASTREIO_LOTE` | `50` | Máximo de pedidos consultados por rodada; os outros ficam para a seguinte |
 | `ROSIE_RASTREIO_PAUSA` | `1s` | Pausa entre uma consulta e outra ao Melhor Envio, para respeitar os limites da API |
-| `RESEND_API_KEY` | (vazio) | Chave da API do [Resend](https://resend.com) para os e-mails à cliente (#65: troca aprovada, recusada ou concluída; #61: link de confirmação e aviso da troca de e-mail). Opcional: sem ela a API sobe e os e-mails só vão para o log |
+| `RESEND_API_KEY` | (vazio) | Chave da API do [Resend](https://resend.com) para os e-mails à cliente (#65: troca aprovada, recusada ou concluída; #61: link de confirmação e aviso da troca de e-mail; #93: link de "esqueci minha senha" e aviso de senha trocada). Opcional: sem ela a API sobe e os e-mails só vão para o log |
 | `ROSIE_EMAIL_REMETENTE` | `Rosie <contato@rosiestore.com.br>` | Remetente dos e-mails. O domínio precisa estar verificado no Resend (registros SPF e DKIM no DNS) |
 | `ROSIE_EMAIL_RESPONDER_PARA` | (vazio) | Para onde vão as respostas da cliente (opcional; vazio = para o remetente) |
 | `EMAIL_TIMEOUT` | `10s` | Tempo máximo de espera pelo Resend em cada e-mail (o envio roda fora da requisição) |
 | `ROSIE_TROCA_EMAIL_VALIDADE` | `24h` | Prazo do link de confirmação da troca de e-mail na Minha Conta (#61), ex.: `30m`, `24h`, `2d`. Passou disso, o link responde "expirado" e a cliente pede de novo |
+| `ROSIE_REDEFINICAO_SENHA_VALIDADE` | `1h` | Prazo do link de "esqueci minha senha" (#93), da cliente e do admin. Passou disso, o link responde "expirado" e a pessoa pede outro |
+| `ROSIE_ESQUECI_SENHA_LIMITE_EMAIL`, `ROSIE_ESQUECI_SENHA_LIMITE_IP`, `ROSIE_ESQUECI_SENHA_JANELA` | `3`, `10`, `1h` | Quantos pedidos do link de "esqueci minha senha" cabem por e-mail e por IP em cada janela; acima disso, 429 até a janela acabar |
 | `ROSIE_WHATSAPP_NUMERO` | (vazio) | WhatsApp da loja com DDI e DDD, só dígitos (o mesmo de `VITE_WHATSAPP_NUMERO`), mostrado como contato nos e-mails. Vazio = só o Instagram |
 
 Windows (PowerShell, vale só para o terminal aberto):

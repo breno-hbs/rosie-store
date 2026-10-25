@@ -22,16 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Optional;
 
 // Troca do e-mail de login da cliente na Minha Conta (#61). O e-mail novo não vale na hora: o pedido (com a
@@ -45,9 +39,6 @@ public class MudancaEmailService {
     // Mesma mensagem do cadastro: o 409 não revela mais do que o cadastro já revela
     private static final String MENSAGEM_EMAIL_DUPLICADO = "Este e-mail já está cadastrado. Entre com ele ou use outro.";
 
-    // 256 bits aleatórios, em Base64 sem "=" e seguro para URL (43 caracteres)
-    private static final int BYTES_TOKEN = 32;
-
     private final UsuarioRepository usuarioRepository;
     private final EmailPendenteRepository pendenteRepository;
     private final PasswordEncoder passwordEncoder;
@@ -57,7 +48,6 @@ public class MudancaEmailService {
     private final TransactionTemplate transacao;
     private final Clock relogio;
     private final Duration validade;
-    private final SecureRandom aleatorio = new SecureRandom();
 
     public MudancaEmailService(UsuarioRepository usuarioRepository, EmailPendenteRepository pendenteRepository,
                                PasswordEncoder passwordEncoder, EnviadorEmail enviador, FilaEmail fila,
@@ -79,8 +69,8 @@ public class MudancaEmailService {
     // pendência é desfeita e a resposta é 502 EMAIL_FALHOU, em vez de dizer à cliente que o link foi enviado.
     // Ordem das conferências: a senha vem antes do e-mail, para o 409 só responder a quem é dona da conta.
     public EmailPendenteDTO solicitar(Long clienteId, EmailRequestDTO requisicao) {
-        String token = novoToken();
-        String tokenHash = hash(token);
+        String token = TokenLink.novo();
+        String tokenHash = TokenLink.hash(token);
         Solicitacao pedido = transacao.execute(status -> registrar(clienteId, requisicao, tokenHash));
 
         Email email = emails.confirmacao(pedido.nome(), pedido.pendente().novoEmail(), token,
@@ -132,7 +122,7 @@ public class MudancaEmailService {
     @Transactional
     public EmailConfirmadoDTO confirmar(String token) {
         if (token == null || token.isBlank()) throw TokenInvalidoException.invalido();
-        EmailPendente pendente = pendenteRepository.findByTokenHash(hash(token.trim()))
+        EmailPendente pendente = pendenteRepository.findByTokenHash(TokenLink.hash(token.trim()))
                 .orElseThrow(TokenInvalidoException::invalido);
         Usuario usuario = pendente.getUsuario();
         // A exclusão da conta (#31) já apaga a pendência; isto só cobre o caso de as duas correrem juntas
@@ -172,21 +162,5 @@ public class MudancaEmailService {
         return pendenteRepository.findByUsuarioId(clienteId)
                 .filter(p -> agora.isBefore(p.getExpiraEm()))
                 .map(EmailPendenteDTO::from);
-    }
-
-    private String novoToken() {
-        byte[] bytes = new byte[BYTES_TOKEN];
-        aleatorio.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    // SHA-256 basta (sem sal nem BCrypt): o token já é aleatório e longo, não dá para adivinhar por tentativa
-    static String hash(String token) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
     }
 }

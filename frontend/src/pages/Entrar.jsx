@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ApiError, comVoltar, destinoSeguro, entrarNaLoja, privacidadePendente } from '../api.js'
 import AceitePrivacidade from '../components/AceitePrivacidade.jsx'
 import LogoBadge from '../components/LogoBadge.jsx'
+import { ROTAS_SENHA } from '../senha.js'
 import './AcessoCliente.css'
 
 // Mensagem de erro para cada código do contrato; o resto mostra o texto da API
@@ -85,6 +86,9 @@ export default function Entrar() {
               disabled={carregando}
             />
           </label>
+          <a className="acesso__esqueci" href={ROTAS_SENHA.cliente.esqueci}>
+            Esqueci minha senha
+          </a>
 
           {(erro || sessaoExpirou) && (
             <p className="acesso__aviso" role="alert">

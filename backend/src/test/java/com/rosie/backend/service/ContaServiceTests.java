@@ -3,6 +3,7 @@ package com.rosie.backend.service;
 import com.rosie.backend.dto.ContaDTO;
 import com.rosie.backend.dto.ContaRequestDTO;
 import com.rosie.backend.dto.LoginRequestDTO;
+import com.rosie.backend.dto.LoginResponseDTO;
 import com.rosie.backend.dto.SenhaRequestDTO;
 import com.rosie.backend.exception.ConflitoException;
 import com.rosie.backend.exception.CredenciaisInvalidasException;
@@ -96,13 +97,17 @@ class ContaServiceTests {
 
     @Test
     void trocaASenhaComASenhaAtualCerta() {
-        contaService.trocarSenha(cliente.getId(), new SenhaRequestDTO(SENHA, "nova-senha-456"));
+        LoginResponseDTO sessao = contaService.trocarSenha(cliente.getId(), new SenhaRequestDTO(SENHA, "nova-senha-456"));
 
         entityManager.flush();
         entityManager.clear();
-        String hash = usuarioRepository.findById(cliente.getId()).orElseThrow().getSenhaHash();
-        assertThat(passwordEncoder.matches("nova-senha-456", hash)).isTrue();
-        assertThat(passwordEncoder.matches(SENHA, hash)).isFalse();
+        Usuario salvo = usuarioRepository.findById(cliente.getId()).orElseThrow();
+        assertThat(passwordEncoder.matches("nova-senha-456", salvo.getSenhaHash())).isTrue();
+        assertThat(passwordEncoder.matches(SENHA, salvo.getSenhaHash())).isFalse();
+        // As sessões abertas acabam (#93) e a resposta traz o token da versão nova para este aparelho
+        assertThat(salvo.getVersaoCredencial()).isEqualTo(1);
+        assertThat(sessao.usuario().id()).isEqualTo(cliente.getId());
+        assertThat(sessao.token()).isNotBlank();
     }
 
     @Test

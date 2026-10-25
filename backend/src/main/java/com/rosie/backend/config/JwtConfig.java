@@ -1,6 +1,7 @@
 package com.rosie.backend.config;
 
 import com.rosie.backend.repository.UsuarioRepository;
+import com.rosie.backend.service.TokenService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -54,29 +55,41 @@ public class JwtConfig {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(chave)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-        // Validade (exp) e emissor; e conta não excluída (#31)
+        // Validade (exp) e emissor; conta não excluída (#31) e senha não trocada depois do login (#93)
         OAuth2TokenValidator<Jwt> padrao = JwtValidators.createDefaultWithIssuer(EMISSOR);
         UsuarioRepository repositorio = usuarios.getIfAvailable();
         decoder.setJwtValidator(repositorio == null ? padrao
-                : new DelegatingOAuth2TokenValidator<>(padrao, contaAtiva(repositorio)));
+                : new DelegatingOAuth2TokenValidator<>(padrao, credencialAtual(repositorio)));
         return decoder;
     }
 
-    // Cliente que excluiu a conta (#31) perde a sessão na hora, sem esperar o token de 2 horas vencer: o
-    // token vira inválido (401 NAO_AUTENTICADO). Uma consulta por id em cada requisição com token.
-    private static OAuth2TokenValidator<Jwt> contaAtiva(UsuarioRepository usuarios) {
-        OAuth2Error excluida = new OAuth2Error("invalid_token", "Conta excluída", null);
+    // A sessão acaba na hora, sem esperar o token de 2 horas vencer (401 NAO_AUTENTICADO), quando a cliente
+    // exclui a conta (#31) ou quando a senha é trocada (#93, pelo link de "esqueci minha senha" ou na Minha
+    // Conta): cada troca sobe a versao_credencial do usuário, e o token de uma versão anterior deixa de valer.
+    // Token sem a claim (emitido antes da #93) conta como versão 0. Uma consulta por id em cada requisição com
+    // token.
+    // Por que uma versão e não a data da troca: o "iat" do JWT tem só segundos, e o token do login feito logo
+    // depois da troca, no mesmo segundo, seria recusado (ou um de antes, aceito).
+    private static OAuth2TokenValidator<Jwt> credencialAtual(UsuarioRepository usuarios) {
+        OAuth2Error recusado = new OAuth2Error("invalid_token", "Sessão encerrada", null);
         return jwt -> {
             Long id;
             try {
                 id = Long.valueOf(jwt.getSubject());
             } catch (NumberFormatException e) {
-                return OAuth2TokenValidatorResult.failure(excluida);
+                return OAuth2TokenValidatorResult.failure(recusado);
             }
-            return usuarios.existsByIdAndExcluidaEmIsNotNull(id)
-                    ? OAuth2TokenValidatorResult.failure(excluida)
-                    : OAuth2TokenValidatorResult.success();
+            boolean valido = usuarios.buscarEstadoCredencial(id)
+                    .map(estado -> estado.getExcluidaEm() == null
+                            && estado.getVersaoCredencial() == versaoDoToken(jwt))
+                    .orElse(true);
+            return valido ? OAuth2TokenValidatorResult.success() : OAuth2TokenValidatorResult.failure(recusado);
         };
+    }
+
+    private static int versaoDoToken(Jwt jwt) {
+        Object versao = jwt.getClaim(TokenService.CLAIM_VERSAO_CREDENCIAL);
+        return versao instanceof Number numero ? numero.intValue() : 0;
     }
 
     @Bean

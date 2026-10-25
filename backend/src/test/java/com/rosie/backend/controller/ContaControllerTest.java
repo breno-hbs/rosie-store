@@ -122,9 +122,21 @@ class ContaControllerTest {
 
     @Test
     void trocaASenhaEAsenhaNovaEntraNoLogin() throws Exception {
-        mockMvc.perform(trocarSenha("{\"senhaAtual\":\"" + SENHA + "\",\"novaSenha\":\"nova-senha-456\"}", tokenCliente))
-                .andExpect(status().isNoContent());
+        String resposta = mockMvc.perform(trocarSenha("{\"senhaAtual\":\"" + SENHA + "\",\"novaSenha\":\"nova-senha-456\"}",
+                        tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuario.id").value(cliente.getId()))
+                .andExpect(jsonPath("$.usuario.role").value("CLIENTE"))
+                .andReturn().getResponse().getContentAsString();
         entityManager.flush();
+
+        // A troca encerra as sessões abertas (#93): o token antigo deixa de valer, o da resposta continua
+        String tokenNovo = resposta.replaceAll(".*\"token\":\"([^\"]+)\".*", "$1");
+        mockMvc.perform(get("/conta").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenCliente))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo").value("NAO_AUTENTICADO"));
+        mockMvc.perform(get("/conta").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenNovo))
+                .andExpect(status().isOk());
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + EMAIL + "\",\"senha\":\"nova-senha-456\"}"))
