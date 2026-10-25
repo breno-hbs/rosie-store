@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiError, redefinirSenha } from '../api.js'
+import CampoSenha from '../components/CampoSenha.jsx'
 import MolduraAcesso from '../components/MolduraAcesso.jsx'
 import { ROTAS_SENHA } from '../senha.js'
 
@@ -91,42 +92,35 @@ export default function RedefinirSenha({ area }) {
   return (
     <MolduraAcesso area={area} titulo="Crie uma nova senha">
       <form className="acesso__form" onSubmit={salvar}>
-        <label className="campo">
-          <span className="eyebrow">Nova senha</span>
-          <input
-            className="campo__caixa"
-            type="password"
-            name="nova"
-            autoComplete="new-password"
-            placeholder="••••••••"
-            required
-            minLength={8}
-            maxLength={72}
-            aria-describedby="nota-nova-senha"
-            value={senhas.nova}
-            onChange={alterar}
-            disabled={carregando}
-          />
+        <CampoSenha
+          rotulo="Nova senha"
+          name="nova"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          required
+          minLength={8}
+          maxLength={72}
+          aria-describedby="nota-nova-senha"
+          value={senhas.nova}
+          onChange={alterar}
+          disabled={carregando}
+        >
           <span className="acesso__nota" id="nota-nova-senha">
             De 8 a 72 caracteres.
           </span>
-        </label>
+        </CampoSenha>
 
-        <label className="campo">
-          <span className="eyebrow">Confirmar nova senha</span>
-          <input
-            className="campo__caixa"
-            type="password"
-            name="confirmacao"
-            autoComplete="new-password"
-            placeholder="••••••••"
-            required
-            maxLength={72}
-            value={senhas.confirmacao}
-            onChange={alterar}
-            disabled={carregando}
-          />
-        </label>
+        <CampoSenha
+          rotulo="Confirmar nova senha"
+          name="confirmacao"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          required
+          maxLength={72}
+          value={senhas.confirmacao}
+          onChange={alterar}
+          disabled={carregando}
+        />
 
         {erro && (
           <p className="acesso__aviso" role="alert">

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ApiError, entrarNoPainel } from '../api.js'
+import CampoSenha from '../components/CampoSenha.jsx'
 import LogoBadge from '../components/LogoBadge.jsx'
 import { ROTAS_SENHA } from '../senha.js'
 import './AdminLogin.css'
@@ -55,20 +56,16 @@ export default function AdminLogin() {
           />
         </label>
 
-        <label className="campo">
-          <span className="eyebrow">Senha</span>
-          <input
-            className="campo__caixa"
-            type="password"
-            name="senha"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            required
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            disabled={carregando}
-          />
-        </label>
+        <CampoSenha
+          rotulo="Senha"
+          name="senha"
+          autoComplete="current-password"
+          placeholder="••••••••"
+          required
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          disabled={carregando}
+        />
         <a className="admin-login__esqueci" href={ROTAS_SENHA.admin.esqueci}>
           Esqueci minha senha
         </a>
