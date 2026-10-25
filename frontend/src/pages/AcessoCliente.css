@@ -75,3 +75,58 @@
   line-height: 1.5;
   color: var(--acento);
 }
+
+/* Telas de senha (#93), sem frame no Figma: os tokens do login. No painel, o rótulo "Painel administrativo"
+   fica entre o logo e o título, como no login do painel */
+.acesso__area {
+  margin-top: 16px;
+}
+
+.acesso__titulo--painel {
+  margin-top: 24px;
+}
+
+.acesso__texto {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--acento);
+}
+
+.acesso__destaque {
+  color: var(--tinta);
+  overflow-wrap: anywhere;
+}
+
+.acesso__nota {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fumaca);
+}
+
+/* "Esqueci minha senha", logo abaixo do campo de senha do login */
+.acesso__esqueci {
+  align-self: flex-end;
+  margin-top: -8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--acento);
+}
+
+.acesso__esqueci:hover,
+.acesso__link:hover {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Botão com cara de link ("Pedir de novo") */
+.acesso__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--tinta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

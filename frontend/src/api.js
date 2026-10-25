@@ -267,10 +267,34 @@ export async function atualizarConta(dados, opcoes) {
   return conta
 }
 
-// PUT /conta/senha; { senhaAtual, novaSenha } → null. Senha atual errada ou nova fora de 8 a 72
-// caracteres: ApiError com codigo DADOS_INVALIDOS (400) e a mensagem pronta
-export function trocarSenha(senhaAtual, novaSenha, opcoes) {
-  return putCliente('/conta/senha', { senhaAtual, novaSenha }, opcoes)
+// PUT /conta/senha; { senhaAtual, novaSenha } → { token, usuario, privacidadePendente }. A troca encerra as sessões
+// abertas (#93): o token antigo deixa de valer e este aparelho segue logado com o novo, guardado aqui.
+// Senha atual errada ou nova fora de 8 a 72 caracteres: ApiError com codigo DADOS_INVALIDOS (400) e a mensagem pronta
+export async function trocarSenha(senhaAtual, novaSenha, opcoes) {
+  const sessao = await putCliente('/conta/senha', { senhaAtual, novaSenha }, opcoes)
+  try {
+    guardarSessao('cliente', sessao)
+  } catch {
+    // Sem armazenamento, a próxima chamada leva ao login (o token guardado não vale mais)
+  }
+  return sessao.usuario
+}
+
+// Esqueci minha senha (#93), o mesmo para a loja e o painel. POST /auth/esqueci-senha; { email } → { mensagem }
+// (202), igual exista ou não a conta: o link vai ao e-mail da conta. Muitos pedidos seguidos: MUITAS_TENTATIVAS
+// (429); e-mail vazio ou inválido: DADOS_INVALIDOS (400)
+export function pedirLinkSenha(email, opcoes) {
+  return requisicao('/auth/esqueci-senha', { ...opcoes, metodo: 'POST', corpo: { email } })
+}
+
+// POST /auth/redefinir-senha; { token, novaSenha } → null (204). Público: o token do link é a prova. A troca
+// encerra as sessões abertas da conta, então a sessão desta área ('cliente' ou 'admin') também é esquecida aqui.
+// Link que não existe ou já foi usado: TOKEN_INVALIDO; vencido: TOKEN_EXPIRADO (os dois 400); senha fora de 8 a
+// 72 caracteres: DADOS_INVALIDOS (400)
+export async function redefinirSenha(token, novaSenha, area, opcoes) {
+  await requisicao('/auth/redefinir-senha', { ...opcoes, metodo: 'POST', corpo: { token, novaSenha } })
+  limparSessao(area)
+  if (area === 'cliente') esquecerFrete()
 }
 
 // Troca de e-mail (#61). PUT /conta/email; { novoEmail, senhaAtual } → { novoEmail, expiraEm }: o e-mail novo

@@ -53,6 +53,12 @@ public class Usuario {
     @Column(name = "excluida_em")
     private LocalDateTime excluidaEm;
 
+    // Sobe a cada troca de senha (#93). O JWT leva a versão do login (claim "vc") e o JwtConfig recusa o de
+    // uma versão anterior: trocar a senha encerra as sessões abertas, sem esperar o token de 2 horas vencer.
+    @Column(name = "versao_credencial", nullable = false)
+    @Builder.Default
+    private int versaoCredencial = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

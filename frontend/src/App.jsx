@@ -10,12 +10,14 @@ import CategoriaAntiga from './pages/CategoriaAntiga.jsx'
 import Checkout from './pages/Checkout.jsx'
 import ConfirmarEmail from './pages/ConfirmarEmail.jsx'
 import Entrar from './pages/Entrar.jsx'
+import EsqueciSenha from './pages/EsqueciSenha.jsx'
 import Home from './pages/Home.jsx'
 import MinhaConta from './pages/MinhaConta.jsx'
 import PagamentoSimulado from './pages/PagamentoSimulado.jsx'
 import PedidoRetorno from './pages/PedidoRetorno.jsx'
 import PoliticaPrivacidade from './pages/PoliticaPrivacidade.jsx'
 import Produto from './pages/Produto.jsx'
+import RedefinirSenha from './pages/RedefinirSenha.jsx'
 import SolicitarTroca from './pages/SolicitarTroca.jsx'
 import { ROTA_POLITICA_PRIVACIDADE } from './privacidade.js'
 
@@ -36,6 +38,9 @@ function rotaAtual() {
   if (produto) return { pagina: 'produto', id: Number(produto[1]) }
   if (/^\/entrar\/?$/.test(caminho)) return { pagina: 'entrar' }
   if (/^\/cadastro\/?$/.test(caminho)) return { pagina: 'cadastro' }
+  // Esqueci minha senha (#93), públicas: o pedido do link e a nova senha, na loja e no painel
+  const senha = caminho.match(/^(\/admin)?\/(esqueci-senha|redefinir-senha)\/?$/)
+  if (senha) return { pagina: senha[2], area: senha[1] ? 'admin' : 'cliente' }
   if (/^\/carrinho\/?$/.test(caminho)) return { pagina: 'carrinho' }
   // Página da categoria (#88), pública: /categoria/cropped-body
   const categoria = caminho.match(/^\/categoria\/([^/]+)\/?$/)
@@ -131,6 +136,8 @@ export default function App() {
   if (rota.pagina === 'confirmar-email') return <ConfirmarEmail />
   if (rota.pagina === 'entrar') return <Entrar />
   if (rota.pagina === 'cadastro') return <Cadastro />
+  if (rota.pagina === 'esqueci-senha') return <EsqueciSenha area={rota.area} />
+  if (rota.pagina === 'redefinir-senha') return <RedefinirSenha area={rota.area} />
   if (rota.pagina === 'admin-login') return <AdminLogin />
   if (rota.pagina === 'admin') {
     return (

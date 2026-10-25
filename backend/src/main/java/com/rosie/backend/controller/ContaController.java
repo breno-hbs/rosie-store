@@ -8,6 +8,7 @@ import com.rosie.backend.dto.EmailConfirmadoDTO;
 import com.rosie.backend.dto.EmailPendenteDTO;
 import com.rosie.backend.dto.EmailRequestDTO;
 import com.rosie.backend.dto.ExclusaoContaRequestDTO;
+import com.rosie.backend.dto.LoginResponseDTO;
 import com.rosie.backend.dto.SenhaRequestDTO;
 import com.rosie.backend.service.ContaService;
 import com.rosie.backend.service.MudancaEmailService;
@@ -44,10 +45,11 @@ public class ContaController {
         return contaService.atualizar(clienteId(jwt), requisicao);
     }
 
+    // A troca encerra as sessões abertas (#93): a resposta traz o token novo deste aparelho
     @PutMapping("/senha")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void trocarSenha(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SenhaRequestDTO requisicao) {
-        contaService.trocarSenha(clienteId(jwt), requisicao);
+    public LoginResponseDTO trocarSenha(@AuthenticationPrincipal Jwt jwt,
+                                        @Valid @RequestBody SenhaRequestDTO requisicao) {
+        return contaService.trocarSenha(clienteId(jwt), requisicao);
     }
 
     // Troca de e-mail (#61): 202 porque o e-mail novo só vale depois da confirmação pelo link mandado a ele

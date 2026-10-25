@@ -18,6 +18,8 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /auth/registrar` | Implementado (público; 201; 400 `DADOS_INVALIDOS`; 409 com `EMAIL_JA_CADASTRADO`) | `LoginResponseDTO` |
 | `POST /auth/login` | Implementado (público; só `CLIENTE`; 401 com `CREDENCIAIS_INVALIDAS`, também para conta excluída) | `LoginResponseDTO` |
 | `GET /auth/me` | Implementado (exige token `CLIENTE`) | `UsuarioResumoDTO` |
+| `POST /auth/esqueci-senha` | Implementado (público, para cliente e admin; sempre 202 com a mesma mensagem, exista ou não a conta; 400 `DADOS_INVALIDOS`; 429 `MUITAS_TENTATIVAS`) | `MensagemDTO` |
+| `POST /auth/redefinir-senha` | Implementado (público, pelo token do link; 204; encerra as sessões abertas; 400 `DADOS_INVALIDOS`/`TOKEN_INVALIDO`/`TOKEN_EXPIRADO`) | — |
 | `GET /privacidade` | Implementado (público; versão e vigência da política de privacidade em vigor) | `PoliticaPrivacidadeDTO` |
 | `GET /carrinho` | Implementado (exige token `CLIENTE`; marca itens que ficaram indisponíveis sem apagá-los) | `CarrinhoDTO` |
 | `POST /carrinho/itens` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 409 com `ESTOQUE_INSUFICIENTE`/`PRODUTO_INDISPONIVEL`) | `CarrinhoDTO` |
@@ -35,7 +37,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `POST /trocas` | Implementado (exige token `CLIENTE`; 201; 400 `DADOS_INVALIDOS`; 404 também para pedido de outra cliente; 409 `PEDIDO_NAO_ENTREGUE`/`TROCA_FORA_DO_PRAZO`/`TROCA_JA_SOLICITADA`) | `TrocaDTO` |
 | `GET /trocas` | Implementado (exige token `CLIENTE`; só as trocas da cliente do token, da mais recente à mais antiga; com a etiqueta de volta ou o endereço de devolução, #63) | lista de `TrocaDTO` |
 | `PUT /conta` | Implementado (exige token `CLIENTE`; nome e telefone; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
-| `PUT /conta/senha` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha atual errada) | — |
+| `PUT /conta/senha` | Implementado (exige token `CLIENTE`; encerra as outras sessões e devolve o token novo; 400 `DADOS_INVALIDOS`, também para senha atual errada) | `LoginResponseDTO` |
 | `POST /conta/privacidade` | Implementado (exige token `CLIENTE`; aceite da versão em vigor da política; 400 `DADOS_INVALIDOS`) | `ContaDTO` |
 | `POST /conta/exclusao` | Implementado (exige token `CLIENTE`; 204; 400 `DADOS_INVALIDOS`, também para senha errada; 409 `CONTA_COM_PEDIDO_EM_ANDAMENTO`) | — |
 | `PUT /conta/email` | Implementado (exige token `CLIENTE`; 202, a troca fica pendente até a confirmação; 400 `DADOS_INVALIDOS`; 403 `SENHA_INCORRETA`; 409 `EMAIL_JA_CADASTRADO`; 502 `EMAIL_FALHOU`) | `EmailPendenteDTO` |
@@ -84,7 +86,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 - **Autenticação:** JWT via header `Authorization: Bearer {token}` — obtido no login
 - **Tamanhos:** sempre um dos valores `P`, `M`, `G`, `GG`
 - **Datas:** formato ISO 8601 (`2026-08-25T14:30:00`); campos só de dia, como `dataEntrega` e `prazoTroca`, vêm sem hora (`2026-08-25`)
-- **Erros:** sempre nesse formato (`ErroResponseDTO`), com o HTTP status code correspondente (400, 401, 403, 404, 409, 500, 502, 503)
+- **Erros:** sempre nesse formato (`ErroResponseDTO`), com o HTTP status code correspondente (400, 401, 403, 404, 409, 429, 500, 502, 503)
 
 ```json
 {
@@ -100,7 +102,7 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `RECURSO_NAO_ENCONTRADO` | 404 | Recurso buscado por id não existe (ex.: `GET /produtos/{id}`) |
 | `DADOS_INVALIDOS` | 400 | Corpo ausente, JSON malformado ou campo inválido (ex.: e-mail vazio no login, preço zero, categoria inexistente ou tamanho repetido no cadastro de produto); `erro` traz a mensagem de um campo só: o primeiro inválido na ordem do DTO e, se ele quebra mais de uma regra, a de obrigatório (ex.: "Informe o telefone") antes da de formato |
 | `CREDENCIAIS_INVALIDAS` | 401 | Login com e-mail inexistente, senha errada, usuário sem permissão ou conta excluída (mesma resposta em todos os casos) |
-| `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado, expirado ou de uma conta excluída |
+| `NAO_AUTENTICADO` | 401 | Rota protegida sem token, ou com token inválido, adulterado, expirado, de uma conta excluída ou emitido antes da última troca de senha (#93) |
 | `ACESSO_NEGADO` | 403 | Token válido, mas sem a role exigida (ex.: token de cliente em `/admin/**`) |
 | `FORMATO_NAO_SUPORTADO` | 400 | Upload de foto que não é JPG, PNG nem WEBP (conferido pelo conteúdo do arquivo, não pela extensão) |
 | `ARQUIVO_MUITO_GRANDE` | 400 | Upload de foto acima de 5 MB |
@@ -110,8 +112,9 @@ Migrado do Notion em 17/10/2026. A partir daqui, este arquivo é a fonte de verd
 | `PRODUTO_COM_HISTORICO` | 409 | Painel: excluir definitivamente (`DELETE /admin/produtos/{id}?definitivo=true`) um produto que já entrou em pedido (de qualquer status) ou em troca; `erro` sugere arquivar (#87) |
 | `EMAIL_JA_CADASTRADO` | 409 | Cadastro de cliente, ou troca de e-mail na Minha Conta (no pedido e de novo na confirmação), com um e-mail que já tem conta (sem diferenciar maiúsculas), de cliente ou de admin |
 | `SENHA_INCORRETA` | 403 | Troca de e-mail com a senha atual errada. Não é 401: a sessão continua valendo |
-| `TOKEN_INVALIDO` | 400 | Confirmação da troca de e-mail com um token que não existe, já foi usado ou foi substituído por um pedido mais novo (ou sem token) |
-| `TOKEN_EXPIRADO` | 400 | Confirmação da troca de e-mail depois do prazo do link (`ROSIE_TROCA_EMAIL_VALIDADE`, padrão 24 horas); a cliente pede de novo |
+| `TOKEN_INVALIDO` | 400 | Confirmação da troca de e-mail ou redefinição de senha com um token que não existe, já foi usado ou foi substituído por um pedido mais novo (ou sem token) |
+| `TOKEN_EXPIRADO` | 400 | Confirmação da troca de e-mail ou redefinição de senha depois do prazo do link (`ROSIE_TROCA_EMAIL_VALIDADE`, padrão 24 horas; `ROSIE_REDEFINICAO_SENHA_VALIDADE`, padrão 1 hora); a pessoa pede de novo |
+| `MUITAS_TENTATIVAS` | 429 | "Esqueci minha senha" acima do limite de pedidos por e-mail ou por IP (padrão 3 e 10 por hora); a pessoa espera a janela acabar |
 | `EMAIL_FALHOU` | 502 | Troca de e-mail: o Resend não aceitou o link de confirmação (fora do ar, recusa, tempo esgotado). Nada fica pendente; a cliente pode tentar de novo |
 | `ESTOQUE_INSUFICIENTE` | 409 | Carrinho: a quantidade pedida (somada à que já está na sacola, no POST) passa do estoque do tamanho, ou o tamanho está esgotado; `erro` traz a mensagem pronta ("Só temos 3 no tamanho P") |
 | `PRODUTO_INDISPONIVEL` | 409 | Carrinho: adicionar ou mudar a quantidade de um produto desativado pela Roseane |
@@ -140,9 +143,9 @@ Cliente e admin são o mesmo `usuario`, com `role` `CLIENTE` ou `ADMIN`, e o mes
 
 | Rotas | Quem acessa |
 |---|---|
-| `POST /auth/registrar`, `POST /auth/login`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias`, `GET /categorias/{slug}`, `GET /categorias/{id}/medidas`, `GET /privacidade`, `POST /conta/email/confirmar` | Público |
+| `POST /auth/registrar`, `POST /auth/login`, `POST /auth/esqueci-senha`, `POST /auth/redefinir-senha`, `POST /admin/auth/login`, `GET /produtos/**`, `GET /categorias`, `GET /categorias/{slug}`, `GET /categorias/{id}/medidas`, `GET /privacidade`, `POST /conta/email/confirmar` | Público |
 | `POST /pagamentos/webhook` | Público, mas só processa aviso com a assinatura `x-signature` do Mercado Pago |
-| `/auth/**` (ex.: `GET /auth/me`), `/conta/**` (menos a confirmação da troca de e-mail), `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
+| `/auth/**` (ex.: `GET /auth/me`; menos o cadastro, o login e o "esqueci minha senha"), `/conta/**` (menos a confirmação da troca de e-mail), `/carrinho/**`, `/frete/**`, `/enderecos/**`, `/pedidos/**`, `/trocas/**` | Token `CLIENTE` (401 `NAO_AUTENTICADO` sem token; 403 `ACESSO_NEGADO` com token de admin) |
 | `/admin/**` | Token `ADMIN` (403 `ACESSO_NEGADO` com token de cliente) |
 | Qualquer outra | Qualquer token válido |
 
@@ -230,8 +233,9 @@ Exigem token `CLIENTE` (401 sem token, 403 com token de admin). Sempre da client
 }
 // PUT /conta — ContaRequestDTO → 200 com o ContaDTO atualizado
 { "nome": "Maria Souza", "telefone": "1134567890" }
-// PUT /conta/senha — SenhaRequestDTO → 204, sem corpo
+// PUT /conta/senha — SenhaRequestDTO → 200 — LoginResponseDTO (o token novo deste aparelho, #93)
 { "senhaAtual": "senha123", "novaSenha": "nova-senha-456" }
+{ "token": "eyJhbGc...", "usuario": { "id": 7, "nome": "Maria Silva", "role": "CLIENTE" }, "privacidadePendente": false }
 // Response 400
 { "erro": "Senha atual incorreta", "codigo": "DADOS_INVALIDOS" }
 ```
@@ -246,7 +250,9 @@ Exigem token `CLIENTE` (401 sem token, 403 com token de admin). Sempre da client
 
 Mensagens de 400 (`DADOS_INVALIDOS`): "Informe o nome", "O nome pode ter no máximo 150 caracteres", "Informe o telefone", "Telefone inválido: informe DDD e número, só com dígitos", "Informe a senha atual", "Senha atual incorreta", "Informe a nova senha", "A senha precisa ter de 8 a 72 caracteres".
 
-**Senha atual errada é 400, não 401:** a sessão continua valendo, só o formulário está errado (um 401 faria a loja tirar a cliente da conta). Os tokens já emitidos continuam valendo até vencer (JWT sem estado, 2 horas).
+**Senha atual errada é 400, não 401:** a sessão continua valendo, só o formulário está errado (um 401 faria a loja tirar a cliente da conta).
+
+**A troca encerra as outras sessões (#93):** como no "esqueci minha senha", a versão da credencial sobe e todo token emitido antes deixa de valer na hora (401 `NAO_AUTENTICADO`; ex.: a conta aberta num celular perdido). A resposta traz o token novo, que a loja guarda no lugar do antigo: o aparelho de onde a cliente trocou a senha continua logado. Um link de "esqueci minha senha" pendente deixa de valer, e o e-mail da conta recebe o aviso de senha trocada. Antes da #93 a resposta era 204 e os tokens seguiam valendo até vencer.
 
 **O nome no token não muda:** o `nome` do JWT (e do `GET /auth/me`) é o do momento do login. A loja atualiza o nome da sessão guardada no navegador com a resposta do `PUT /conta`, e o próximo login já sai com o nome novo.
 
@@ -294,7 +300,45 @@ Mensagens de 400 (`DADOS_INVALIDOS`) do pedido: "Informe o novo e-mail", "E-mail
 
 **Confirmação:** numa transação, com a linha da troca pendente travada (o mesmo token não confirma duas vezes ao mesmo tempo): confere o token e o prazo, **confere de novo se o e-mail novo já tem conta** (alguém pode ter se cadastrado com ele nesse meio-tempo: 409 `EMAIL_JA_CADASTRADO`, e o login continua o antigo), troca o e-mail e apaga a troca pendente (o token não serve mais). Depois do commit, o **endereço antigo recebe um aviso** de que o login foi trocado, com o novo e-mail mascarado (`ma***@email.com`), a data e hora e os contatos da loja para o caso de não ter sido a dona da conta. O aviso sai pela fila dos e-mails: uma falha no envio não desfaz a troca.
 
-**Sessão depois da troca:** o JWT não leva o e-mail (`sub` é o id do usuário; as claims são `role` e `nome`), então os tokens já emitidos continuam valendo e a cliente segue logada, como na troca de senha. O próximo login já é com o e-mail novo. A proteção contra uma troca feita por outra pessoa é a senha exigida no pedido e o aviso ao endereço antigo.
+**Sessão depois da troca:** o JWT não leva o e-mail (`sub` é o id do usuário; as claims são `role`, `nome` e `vc`), então os tokens já emitidos continuam valendo e a cliente segue logada (diferente da troca de senha, que encerra as sessões, #93). O próximo login já é com o e-mail novo. A proteção contra uma troca feita por outra pessoa é a senha exigida no pedido e o aviso ao endereço antigo.
+
+### Esqueci minha senha (#93)
+`POST /auth/esqueci-senha`, `POST /auth/redefinir-senha`
+
+Os dois são públicos e servem à cliente e ao admin (o e-mail é único entre os dois). O pedido manda ao e-mail da conta um link de uso único; a página do link pede a senha nova; depois a pessoa entra pelo login da sua área. A loja abre o fluxo em "Esqueci minha senha" no `/entrar` (página `/esqueci-senha`) e o painel no `/admin/login` (página `/admin/esqueci-senha`).
+
+```json
+// POST /auth/esqueci-senha — EsqueciSenhaRequestDTO → 202 — MensagemDTO (sempre a mesma)
+{ "email": "maria@email.com" }
+{ "mensagem": "Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha." }
+// Response 429
+{ "erro": "Muitos pedidos seguidos. Espere um pouco e tente de novo.", "codigo": "MUITAS_TENTATIVAS" }
+
+// POST /auth/redefinir-senha — RedefinicaoSenhaRequestDTO → 204, sem corpo
+{ "token": "q3Vx...43 caracteres", "novaSenha": "nova-senha-456" }
+// Response 400
+{ "erro": "Este link não é válido ou já foi usado", "codigo": "TOKEN_INVALIDO" }
+{ "erro": "Este link expirou. Peça um link novo", "codigo": "TOKEN_EXPIRADO" }
+{ "erro": "A senha precisa ter de 8 a 72 caracteres", "codigo": "DADOS_INVALIDOS" }
+```
+
+| Campo | Regra |
+|---|---|
+| `email` | Obrigatório, com ponto no domínio, até 150 caracteres; comparado sem espaços nas pontas e sem diferenciar maiúsculas, como no login |
+| `token` | O do link. Ausente, vazio, inexistente, já usado ou substituído por um pedido mais novo → 400 `TOKEN_INVALIDO`; vencido → 400 `TOKEN_EXPIRADO` |
+| `novaSenha` | As regras do cadastro: obrigatória, de 8 a 72 caracteres (e até 72 bytes). Guardada só como hash BCrypt. A confirmação ("digite de novo") fica só na página |
+
+Mensagens de 400 (`DADOS_INVALIDOS`): "Informe o e-mail", "E-mail inválido", "O e-mail pode ter no máximo 150 caracteres", "Informe a nova senha", "A senha precisa ter de 8 a 72 caracteres". A senha é conferida antes do token: uma senha recusada não gasta o link.
+
+**O pedido sempre responde igual:** e-mail sem conta, conta excluída pela LGPD (#31, que não recebe link) e conta ativa recebem o mesmo 202 com a mesma mensagem, e o e-mail sai pela fila **depois do commit**, sem a resposta esperar o Resend. Assim nem o corpo, nem o status, nem o tempo de resposta (a não ser por alguns milissegundos de gravação no banco) dizem se o e-mail tem conta, e uma falha do Resend vai só para o log. É diferente da troca de e-mail (#61), que manda o link dentro da requisição e responde 502 se ele não sair: lá a cliente está logada e já sabe que a conta é dela.
+
+**Limite de tentativas:** no máximo `ROSIE_ESQUECI_SENHA_LIMITE_EMAIL` pedidos por e-mail (padrão 3) e `ROSIE_ESQUECI_SENHA_LIMITE_IP` por IP (padrão 10) em cada janela fixa de `ROSIE_ESQUECI_SENHA_JANELA` (padrão 1 hora); acima disso, 429 `MUITAS_TENTATIVAS` até a janela acabar. Conta todo pedido, exista ou não a conta, então o 429 não diz nada sobre o e-mail. O pedido barrado pelo IP não gasta a cota do e-mail. A contagem fica na memória da API (`LimitePedidosSenha`): basta para uma instância só (Railway Hobby) e zera quando ela reinicia; com mais de uma instância o limite efetivo se multiplica, e aí a contagem teria de ir para o banco. O IP é o `remoteAddr` da requisição: no perfil `prod`, o `server.forward-headers-strategy=framework` (#74) o troca pelo primeiro endereço do `X-Forwarded-For` que chega do proxy do Railway. Esse cabeçalho pode ser preenchido pelo próprio cliente, então o limite por IP só freia quem não se dá a esse trabalho; o que protege a caixa de entrada de alguém contra spam é o limite por e-mail.
+
+**O link:** `ROSIE_LOJA_URL` + `/redefinir-senha?token=...` para a cliente ou `/admin/redefinir-senha?token=...` para o admin (cada página volta para o seu login). Token de 256 bits aleatórios (Base64 para URL, 43 caracteres) com **só o hash SHA-256 no banco** (tabela `redefinicao_senha`: `usuario_id` único, `token_hash`, `expira_em`, `solicitado_em`), prazo de `ROSIE_REDEFINICAO_SENHA_VALIDADE` (padrão 1 hora, horário de Brasília). Um pedido novo substitui o anterior, cujo link deixa de valer. A página tira o token da barra de endereço assim que o lê e o manda no corpo do `POST`. Sem `RESEND_API_KEY` (dev, CI), o link só aparece no log com `logging.level.com.rosie.backend.service.EmailSoNoLog=DEBUG`, como na troca de e-mail.
+
+**Redefinição:** numa transação, com a linha do pedido travada (o mesmo token não serve duas vezes ao mesmo tempo): confere o token e o prazo, grava a senha nova (BCrypt), **sobe a versão da credencial** (encerra as sessões, ver abaixo) e apaga o pedido (um segundo uso responde `TOKEN_INVALIDO`). Não entra na conta: a resposta é 204 e a página leva ao login da área. Depois do commit, o e-mail da conta recebe o **aviso de senha trocada**, com a data e hora e o que fazer se não foi a dona da conta; uma falha no envio não desfaz a troca. A troca de senha da Minha Conta e a exclusão da conta (#31) também apagam o pedido pendente.
+
+**Sessões encerradas (versão da credencial):** `usuario.versao_credencial` começa em 0 e sobe a cada troca de senha (por aqui ou no `PUT /conta/senha`). O JWT leva a versão do momento do login na claim `vc`, e o validador do JWT (o mesmo que derruba a conta excluída: uma consulta por id em cada requisição com token) recusa o token de outra versão com 401 `NAO_AUTENTICADO`, e a loja ou o painel levam ao login. Token sem `vc` (emitido antes da #93) conta como versão 0, então ninguém perdeu a sessão no deploy. Foi escolhida uma versão, e não a data da troca, porque o `iat` do JWT só tem segundos: um login feito no mesmo segundo da troca seria recusado (ou um token de antes, aceito). A troca de e-mail (#61) não mexe na versão.
 
 ### Política de privacidade (LGPD, #31)
 `GET /privacidade`, `POST /conta/privacidade`
@@ -354,7 +398,7 @@ O Mercado Pago e o Melhor Envio guardam as próprias cópias dos dados dos pedid
 
 Público. Só entra usuário com role `ADMIN` (RF13, RNF02). O e-mail é comparado sem diferenciar maiúsculas. E-mail inexistente, senha errada e conta de cliente respondem o mesmo 401, sem dizer qual dos dois errou.
 
-O token é um JWT HS256 com validade de **2 horas**: `sub` = id do usuário, `role`, `nome`, `iss` = `rosie`. Mande-o em `Authorization: Bearer {token}` nas rotas `/admin/**`. Sem logout no servidor: o painel só esquece o token.
+O token é um JWT HS256 com validade de **2 horas**: `sub` = id do usuário, `role`, `nome`, `vc` (versão da credencial, #93), `iss` = `rosie`. Mande-o em `Authorization: Bearer {token}` nas rotas `/admin/**`. Sem logout no servidor: o painel só esquece o token.
 
 ```json
 // Request
@@ -391,8 +435,10 @@ Exige token `ADMIN`. Devolve o dono do token; o painel usa ao abrir para conferi
 | `ROSIE_ADMIN_NOME` | Não (padrão `Roseane`) | Nome do admin inicial |
 | `CLOUDINARY_URL` | Não (sem ela, o upload de fotos responde 503) | Credencial do Cloudinary, no formato `cloudinary://<api_key>:<api_secret>@<cloud_name>`; ver "Upload de imagem" |
 | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `ROSIE_API_URL` | Não (faltando qualquer uma, o checkout responde 503) | Pagamento pelo Mercado Pago; ver "Finalizar pedido" |
-| `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago e o link de confirmação da troca de e-mail; link de banner com o endereço completo da loja vira caminho (#89) |
+| `ROSIE_LOJA_URL` | Não (padrão `http://localhost:5173`) | Endereço da loja, para as URLs de retorno do Mercado Pago e os links da troca de e-mail e do "esqueci minha senha"; link de banner com o endereço completo da loja vira caminho (#89) |
 | `ROSIE_TROCA_EMAIL_VALIDADE` | Não (padrão `24h`) | Prazo do link de confirmação da troca de e-mail (ex.: `30m`, `24h`, `2d`); ver "Troca de e-mail" |
+| `ROSIE_REDEFINICAO_SENHA_VALIDADE` | Não (padrão `1h`) | Prazo do link de "esqueci minha senha"; ver "Esqueci minha senha" |
+| `ROSIE_ESQUECI_SENHA_LIMITE_EMAIL`, `ROSIE_ESQUECI_SENHA_LIMITE_IP`, `ROSIE_ESQUECI_SENHA_JANELA` | Não (padrões `3`, `10`, `1h`) | Limite de pedidos de "esqueci minha senha" por e-mail e por IP em cada janela; ver "Esqueci minha senha" |
 | `TROCA_PRAZO_DIAS` | Não (padrão `7`) | Prazo para pedir troca, em dias corridos depois da entrega; ver "Troca e devolução" |
 | `ROSIE_REMETENTE_NOME`, `_LOGRADOURO`, `_NUMERO`, `_COMPLEMENTO`, `_BAIRRO`, `_CIDADE`, `_UF` e `ROSIE_CEP_ORIGEM` | Não (faltando um obrigatório, a cliente vê "a Rosie vai te passar o endereço") | Além de remetente da etiqueta de ida e destino da de volta, é o endereço de devolução que a cliente vê na troca "não serviu" aprovada (`enderecoDevolucao`, #63); ver "Devolução da peça" |
 | `ROSIE_RASTREIO_ATIVO`, `ROSIE_RASTREIO_INTERVALO`, `ROSIE_RASTREIO_LOTE`, `ROSIE_RASTREIO_PAUSA` | Não (padrões `true`, `6h`, `50`, `1s`) | Entrega pelo rastreio: liga/desliga, intervalo entre as rodadas, pedidos por rodada e pausa entre as consultas ao Melhor Envio; ver "Entrega pelo rastreio". Só roda com `MELHOR_ENVIO_TOKEN` |
@@ -1644,7 +1690,7 @@ Compra e gera no Melhor Envio a etiqueta de volta (logística reversa, #63) de u
 - **Sem estado no servidor** = menos RAM ocupada no Railway (que cobra por uso contínuo de memória) — sessão tradicional exige guardar quem está logado na memória do servidor.
 - Combinação JWT + Spring Security é extremamente comum e bem documentada.
 
-**Trade-off aceito:** JWT não tem "logout forte" fácil (sem lista negra de tokens). Solução simples adotada: token com validade curta (2 horas), sem controle de logout forçado por enquanto — suficiente pro escopo atual.
+**Trade-off aceito:** JWT não tem "logout forte" fácil (sem lista negra de tokens). Solução simples adotada: token com validade curta (2 horas). Logout forçado só em dois casos, conferidos a cada requisição com uma consulta por id: conta excluída (#31) e senha trocada (#93, pela versão da credencial na claim `vc`; ver "Esqueci minha senha").
 
 **Implementação (#13):** suporte nativo do Spring Security (`spring-boot-starter-security-oauth2-resource-server`, `NimbusJwtEncoder`/`NimbusJwtDecoder`), sem biblioteca extra. A claim `role` vira a authority `ROLE_ADMIN`/`ROLE_CLIENTE`. No front, o token fica no `sessionStorage` e o `api.js` só o envia nas chamadas do painel: as rotas públicas do catálogo não recebem `Authorization`, porque um token vencido faria a API responder 401 mesmo nelas.
 
