@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ApiError, cadastrarCliente, comVoltar, destinoSeguro } from '../api.js'
+import CampoSenha from '../components/CampoSenha.jsx'
 import LogoBadge from '../components/LogoBadge.jsx'
 import { mascararTelefone, somenteDigitos } from '../formato.js'
 import { ROTA_POLITICA_PRIVACIDADE } from '../privacidade.js'
@@ -108,37 +109,29 @@ export default function Cadastro() {
           />
         </label>
 
-        <label className="campo">
-          <span className="eyebrow">Senha</span>
-          <input
-            className="campo__caixa"
-            type="password"
-            name="senha"
-            autoComplete="new-password"
-            placeholder="••••••••"
-            required
-            minLength={8}
-            maxLength={72}
-            value={campos.senha}
-            onChange={alterar}
-            disabled={carregando}
-          />
-        </label>
+        <CampoSenha
+          rotulo="Senha"
+          name="senha"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          required
+          minLength={8}
+          maxLength={72}
+          value={campos.senha}
+          onChange={alterar}
+          disabled={carregando}
+        />
 
-        <label className="campo">
-          <span className="eyebrow">Confirmar senha</span>
-          <input
-            className="campo__caixa"
-            type="password"
-            name="confirmacao"
-            autoComplete="new-password"
-            placeholder="••••••••"
-            required
-            value={campos.confirmacao}
-            onChange={alterar}
-            disabled={carregando}
-          />
-        </label>
+        <CampoSenha
+          rotulo="Confirmar senha"
+          name="confirmacao"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          required
+          value={campos.confirmacao}
+          onChange={alterar}
+          disabled={carregando}
+        />
 
         <label className="acesso__aceite">
           <input

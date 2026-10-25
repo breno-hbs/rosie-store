@@ -1,0 +1,53 @@
+/* Campo de senha com o botão de olho (#95) */
+.campo-senha {
+  position: relative;
+}
+
+/* Espaço à direita para o botão não cobrir o texto */
+.campo-senha__caixa {
+  padding-right: 52px;
+}
+
+/* O Edge desenha um olho próprio nos campos de senha: fica só o nosso */
+.campo-senha__caixa::-ms-reveal,
+.campo-senha__caixa::-ms-clear {
+  display: none;
+}
+
+/* Alvo de 44 px, colado à borda direita, na altura do campo */
+.campo-senha__botao {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--fumaca);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.campo-senha__botao:hover,
+.campo-senha__botao[aria-pressed='true'] {
+  color: var(--tinta);
+}
+
+.campo-senha__botao:focus-visible {
+  outline-offset: -3px;
+}
+
+.campo-senha__botao:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.campo-senha__icone {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+}

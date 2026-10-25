@@ -3,6 +3,7 @@ import { atualizarConta, buscarConta, excluirConta, solicitarTrocaEmail, trocarS
 import { formatarData, formatarDataHora, mascararTelefone, somenteDigitos } from '../formato.js'
 import { ROTA_POLITICA_PRIVACIDADE } from '../privacidade.js'
 import useCarregar from '../useCarregar.js'
+import CampoSenha from './CampoSenha.jsx'
 import ContaAviso from './ContaAviso.jsx'
 
 // Aba "Dados Pessoais" da Minha Conta (#26): nome e telefone editáveis, troca do e-mail de acesso com
@@ -173,22 +174,19 @@ function EmailAcesso({ conta }) {
               disabled={envio.enviando}
             />
           </label>
-          <label className="campo">
-            <span className="eyebrow">Senha atual</span>
-            <input
-              className="campo__caixa"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              disabled={envio.enviando}
-              aria-describedby="nota-troca-email"
-            />
+          <CampoSenha
+            rotulo="Senha atual"
+            autoComplete="current-password"
+            required
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            disabled={envio.enviando}
+            aria-describedby="nota-troca-email"
+          >
             <span className="conta__nota" id="nota-troca-email">
               Mandamos um link de confirmação para o novo e-mail. A troca só vale depois que você abrir o link.
             </span>
-          </label>
+          </CampoSenha>
           {envio.erro && (
             <p className="conta__erro" role="alert">
               {erroTrocaEmail(envio.erro)}
@@ -257,37 +255,27 @@ function FormularioSenha() {
       <h2 className="titulo-3" id="titulo-senha">
         Trocar senha
       </h2>
-      <label className="campo">
-        <span className="eyebrow">Senha atual</span>
-        <input className="campo__caixa" type="password" autoComplete="current-password" required {...campo('atual')} />
-      </label>
-      <label className="campo">
-        <span className="eyebrow">Nova senha</span>
-        <input
-          className="campo__caixa"
-          type="password"
-          autoComplete="new-password"
-          minLength={8}
-          maxLength={72}
-          required
-          aria-describedby="nota-senha"
-          {...campo('nova')}
-        />
+      <CampoSenha rotulo="Senha atual" autoComplete="current-password" required {...campo('atual')} />
+      <CampoSenha
+        rotulo="Nova senha"
+        autoComplete="new-password"
+        minLength={8}
+        maxLength={72}
+        required
+        aria-describedby="nota-senha"
+        {...campo('nova')}
+      >
         <span className="conta__nota" id="nota-senha">
           De 8 a 72 caracteres.
         </span>
-      </label>
-      <label className="campo">
-        <span className="eyebrow">Confirme a nova senha</span>
-        <input
-          className="campo__caixa"
-          type="password"
-          autoComplete="new-password"
-          maxLength={72}
-          required
-          {...campo('confirmacao')}
-        />
-      </label>
+      </CampoSenha>
+      <CampoSenha
+        rotulo="Confirme a nova senha"
+        autoComplete="new-password"
+        maxLength={72}
+        required
+        {...campo('confirmacao')}
+      />
 
       <div className="conta__acoes">
         <button
@@ -382,18 +370,14 @@ function ExcluirConta({ onExcluida }) {
         <li>Os pedidos e valores continuam guardados, sem identificar você, porque a lei fiscal exige.</li>
         <li>Com um pedido a caminho ou uma troca em andamento, a exclusão espera a entrega ou a troca terminar.</li>
       </ul>
-      <label className="campo">
-        <span className="eyebrow">Sua senha</span>
-        <input
-          className="campo__caixa"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          disabled={envio.enviando}
-        />
-      </label>
+      <CampoSenha
+        rotulo="Sua senha"
+        autoComplete="current-password"
+        required
+        value={senha}
+        onChange={(e) => setSenha(e.target.value)}
+        disabled={envio.enviando}
+      />
       <label className="conta__exclusao-ciente">
         <input
           type="checkbox"
